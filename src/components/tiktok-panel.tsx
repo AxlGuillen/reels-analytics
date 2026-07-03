@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AccountStats } from "@/core/domain";
-import { cn } from "@/lib/utils";
 import {
   formatCount,
   formatDate,
@@ -30,7 +29,6 @@ import {
   type VideoWithMetrics,
 } from "@/modules/analytics/insights";
 import type { TikTokOverview, TikTokReadResult } from "@/modules/tiktok/read";
-import { VIDEO_RANGES, type RangeKey } from "@/modules/tiktok/ranges";
 
 function ConnectButton({ label }: { label: string }) {
   return (
@@ -45,28 +43,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="bg-muted/30 rounded-lg border p-4">
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-muted-foreground text-sm">{label}</div>
-    </div>
-  );
-}
-
-function RangeSelector({ active }: { active: RangeKey }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-sm">Periodo:</span>
-      {VIDEO_RANGES.map((r) => (
-        <Link
-          key={r.key}
-          href={`/?range=${r.key}`}
-          className={cn(
-            "rounded-full border px-3 py-1 text-xs transition-colors",
-            r.key === active
-              ? "bg-primary text-primary-foreground border-transparent"
-              : "text-muted-foreground hover:bg-muted",
-          )}
-        >
-          {r.label}
-        </Link>
-      ))}
     </div>
   );
 }
@@ -205,13 +181,11 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
   );
 }
 
-function Overview({ overview, range }: { overview: TikTokOverview; range: RangeKey }) {
+function Overview({ overview }: { overview: TikTokOverview }) {
   const { account, videos } = overview;
   return (
     <div className="space-y-8">
       <AccountHeader account={account} />
-
-      <RangeSelector active={range} />
 
       {videos.length === 0 ? (
         <p className="text-muted-foreground text-sm">
@@ -257,13 +231,7 @@ function Overview({ overview, range }: { overview: TikTokOverview; range: RangeK
   );
 }
 
-export function TikTokPanel({
-  result,
-  range,
-}: {
-  result: TikTokReadResult;
-  range: RangeKey;
-}) {
+export function TikTokPanel({ result }: { result: TikTokReadResult }) {
   switch (result.status) {
     case "disconnected":
       return (
@@ -293,7 +261,7 @@ export function TikTokPanel({
         </div>
       );
     case "ok":
-      return <Overview overview={result.overview} range={range} />;
+      return <Overview overview={result.overview} />;
   }
 }
 
