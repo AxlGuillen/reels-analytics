@@ -8,6 +8,11 @@ export interface TikTokUser {
   open_id: string;
   display_name: string;
   avatar_url?: string;
+  // Requieren scope user.info.profile.
+  username?: string;
+  bio_description?: string;
+  is_verified?: boolean;
+  // Requieren scope user.info.stats.
   follower_count: number;
   following_count: number;
   likes_count: number;

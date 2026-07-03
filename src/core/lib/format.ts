@@ -15,3 +15,19 @@ export function formatDate(date: Date): string {
     year: "numeric",
   }).format(date);
 }
+
+/** Duración en segundos a "m:ss": 83 → "1:23". */
+export function formatDuration(seconds: number | null): string {
+  if (seconds === null) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Proporción (0-1) a porcentaje: 0.0345 → "3.5%". */
+export function formatPercent(ratio: number): string {
+  return new Intl.NumberFormat("es", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(ratio);
+}

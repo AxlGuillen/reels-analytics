@@ -16,6 +16,7 @@ export interface AccountStats {
   platform: Platform;
   /** id de la cuenta en la plataforma (no el id interno de nuestra BD). */
   externalId: string;
+  /** @handle / username público. */
   handle: string | null;
   followers: number;
   /** vistas totales acumuladas de la cuenta (si la plataforma la expone). */
@@ -24,6 +25,14 @@ export interface AccountStats {
   totalLikes: number | null;
   /** momento en que se capturó esta lectura. */
   capturedAt: Date;
+
+  // Campos de perfil opcionales (para mostrar; no todas las plataformas los dan).
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  verified?: boolean;
+  bio?: string | null;
+  following?: number | null;
+  videoCount?: number | null;
 }
 
 /** Metadatos de un video (cambian poco tras publicarse). */
@@ -36,6 +45,8 @@ export interface Video {
   publishedAt: Date;
   url: string | null;
   durationSeconds: number | null;
+  /** miniatura/portada del video, si la plataforma la expone. */
+  thumbnailUrl?: string | null;
 }
 
 /** Métricas de un video en un instante dado (esto es lo que se historiza). */

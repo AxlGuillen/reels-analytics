@@ -1,31 +1,47 @@
-import type { AccountStats, Video, VideoMetrics } from "@/core/domain";
-import { tiktokProvider } from "./provider";
-import { isExpired, toConnection, type TikTokSession } from "./session";
+import type { AccountStats } from "@/core/domain";
+import type { VideoWithMetrics } from "@/modules/analytics/insights";
+import { fetchUserInfo, fetchVideoList } from "./api";
+import { toAccountStats, toVideo, toVideoMetrics } from "./mappers";
+import { isExpired, type TikTokSession } from "./session";
 
 /**
- * Lecturas de alto nivel para la UI. Orquesta el provider y combina metadatos
- * de video con sus métricas en filas listas para mostrar.
+ * Lecturas de alto nivel para la UI. Combina metadatos de video con sus métricas
+ * (TikTok las devuelve juntas en `/video/list`) y pagina hasta traer todo.
  *
- * Interino: lee del token en cookie. Cuando exista Supabase, esta capa leerá de
- * los snapshots persistidos en vez de llamar a la API en cada render.
+ * Interino: lee de la API en cada render vía el token en cookie. Cuando exista
+ * Supabase, esta capa leerá de los snapshots persistidos.
  */
 
-export interface VideoRow {
-  video: Video;
-  metrics: VideoMetrics | undefined;
-}
+/** Tope de seguridad: hasta ~200 videos (10 páginas de 20). */
+const MAX_PAGES = 10;
 
 export interface TikTokOverview {
   account: AccountStats;
-  videos: VideoRow[];
+  videos: VideoWithMetrics[];
 }
 
-/** Estado de la conexión para que la UI sepa qué renderizar. */
 export type TikTokReadResult =
   | { status: "disconnected" }
   | { status: "expired" }
   | { status: "error"; message: string }
   | { status: "ok"; overview: TikTokOverview };
+
+/** Recorre todas las páginas de `/video/list` siguiendo el cursor. */
+async function fetchAllVideos(accessToken: string): Promise<VideoWithMetrics[]> {
+  const capturedAt = new Date();
+  const rows: VideoWithMetrics[] = [];
+  let cursor: number | undefined;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const { videos, cursor: next, hasMore } = await fetchVideoList(accessToken, cursor);
+    for (const raw of videos) {
+      rows.push({ video: toVideo(raw), metrics: toVideoMetrics(raw, capturedAt) });
+    }
+    if (!hasMore || videos.length === 0) break;
+    cursor = next;
+  }
+  return rows;
+}
 
 export async function readTikTokOverview(
   session: TikTokSession | null,
@@ -34,25 +50,13 @@ export async function readTikTokOverview(
   if (isExpired(session)) return { status: "expired" };
 
   try {
-    const conn = toConnection(session);
-    const [account, page] = await Promise.all([
-      tiktokProvider.getAccountStats(conn),
-      tiktokProvider.listVideos(conn),
+    const [user, videos] = await Promise.all([
+      fetchUserInfo(session.accessToken),
+      fetchAllVideos(session.accessToken),
     ]);
-
-    const ids = page.videos.map((video) => video.externalId);
-    const metrics = await tiktokProvider.getVideoMetrics(conn, ids);
-    const metricsById = new Map(metrics.map((m) => [m.externalId, m]));
-
     return {
       status: "ok",
-      overview: {
-        account,
-        videos: page.videos.map((video) => ({
-          video,
-          metrics: metricsById.get(video.externalId),
-        })),
-      },
+      overview: { account: toAccountStats(user), videos },
     };
   } catch (err) {
     return {

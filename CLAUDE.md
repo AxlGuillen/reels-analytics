@@ -31,10 +31,18 @@ secciones separadas. `build`, `lint` y `tsc` pasan limpios.
 `app/api/auth/tiktok/{login,callback}`. **Lectura de datos ya implementada:**
 `api.ts` (cliente Display API: user/info, video/list, video/query), `mappers.ts`
 (raw → dominio), `provider.ts` (contrato completo), `read.ts` (overview para la UI con
-estados disconnected/expired/error/ok). El dashboard muestra seguidores, likes totales y
-tabla de videos (fecha/día, hashtags, vistas, likes, comentarios, compartidos).
+estados disconnected/expired/error/ok). Se paginan TODOS los videos (`read.ts`, tope 10 páginas).
+El dashboard muestra header de perfil (avatar, @usuario, verificado, bio, seguidores/
+siguiendo/likes/videos), **analítica derivada** (`modules/analytics/insights.ts`:
+mejor día/hora, engagement rate, top hashtags, promedios) y tabla enriquecida (miniatura
+clicable, duración, hashtags, vistas/likes/comentarios/compartidos/engagement). Hay una
+vista debug en `/debug/tiktok` que vuelca el JSON crudo.
 Desplegado en Vercel (auto-deploy desde GitHub); se desarrolla contra el deploy porque
 TikTok no acepta localhost como redirect URI.
+
+> `insights.ts` agrega por día/hora usando `CREATOR_TIMEZONE` (default
+> `America/Mexico_City`) porque el server corre en UTC; ajustar a la zona del público.
+
 Pendiente: auto-refresh del token (hoy si expira se pide reconectar; el refresh irá en la
 capa de ingesta con Supabase) y persistir snapshots.
 

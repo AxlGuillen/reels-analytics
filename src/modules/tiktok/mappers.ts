@@ -15,11 +15,17 @@ export function toAccountStats(
   return {
     platform: "tiktok",
     externalId: user.open_id,
-    handle: user.display_name || null,
+    handle: user.username || null,
     followers: user.follower_count,
     totalViews: null,
     totalLikes: user.likes_count,
     capturedAt,
+    displayName: user.display_name || null,
+    avatarUrl: user.avatar_url || null,
+    verified: user.is_verified,
+    bio: user.bio_description || null,
+    following: user.following_count,
+    videoCount: user.video_count,
   };
 }
 
@@ -32,6 +38,7 @@ export function toVideo(video: TikTokVideo): Video {
     publishedAt: new Date(video.create_time * 1000),
     url: video.share_url || null,
     durationSeconds: video.duration ?? null,
+    thumbnailUrl: video.cover_image_url || null,
   };
 }
 
