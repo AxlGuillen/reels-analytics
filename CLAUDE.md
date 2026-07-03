@@ -25,6 +25,16 @@ contrato `PlatformProvider`, providers stub (lanzan `NotImplementedError`), regi
 utilidades (hashtags, fechas), config de env validada y shell del dashboard con las dos
 secciones separadas. `build`, `lint` y `tsc` pasan limpios.
 
+**TikTok OAuth (en curso — plataforma elegida como primera integración):** flujo Login Kit
+con PKCE + state implementado en `modules/tiktok/oauth.ts`; sesión interina en cookie
+httpOnly (`modules/tiktok/session.ts`, se reemplazará por Supabase); rutas
+`app/api/auth/tiktok/{login,callback}`; botón "Conectar TikTok" en el dashboard. Falta:
+credenciales reales del portal en `.env.local` y luego leer `user/info` + `video/list`.
+
+> Nota de UI: shadcn quedó sobre **Base UI** (`@base-ui/react`), no Radix. El `Button` NO
+> soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
+> `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
+
 **Orden de trabajo acordado (importante):** primero el core → luego resolver la conexión
 real a TikTok/Instagram (OAuth) → mapear las respuestas crudas al modelo de dominio → y
 **recién entonces** definir tipos y rutinas para crear/configurar Supabase. Es decir,

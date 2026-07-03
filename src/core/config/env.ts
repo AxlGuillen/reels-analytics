@@ -19,6 +19,7 @@ const SPEC = {
   SUPABASE_SERVICE_ROLE_KEY: { required: false },
   TIKTOK_CLIENT_KEY: { required: false },
   TIKTOK_CLIENT_SECRET: { required: false },
+  TIKTOK_REDIRECT_URI: { required: false },
   INSTAGRAM_APP_ID: { required: false },
   INSTAGRAM_APP_SECRET: { required: false },
 } satisfies Record<string, EnvSpec>;
