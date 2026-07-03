@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { Connection } from "@/core/domain";
 import type { TikTokTokens } from "./oauth";
 
 /**
@@ -67,6 +68,20 @@ export async function getSession(): Promise<TikTokSession | null> {
 export async function clearSession(): Promise<void> {
   const jar = await cookies();
   jar.delete(SESSION_COOKIE);
+}
+
+/** ¿El access token ya expiró? */
+export function isExpired(session: TikTokSession): boolean {
+  return Date.now() >= session.expiresAt;
+}
+
+/** Construye la `Connection` que consumen los providers a partir de la sesión. */
+export function toConnection(session: TikTokSession): Connection {
+  return {
+    platform: "tiktok",
+    externalAccountId: session.openId,
+    accessToken: session.accessToken,
+  };
 }
 
 /** Guarda los valores efímeros del handshake OAuth (state + PKCE verifier). */

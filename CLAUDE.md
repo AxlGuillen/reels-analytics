@@ -25,11 +25,18 @@ contrato `PlatformProvider`, providers stub (lanzan `NotImplementedError`), regi
 utilidades (hashtags, fechas), config de env validada y shell del dashboard con las dos
 secciones separadas. `build`, `lint` y `tsc` pasan limpios.
 
-**TikTok OAuth (en curso — plataforma elegida como primera integración):** flujo Login Kit
-con PKCE + state implementado en `modules/tiktok/oauth.ts`; sesión interina en cookie
-httpOnly (`modules/tiktok/session.ts`, se reemplazará por Supabase); rutas
-`app/api/auth/tiktok/{login,callback}`; botón "Conectar TikTok" en el dashboard. Falta:
-credenciales reales del portal en `.env.local` y luego leer `user/info` + `video/list`.
+**TikTok (integración funcional):** OAuth Login Kit con PKCE + state
+(`modules/tiktok/oauth.ts`); sesión interina en cookie httpOnly
+(`modules/tiktok/session.ts`, se reemplazará por Supabase); rutas
+`app/api/auth/tiktok/{login,callback}`. **Lectura de datos ya implementada:**
+`api.ts` (cliente Display API: user/info, video/list, video/query), `mappers.ts`
+(raw → dominio), `provider.ts` (contrato completo), `read.ts` (overview para la UI con
+estados disconnected/expired/error/ok). El dashboard muestra seguidores, likes totales y
+tabla de videos (fecha/día, hashtags, vistas, likes, comentarios, compartidos).
+Desplegado en Vercel (auto-deploy desde GitHub); se desarrolla contra el deploy porque
+TikTok no acepta localhost como redirect URI.
+Pendiente: auto-refresh del token (hoy si expira se pide reconectar; el refresh irá en la
+capa de ingesta con Supabase) y persistir snapshots.
 
 > Nota de UI: shadcn quedó sobre **Base UI** (`@base-ui/react`), no Radix. El `Button` NO
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el

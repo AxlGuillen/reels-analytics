@@ -1,38 +1,49 @@
-import {
-  NotImplementedError,
-  type AccountStats,
-  type Connection,
-  type PlatformProvider,
-  type VideoMetrics,
-  type VideoPage,
+import type {
+  AccountStats,
+  Connection,
+  PlatformProvider,
+  VideoMetrics,
+  VideoPage,
 } from "@/core/domain";
+import { fetchUserInfo, fetchVideoList, queryVideos } from "./api";
+import { toAccountStats, toVideo, toVideoMetrics } from "./mappers";
 
 /**
  * Adapter de TikTok — Display API (Login Kit).
  *
- * Endpoints objetivo (ver CLAUDE.md):
- *  - Cuenta:  GET  /v2/user/info/    (scope user.info.stats)
- *  - Videos:  POST /v2/video/list/   (scope video.list)
+ * Implementa el puerto `PlatformProvider`: recibe una `Connection` con el access
+ * token del usuario y devuelve siempre el modelo de dominio normalizado.
  *
- * Stub: las llamadas HTTP y los mappers `raw -> dominio` se implementarán cuando
- * conectemos OAuth. La forma normalizada de retorno ya está fijada por el core.
+ * Nota de diseño: `listVideos` devuelve solo metadatos (cambian poco) y
+ * `getVideoMetrics` las métricas (se historizan). Aunque `/video/list` ya trae
+ * ambas, mantenerlas separadas refleja el flujo real de ingesta: se descubre el
+ * video una vez y luego se consultan sus métricas periódicamente.
  */
 export class TikTokProvider implements PlatformProvider {
   readonly platform = "tiktok" as const;
 
-  async getAccountStats(_conn: Connection): Promise<AccountStats> {
-    throw new NotImplementedError(this.platform, "getAccountStats");
+  async getAccountStats(conn: Connection): Promise<AccountStats> {
+    const user = await fetchUserInfo(conn.accessToken);
+    return toAccountStats(user);
   }
 
-  async listVideos(_conn: Connection, _cursor?: string): Promise<VideoPage> {
-    throw new NotImplementedError(this.platform, "listVideos");
+  async listVideos(conn: Connection, cursor?: string): Promise<VideoPage> {
+    const { videos, cursor: next, hasMore } = await fetchVideoList(
+      conn.accessToken,
+      cursor ? Number(cursor) : undefined,
+    );
+    return {
+      videos: videos.map(toVideo),
+      nextCursor: hasMore ? String(next) : null,
+    };
   }
 
   async getVideoMetrics(
-    _conn: Connection,
-    _externalIds: string[],
+    conn: Connection,
+    externalIds: string[],
   ): Promise<VideoMetrics[]> {
-    throw new NotImplementedError(this.platform, "getVideoMetrics");
+    const videos = await queryVideos(conn.accessToken, externalIds);
+    return videos.map((video) => toVideoMetrics(video));
   }
 }
 
