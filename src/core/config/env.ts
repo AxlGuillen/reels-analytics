@@ -22,6 +22,8 @@ const SPEC = {
   TIKTOK_REDIRECT_URI: { required: false },
   INSTAGRAM_APP_ID: { required: false },
   INSTAGRAM_APP_SECRET: { required: false },
+  INSTAGRAM_USER_ID: { required: false },
+  INSTAGRAM_ACCESS_TOKEN: { required: false },
 } satisfies Record<string, EnvSpec>;
 
 export type EnvKey = keyof typeof SPEC;

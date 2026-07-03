@@ -1,40 +1,47 @@
-import {
-  NotImplementedError,
-  type AccountStats,
-  type Connection,
-  type PlatformProvider,
-  type VideoMetrics,
-  type VideoPage,
+import type {
+  AccountStats,
+  Connection,
+  PlatformProvider,
+  VideoMetrics,
+  VideoPage,
 } from "@/core/domain";
+import { fetchMediaInsights, fetchMediaPage, fetchUserInfo } from "./api";
+import { toAccountStats, toVideo, toVideoMetrics } from "./mappers";
 
 /**
  * Adapter de Instagram — Graph API (Instagram API with Instagram Login).
  *
- * Endpoints objetivo (ver CLAUDE.md):
- *  - Cuenta:  GET /{ig-user-id}          (followers_count, media_count)
- *             GET /{ig-user-id}/insights (reach, views, ...)
- *  - Videos:  GET /{ig-user-id}/media    (filtrar media_product_type = REELS)
- *             GET /{media-id}/insights    (views, shares, saved, ...)
- *
- * Stub: las llamadas HTTP y los mappers `raw -> dominio` se implementarán cuando
- * conectemos OAuth. La forma normalizada de retorno ya está fijada por el core.
+ * Implementa el puerto `PlatformProvider`. A diferencia de TikTok, las métricas
+ * por Reel (views/shares/saved) viven en el endpoint de insights, así que
+ * `getVideoMetrics` hace una llamada por Reel.
  */
 export class InstagramProvider implements PlatformProvider {
   readonly platform = "instagram" as const;
 
-  async getAccountStats(_conn: Connection): Promise<AccountStats> {
-    throw new NotImplementedError(this.platform, "getAccountStats");
+  async getAccountStats(conn: Connection): Promise<AccountStats> {
+    const user = await fetchUserInfo(conn.accessToken);
+    return toAccountStats(user);
   }
 
-  async listVideos(_conn: Connection, _cursor?: string): Promise<VideoPage> {
-    throw new NotImplementedError(this.platform, "listVideos");
+  async listVideos(conn: Connection, cursor?: string): Promise<VideoPage> {
+    const page = await fetchMediaPage(conn.accessToken, cursor);
+    const reels = page.data.filter((m) => m.media_product_type === "REELS");
+    return {
+      videos: reels.map(toVideo),
+      nextCursor: page.paging?.next ? (page.paging.cursors?.after ?? null) : null,
+    };
   }
 
   async getVideoMetrics(
-    _conn: Connection,
-    _externalIds: string[],
+    conn: Connection,
+    externalIds: string[],
   ): Promise<VideoMetrics[]> {
-    throw new NotImplementedError(this.platform, "getVideoMetrics");
+    return Promise.all(
+      externalIds.map(async (id) => {
+        const insights = await fetchMediaInsights(conn.accessToken, id);
+        return toVideoMetrics({ id }, insights);
+      }),
+    );
   }
 }
 
