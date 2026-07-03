@@ -10,7 +10,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AccountStats } from "@/core/domain";
-import { formatCount, formatDate, formatDuration, formatPercent } from "@/core/lib/format";
+import { cn } from "@/lib/utils";
+import {
+  formatCount,
+  formatDate,
+  formatDuration,
+  formatPercent,
+  formatTime,
+} from "@/core/lib/format";
 import { weekday } from "@/core/lib/datetime";
 import {
   bestBucket,
@@ -19,9 +26,11 @@ import {
   topHashtags,
   viewsByHour,
   viewsByWeekday,
+  CREATOR_TIMEZONE as TZ,
   type VideoWithMetrics,
 } from "@/modules/analytics/insights";
 import type { TikTokOverview, TikTokReadResult } from "@/modules/tiktok/read";
+import { VIDEO_RANGES, type RangeKey } from "@/modules/tiktok/ranges";
 
 function ConnectButton({ label }: { label: string }) {
   return (
@@ -36,6 +45,28 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border p-4">
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-muted-foreground text-sm">{label}</div>
+    </div>
+  );
+}
+
+function RangeSelector({ active }: { active: RangeKey }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-muted-foreground text-sm">Periodo:</span>
+      {VIDEO_RANGES.map((r) => (
+        <Link
+          key={r.key}
+          href={`/?range=${r.key}`}
+          className={cn(
+            "rounded-full border px-3 py-1 text-xs transition-colors",
+            r.key === active
+              ? "bg-primary text-primary-foreground border-transparent"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          {r.label}
+        </Link>
+      ))}
     </div>
   );
 }
@@ -84,12 +115,9 @@ function InsightsSection({ videos }: { videos: VideoWithMetrics[] }) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold">Analítica</h3>
+      <h3 className="text-sm font-semibold">Analítica del periodo</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat
-          label="Mejor día"
-          value={bestDay ? capitalize(bestDay.label) : "—"}
-        />
+        <Stat label="Mejor día" value={bestDay ? capitalize(bestDay.label) : "—"} />
         <Stat label="Mejor hora" value={bestHour ? bestHour.label : "—"} />
         <Stat label="Vistas promedio" value={formatCount(Math.round(summary.avgViews))} />
         <Stat label="Engagement prom." value={formatPercent(summary.avgEngagement)} />
@@ -122,12 +150,13 @@ function InsightsSection({ videos }: { videos: VideoWithMetrics[] }) {
 
 function VideoTableRow({ row }: { row: VideoWithMetrics }) {
   const { video, metrics } = row;
+  const href = `/video/tiktok/${video.externalId}`;
   return (
     <TableRow>
       <TableCell>
-        {video.thumbnailUrl ? (
-          <Link href={video.url ?? "#"} target="_blank" rel="noreferrer">
-            {/* eslint-disable-next-line @next/next/no-img-element -- CDN de TikTok con URL firmada */}
+        <Link href={href}>
+          {video.thumbnailUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- CDN de TikTok con URL firmada
             <img
               src={video.thumbnailUrl}
               alt=""
@@ -136,19 +165,22 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
               referrerPolicy="no-referrer"
               className="h-14 w-10 rounded object-cover"
             />
-          </Link>
-        ) : (
-          <div className="bg-muted h-14 w-10 rounded" />
-        )}
+          ) : (
+            <div className="bg-muted h-14 w-10 rounded" />
+          )}
+        </Link>
       </TableCell>
       <TableCell className="whitespace-nowrap">
-        <div>{formatDate(video.publishedAt)}</div>
-        <div className="text-muted-foreground text-xs capitalize">
-          {weekday(video.publishedAt)}
+        <div>{formatDate(video.publishedAt, TZ)}</div>
+        <div className="text-muted-foreground text-xs">
+          <span className="capitalize">{weekday(video.publishedAt, TZ)}</span> ·{" "}
+          {formatTime(video.publishedAt, TZ)}
         </div>
       </TableCell>
       <TableCell className="max-w-xs">
-        <p className="truncate text-sm">{video.caption ?? "—"}</p>
+        <Link href={href} className="hover:underline">
+          <p className="truncate text-sm">{video.caption ?? "—"}</p>
+        </Link>
         {video.hashtags.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {video.hashtags.slice(0, 4).map((tag) => (
@@ -173,15 +205,17 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
   );
 }
 
-function Overview({ overview }: { overview: TikTokOverview }) {
+function Overview({ overview, range }: { overview: TikTokOverview; range: RangeKey }) {
   const { account, videos } = overview;
   return (
     <div className="space-y-8">
       <AccountHeader account={account} />
 
+      <RangeSelector active={range} />
+
       {videos.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No se encontraron videos en esta cuenta.
+          No hay videos en este periodo. Prueba con un rango más amplio.
         </p>
       ) : (
         <>
@@ -223,7 +257,13 @@ function Overview({ overview }: { overview: TikTokOverview }) {
   );
 }
 
-export function TikTokPanel({ result }: { result: TikTokReadResult }) {
+export function TikTokPanel({
+  result,
+  range,
+}: {
+  result: TikTokReadResult;
+  range: RangeKey;
+}) {
   switch (result.status) {
     case "disconnected":
       return (
@@ -253,7 +293,7 @@ export function TikTokPanel({ result }: { result: TikTokReadResult }) {
         </div>
       );
     case "ok":
-      return <Overview overview={result.overview} />;
+      return <Overview overview={result.overview} range={range} />;
   }
 }
 

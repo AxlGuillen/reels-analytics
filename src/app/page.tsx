@@ -11,15 +11,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TikTokPanel } from "@/components/tiktok-panel";
 import { getSession } from "@/modules/tiktok/session";
 import { readTikTokOverview } from "@/modules/tiktok/read";
+import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string }>;
+  searchParams: Promise<{ connected?: string; error?: string; range?: string }>;
 }) {
-  const { connected, error } = await searchParams;
+  const { connected, error, range: rangeParam } = await searchParams;
+  const range = resolveRange(rangeParam);
   const tiktokSession = await getSession();
-  const tiktok = await readTikTokOverview(tiktokSession);
+  const tiktok = await readTikTokOverview(tiktokSession, {
+    since: sinceForRange(range),
+  });
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
@@ -65,7 +69,7 @@ export default async function Home({
               <CardDescription>Display API (Login Kit)</CardDescription>
             </CardHeader>
             <CardContent>
-              <TikTokPanel result={tiktok} />
+              <TikTokPanel result={tiktok} range={range} />
             </CardContent>
           </Card>
         </TabsContent>

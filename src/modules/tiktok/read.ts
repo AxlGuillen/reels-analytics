@@ -12,8 +12,13 @@ import { isExpired, type TikTokSession } from "./session";
  * Supabase, esta capa leerá de los snapshots persistidos.
  */
 
-/** Tope de seguridad: hasta ~200 videos (10 páginas de 20). */
-const MAX_PAGES = 10;
+/** Tope de seguridad: hasta ~400 videos (20 páginas de 20). */
+const MAX_PAGES = 20;
+
+export interface ReadOptions {
+  /** solo videos publicados en o después de esta fecha (undefined = todos). */
+  since?: Date;
+}
 
 export interface TikTokOverview {
   account: AccountStats;
@@ -26,18 +31,30 @@ export type TikTokReadResult =
   | { status: "error"; message: string }
   | { status: "ok"; overview: TikTokOverview };
 
-/** Recorre todas las páginas de `/video/list` siguiendo el cursor. */
-async function fetchAllVideos(accessToken: string): Promise<VideoWithMetrics[]> {
+/**
+ * Recorre las páginas de `/video/list` siguiendo el cursor. Como vienen en orden
+ * cronológico inverso, si hay `since` se corta al llegar a videos más antiguos
+ * (así el rango por defecto hace pocas llamadas y evita el rate limit).
+ */
+async function fetchAllVideos(
+  accessToken: string,
+  since?: Date,
+): Promise<VideoWithMetrics[]> {
   const capturedAt = new Date();
+  const cutoff = since?.getTime();
   const rows: VideoWithMetrics[] = [];
   let cursor: number | undefined;
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const { videos, cursor: next, hasMore } = await fetchVideoList(accessToken, cursor);
     for (const raw of videos) {
+      if (cutoff && raw.create_time * 1000 < cutoff) continue;
       rows.push({ video: toVideo(raw), metrics: toVideoMetrics(raw, capturedAt) });
     }
-    if (!hasMore || videos.length === 0) break;
+
+    const oldest = videos.at(-1);
+    const reachedCutoff = cutoff && oldest && oldest.create_time * 1000 < cutoff;
+    if (!hasMore || videos.length === 0 || reachedCutoff) break;
     cursor = next;
   }
   return rows;
@@ -45,6 +62,7 @@ async function fetchAllVideos(accessToken: string): Promise<VideoWithMetrics[]> 
 
 export async function readTikTokOverview(
   session: TikTokSession | null,
+  { since }: ReadOptions = {},
 ): Promise<TikTokReadResult> {
   if (!session) return { status: "disconnected" };
   if (isExpired(session)) return { status: "expired" };
@@ -52,7 +70,7 @@ export async function readTikTokOverview(
   try {
     const [user, videos] = await Promise.all([
       fetchUserInfo(session.accessToken),
-      fetchAllVideos(session.accessToken),
+      fetchAllVideos(session.accessToken, since),
     ]);
     return {
       status: "ok",
