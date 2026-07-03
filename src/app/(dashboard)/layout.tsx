@@ -1,4 +1,5 @@
 import { DesktopSidebar, MobileNav } from "@/components/dashboard/sidebar";
+import { env } from "@/core/config/env";
 import { getSession, isExpired } from "@/modules/tiktok/session";
 
 /**
@@ -13,7 +14,7 @@ export default async function DashboardLayout({
   const session = await getSession();
   const status = {
     tiktok: !!session && !isExpired(session),
-    instagram: false,
+    instagram: !!env("INSTAGRAM_ACCESS_TOKEN"),
   };
 
   return (
