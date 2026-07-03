@@ -29,7 +29,7 @@ export default async function TikTokDebugPage() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">TikTok — JSON crudo</h1>
+        <h1 className="font-display text-2xl tracking-wide">TikTok — JSON crudo</h1>
         <Link href="/" className="text-sm underline">
           ← volver
         </Link>

@@ -82,6 +82,22 @@ bunx supabase gen types typescript --project-id <id> > src/core/supabase/databas
 > Regla: **siempre usar `bun` / `bunx`**. No introducir `package-lock.json` ni
 > `pnpm-lock.yaml`; el lockfile del proyecto es `bun.lock`.
 
+## Identidad visual — "Arcane" (dark neón morado)
+
+Identidad definida con la skill `ui-ux-pro-max` (estilo *Data-Dense Dashboard*), tema
+**dark-first** ligado a la marca de contenido del creador (persona gaming/League).
+
+- **Tokens** en `src/app/globals.css` (`:root, .dark` comparten palette; `<html class="dark">`):
+  fondo `#0f0f23`, card `#1e1c35`, **primario `#7c3aed`** (morado neón), acento de marca
+  `--brand #f43f5e` (rosa-coral), texto `#e2e8f0` / tenue `#94a3b8`, borde `#302b57`.
+  Los charts usan `--chart-1..5` (morado/rosa/cyan/violeta/ámbar).
+- **Tipografía** (`layout.tsx`, next/font): `Russo One` = `font-display` (marca/titulares,
+  úsala con moderación en textos grandes), `Chakra Petch` = `font-sans` (UI, números).
+- No hay tema claro por ahora. Al agregar componentes, usar **tokens semánticos**
+  (`bg-primary`, `text-muted-foreground`, `border`, `bg-brand`...) nunca hex crudo.
+- Regla de la skill: 1 CTA primaria por vista, contraste WCAG AA, estados hover 150–300ms,
+  sin emojis como iconos (usar SVG/Lucide).
+
 ## Arquitectura
 
 Estilo **modular / puertos y adaptadores (ports & adapters)**. Cada plataforma es un

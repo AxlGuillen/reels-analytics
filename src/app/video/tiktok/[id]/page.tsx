@@ -15,7 +15,7 @@ import { getSession, isExpired } from "@/modules/tiktok/session";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border p-4">
+    <div className="bg-muted/30 rounded-lg border p-4">
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-muted-foreground text-sm">{label}</div>
     </div>
@@ -92,7 +92,7 @@ export default async function VideoDetailPage({
         )}
         <div className="space-y-4">
           <div>
-            <h1 className="text-xl font-bold">Detalle del video</h1>
+            <h1 className="font-display text-xl tracking-wide">Detalle del video</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Publicado el {formatDateTime(video.publishedAt, TZ)} (
               <span className="capitalize">{weekday(video.publishedAt, TZ)}</span>) ·

@@ -28,7 +28,10 @@ export default async function Home({
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Reels Analytics</h1>
+        <h1 className="font-display text-3xl tracking-wide">
+          <span className="text-foreground">Reels</span>{" "}
+          <span className="text-primary">Analytics</span>
+        </h1>
         <p className="text-muted-foreground mt-2">
           Centraliza y mide el crecimiento de tus videos en TikTok e Instagram.
         </p>
