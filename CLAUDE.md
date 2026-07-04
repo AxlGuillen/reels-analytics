@@ -50,11 +50,14 @@ capa de ingesta con Supabase) y persistir snapshots.
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
 > `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
 
-**Orden de trabajo acordado (importante):** primero el core → luego resolver la conexión
-real a TikTok/Instagram (OAuth) → mapear las respuestas crudas al modelo de dominio → y
-**recién entonces** definir tipos y rutinas para crear/configurar Supabase. Es decir,
-**Supabase está pospuesto a propósito**: el esquema de abajo es el diseño objetivo, aún no
-existe migración ni conexión.
+**Supabase (base de datos creada):** proyecto **`Axl-Projects`** (id `impscwgourdxhdejwkhe`,
+región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se namespacean con prefijo
+**`ra_`**). Ya existe el esquema de 5 tablas + enum `ra_platform` (migraciones
+`create_ra_analytics_schema`, `harden_ra_set_updated_at_search_path`) con **RLS activado sin
+políticas** (acceso solo server-side vía service role). Tipos en
+`src/core/supabase/database.types.ts`. **Pendiente:** clientes (`server/browser/admin`),
+env vars, y la capa de ingesta que escribe snapshots (+ mover el token de TikTok de la cookie a
+`ra_connections` con refresh).
 
 ## Stack
 
@@ -171,21 +174,21 @@ src/
 - `app/` orquesta módulos pero no contiene lógica de negocio.
 - Cross-platform vive en `modules/analytics`, que consume el modelo normalizado, no adapters concretos.
 
-## Modelo de datos (Supabase / Postgres) — PLANIFICADO, aún no implementado
+## Modelo de datos (Supabase / Postgres) — CREADO (prefijo `ra_`)
 
-> Diseño objetivo. Se materializará **después** de mapear las respuestas reales de las
-> APIs (ver "Estado actual"). Los tipos en `src/core/domain/models.ts` son la fuente de
-> verdad de la que se derivará este esquema.
+> Ya aplicado en el proyecto `Axl-Projects`. Los tipos en `src/core/domain/models.ts` son la
+> fuente de verdad; el esquema los refleja. Todas las tablas llevan prefijo `ra_` (Postgres:
+> snake_case, sin guiones ni mayúsculas). Enum `ra_platform` = `'tiktok' | 'instagram'`.
 
 Snapshots inmutables con timestamp; el histórico se construye acumulando filas.
 
 | Tabla | Propósito | Campos clave |
 |-------|-----------|--------------|
-| `social_accounts` | cuenta del creador por plataforma | `platform`, `external_id`, `handle` |
-| `connections` | tokens OAuth (sensible, solo service role) | `account_id`, `access_token`, `refresh_token`, `expires_at` |
-| `account_snapshots` | métricas de cuenta en el tiempo | `account_id`, `captured_at`, `followers`, `total_views`, `total_likes` |
-| `videos` | un video por plataforma | `account_id`, `platform`, `external_id`, `caption`, `hashtags text[]`, `published_at`, `url`, `duration_s` |
-| `video_snapshots` | métricas de video en el tiempo | `video_id`, `captured_at`, `views`, `likes`, `comments`, `shares`, `saved` |
+| `ra_social_accounts` | cuenta del creador por plataforma | `platform`, `external_id`, `handle` |
+| `ra_connections` | tokens OAuth (sensible, solo service role) | `account_id`, `access_token`, `refresh_token`, `expires_at` |
+| `ra_account_snapshots` | métricas de cuenta en el tiempo | `account_id`, `captured_at`, `followers`, `total_views`, `total_likes` |
+| `ra_videos` | un video por plataforma | `account_id`, `platform`, `external_id`, `caption`, `hashtags text[]`, `published_at`, `url`, `duration_s` |
+| `ra_video_snapshots` | métricas de video en el tiempo | `video_id`, `captured_at`, `views`, `likes`, `comments`, `shares`, `saved` |
 
 - **Hashtags, horario y día**: no existen como campos de API; se **derivan** al ingerir
   (parseo de `#\w+` desde el caption/description; `published_at` viene del `timestamp` /

@@ -15,13 +15,16 @@ type EnvSpec = {
 // Aún ninguna es obligatoria: el core arranca sin credenciales.
 const SPEC = {
   NEXT_PUBLIC_SUPABASE_URL: { required: false },
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: { required: false },
-  SUPABASE_SERVICE_ROLE_KEY: { required: false },
+  // Sistema moderno de API keys de Supabase (publishable = cliente, secret = server).
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: { required: false },
+  SUPABASE_SECRET_KEY: { required: false },
   TIKTOK_CLIENT_KEY: { required: false },
   TIKTOK_CLIENT_SECRET: { required: false },
   TIKTOK_REDIRECT_URI: { required: false },
   INSTAGRAM_APP_ID: { required: false },
   INSTAGRAM_APP_SECRET: { required: false },
+  INSTAGRAM_USER_ID: { required: false },
+  INSTAGRAM_ACCESS_TOKEN: { required: false },
 } satisfies Record<string, EnvSpec>;
 
 export type EnvKey = keyof typeof SPEC;
