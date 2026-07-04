@@ -84,38 +84,46 @@ async function collectReels(
   return reels.slice(0, MAX_REELS);
 }
 
-export async function readInstagramOverview(
+/** Lee el overview a partir de un access token ya válido (lo usa la ingesta/cron). */
+export async function readInstagramOverviewByToken(
+  accessToken: string,
   { since }: ReadOptions = {},
+): Promise<InstagramOverview> {
+  const capturedAt = new Date();
+  const [user, reels] = await Promise.all([
+    fetchUserInfo(accessToken),
+    collectReels(accessToken, since),
+  ]);
+
+  const videos = await mapConcurrent(reels, INSIGHTS_CONCURRENCY, async (media) => {
+    try {
+      const insights = await fetchMediaInsights(accessToken, media.id);
+      return {
+        video: toVideo(media),
+        metrics: toVideoMetrics(media, insights, capturedAt),
+      };
+    } catch {
+      // Insights puede fallar en Reels muy nuevos: cae al nodo media.
+      return {
+        video: toVideo(media),
+        metrics: toVideoMetrics(media, {}, capturedAt),
+      };
+    }
+  });
+
+  return { account: toAccountStats(user, capturedAt), videos };
+}
+
+export async function readInstagramOverview(
+  options: ReadOptions = {},
 ): Promise<InstagramReadResult> {
   const accessToken = env("INSTAGRAM_ACCESS_TOKEN");
   if (!accessToken) return { status: "disconnected" };
 
   try {
-    const capturedAt = new Date();
-    const [user, reels] = await Promise.all([
-      fetchUserInfo(accessToken),
-      collectReels(accessToken, since),
-    ]);
-
-    const videos = await mapConcurrent(reels, INSIGHTS_CONCURRENCY, async (media) => {
-      try {
-        const insights = await fetchMediaInsights(accessToken, media.id);
-        return {
-          video: toVideo(media),
-          metrics: toVideoMetrics(media, insights, capturedAt),
-        };
-      } catch {
-        // Insights puede fallar en Reels muy nuevos: cae al nodo media.
-        return {
-          video: toVideo(media),
-          metrics: toVideoMetrics(media, {}, capturedAt),
-        };
-      }
-    });
-
     return {
       status: "ok",
-      overview: { account: toAccountStats(user, capturedAt), videos },
+      overview: await readInstagramOverviewByToken(accessToken, options),
     };
   } catch (err) {
     return {

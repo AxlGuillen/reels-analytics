@@ -60,22 +60,27 @@ async function fetchAllVideos(
   return rows;
 }
 
+/** Lee el overview a partir de un access token ya válido (lo usa la ingesta/cron). */
+export async function readTikTokOverviewByToken(
+  accessToken: string,
+  { since }: ReadOptions = {},
+): Promise<TikTokOverview> {
+  const [user, videos] = await Promise.all([
+    fetchUserInfo(accessToken),
+    fetchAllVideos(accessToken, since),
+  ]);
+  return { account: toAccountStats(user), videos };
+}
+
 export async function readTikTokOverview(
   session: TikTokSession | null,
-  { since }: ReadOptions = {},
+  options: ReadOptions = {},
 ): Promise<TikTokReadResult> {
   if (!session) return { status: "disconnected" };
   if (isExpired(session)) return { status: "expired" };
 
   try {
-    const [user, videos] = await Promise.all([
-      fetchUserInfo(session.accessToken),
-      fetchAllVideos(session.accessToken, since),
-    ]);
-    return {
-      status: "ok",
-      overview: { account: toAccountStats(user), videos },
-    };
+    return { status: "ok", overview: await readTikTokOverviewByToken(session.accessToken, options) };
   } catch (err) {
     return {
       status: "error",

@@ -1,28 +1,34 @@
 import "server-only";
-import { readInstagramOverview } from "@/modules/instagram/read";
-import { readTikTokOverview } from "@/modules/tiktok/read";
-import { getSession } from "@/modules/tiktok/session";
+import {
+  getValidInstagramAccessToken,
+  getValidTikTokAccessToken,
+} from "@/modules/accounts/tokens";
+import { readInstagramOverviewByToken } from "@/modules/instagram/read";
+import { readTikTokOverviewByToken } from "@/modules/tiktok/read";
 import { persistOverview, type IngestResult } from "./persist";
 
 /**
- * Captura un snapshot de una plataforma: lee el overview completo de la API y
- * lo persiste. Sin rango → trae todo lo disponible (histórico base). Más
- * adelante esto lo dispara un cron; por ahora lo dispara el botón del dashboard.
+ * Captura un snapshot de una plataforma: resuelve un token válido desde
+ * `ra_connections` (con refresh), lee el overview completo y lo persiste.
+ * Al no depender de la cookie, funciona igual desde el botón o desde el cron.
  */
 
 export async function captureTikTok(): Promise<IngestResult> {
-  const session = await getSession();
-  const result = await readTikTokOverview(session);
-  if (result.status !== "ok") {
-    throw new Error(`TikTok no disponible (${result.status})`);
+  const token = await getValidTikTokAccessToken();
+  if (!token) {
+    throw new Error(
+      "TikTok sin conexión persistida. Reconéctate una vez para guardarla.",
+    );
   }
-  return persistOverview(result.overview.account, result.overview.videos);
+  const overview = await readTikTokOverviewByToken(token);
+  return persistOverview(overview.account, overview.videos);
 }
 
 export async function captureInstagram(): Promise<IngestResult> {
-  const result = await readInstagramOverview();
-  if (result.status !== "ok") {
-    throw new Error(`Instagram no disponible (${result.status})`);
+  const token = await getValidInstagramAccessToken();
+  if (!token) {
+    throw new Error("Instagram sin token válido (revisa INSTAGRAM_ACCESS_TOKEN).");
   }
-  return persistOverview(result.overview.account, result.overview.videos);
+  const overview = await readInstagramOverviewByToken(token);
+  return persistOverview(overview.account, overview.videos);
 }

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { saveTikTokConnection } from "@/modules/accounts/tokens";
 import { exchangeCodeForToken } from "@/modules/tiktok/oauth";
 import { consumeHandshake, saveSession } from "@/modules/tiktok/session";
 
@@ -37,7 +38,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const tokens = await exchangeCodeForToken(code, verifier);
-    await saveSession(tokens);
+    await saveTikTokConnection(tokens); // persistente (para el cron/ingesta)
+    await saveSession(tokens); // cookie (para la UI interactiva)
     return dashboard(`?connected=1`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "error desconocido";

@@ -81,6 +81,34 @@ export function fetchUserInfo(accessToken: string): Promise<IgUser> {
   return request<IgUser>("me", accessToken, { fields: USER_FIELDS.join(",") });
 }
 
+/**
+ * Extiende un token de larga duración otros ~60 días (`ig_refresh_token`).
+ * El token debe tener >24 h de vida y no estar expirado. Sin versión en la ruta.
+ */
+export async function refreshLongLivedToken(
+  accessToken: string,
+): Promise<{ accessToken: string; expiresIn: number }> {
+  const url = new URL(`${API_BASE}/refresh_access_token`);
+  url.searchParams.set("grant_type", "ig_refresh_token");
+  url.searchParams.set("access_token", accessToken);
+
+  const res = await fetch(url, { cache: "no-store" });
+  const json = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+  } & IgErrorEnvelope;
+  if (!res.ok || json.error || !json.access_token) {
+    throw new InstagramApiError(
+      json.error?.code ?? res.status,
+      json.error?.message ?? "refresh de token fallido",
+    );
+  }
+  return {
+    accessToken: json.access_token,
+    expiresIn: json.expires_in ?? 60 * 24 * 60 * 60,
+  };
+}
+
 /** Una página de media de la cuenta. `after` = cursor de la página previa. */
 export function fetchMediaPage(
   accessToken: string,
