@@ -25,6 +25,8 @@ const SPEC = {
   INSTAGRAM_APP_SECRET: { required: false },
   INSTAGRAM_USER_ID: { required: false },
   INSTAGRAM_ACCESS_TOKEN: { required: false },
+  // Protege el endpoint del cron (Vercel envía Bearer con este valor).
+  CRON_SECRET: { required: false },
 } satisfies Record<string, EnvSpec>;
 
 export type EnvKey = keyof typeof SPEC;
