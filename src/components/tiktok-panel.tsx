@@ -246,7 +246,7 @@ export function TikTokPanel({ result }: { result: TikTokReadResult }) {
     case "error":
       return (
         <div className="space-y-3">
-          <p className="text-sm text-red-600 dark:text-red-400">
+          <p className="text-destructive text-sm">
             No se pudieron leer los datos: {result.message}
           </p>
           <ConnectButton label="Reconectar TikTok" />

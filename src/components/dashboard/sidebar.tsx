@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { signOutAction } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme-toggle";
 
 export interface ConnectionStatus {
   tiktok: boolean;
@@ -67,7 +68,7 @@ function StatusDot({ connected }: { connected: boolean }) {
     <span
       className={cn(
         "ml-auto size-2 rounded-full",
-        connected ? "bg-green-500" : "bg-border",
+        connected ? "bg-success" : "bg-border",
       )}
       aria-label={connected ? "conectada" : "sin conectar"}
     />
@@ -200,6 +201,8 @@ function SidebarNav({
           <Plug className="size-[18px] shrink-0" />
           {!collapsed && "Conexiones"}
         </Link>
+
+        <ThemeToggle collapsed={collapsed} />
 
         <form action={signOutAction}>
           <button

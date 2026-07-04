@@ -33,12 +33,12 @@ export default async function TikTokPage({
       </header>
 
       {connected && (
-        <div className="rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+        <div className="border-success/30 bg-success/10 text-success rounded-md border px-4 py-3 text-sm">
           Cuenta de TikTok conectada correctamente.
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm">
           Error al conectar: {error}
         </div>
       )}

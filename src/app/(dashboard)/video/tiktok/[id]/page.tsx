@@ -62,7 +62,7 @@ export default async function VideoDetailPage({
   } catch (err) {
     return (
       <PageShell>
-        <p className="text-sm text-red-400">
+        <p className="text-destructive text-sm">
           Error al leer el video: {err instanceof Error ? err.message : "desconocido"}
         </p>
       </PageShell>
