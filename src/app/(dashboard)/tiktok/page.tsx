@@ -1,3 +1,4 @@
+import { CaptureButton } from "@/components/dashboard/capture-button";
 import { RangeSelect } from "@/components/dashboard/range-select";
 import { TikTokPanel } from "@/components/tiktok-panel";
 import { getSession } from "@/modules/tiktok/session";
@@ -25,7 +26,10 @@ export default async function TikTokPage({
             Display API (Login Kit) · todos los videos del periodo.
           </p>
         </div>
-        <RangeSelect active={range} />
+        <div className="flex items-start gap-3">
+          <CaptureButton platform="tiktok" />
+          <RangeSelect active={range} />
+        </div>
       </header>
 
       {connected && (

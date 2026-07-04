@@ -1,3 +1,4 @@
+import { CaptureButton } from "@/components/dashboard/capture-button";
 import { RangeSelect } from "@/components/dashboard/range-select";
 import { InstagramPanel } from "@/components/instagram-panel";
 import { readInstagramOverview } from "@/modules/instagram/read";
@@ -21,7 +22,10 @@ export default async function InstagramPage({
             Graph API (Instagram Login) · Reels del periodo.
           </p>
         </div>
-        <RangeSelect active={range} />
+        <div className="flex items-start gap-3">
+          <CaptureButton platform="instagram" />
+          <RangeSelect active={range} />
+        </div>
       </header>
 
       <InstagramPanel result={result} />
