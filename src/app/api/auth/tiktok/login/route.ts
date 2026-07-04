@@ -23,7 +23,7 @@ export async function GET() {
     const message = err instanceof Error ? err.message : "error desconocido";
     return NextResponse.redirect(
       new URL(
-        `/?error=${encodeURIComponent(message)}`,
+        `/tiktok?error=${encodeURIComponent(message)}`,
         process.env.TIKTOK_REDIRECT_URI ?? "http://localhost:3000",
       ),
     );

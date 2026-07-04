@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -22,14 +23,17 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-      <Link href="/" className="text-muted-foreground mb-6 inline-block text-sm underline">
-        ← volver al dashboard
+    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 md:px-8">
+      <Link
+        href="/tiktok"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
+      >
+        <ArrowLeft className="size-4" /> TikTok
       </Link>
       {children}
-    </main>
+    </div>
   );
 }
 
@@ -43,11 +47,11 @@ export default async function VideoDetailPage({
 
   if (!session || isExpired(session)) {
     return (
-      <Shell>
+      <PageShell>
         <p className="text-muted-foreground text-sm">
-          Sesión no disponible. Conéctate de nuevo desde el dashboard.
+          Sesión no disponible. Vuelve a conectar TikTok desde Conexiones.
         </p>
-      </Shell>
+      </PageShell>
     );
   }
 
@@ -57,19 +61,19 @@ export default async function VideoDetailPage({
     raw = results[0];
   } catch (err) {
     return (
-      <Shell>
-        <p className="text-sm text-red-600 dark:text-red-400">
+      <PageShell>
+        <p className="text-sm text-red-400">
           Error al leer el video: {err instanceof Error ? err.message : "desconocido"}
         </p>
-      </Shell>
+      </PageShell>
     );
   }
 
   if (!raw) {
     return (
-      <Shell>
+      <PageShell>
         <p className="text-muted-foreground text-sm">Video no encontrado.</p>
-      </Shell>
+      </PageShell>
     );
   }
 
@@ -77,7 +81,7 @@ export default async function VideoDetailPage({
   const metrics = toVideoMetrics(raw);
 
   return (
-    <Shell>
+    <PageShell>
       <div className="flex flex-col gap-6 sm:flex-row">
         {video.thumbnailUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- CDN de TikTok con URL firmada
@@ -92,7 +96,7 @@ export default async function VideoDetailPage({
         )}
         <div className="space-y-4">
           <div>
-            <h1 className="font-display text-xl tracking-wide">Detalle del video</h1>
+            <h1 className="font-display text-2xl tracking-wide">Detalle del video</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Publicado el {formatDateTime(video.publishedAt, TZ)} (
               <span className="capitalize">{weekday(video.publishedAt, TZ)}</span>) ·
@@ -128,13 +132,13 @@ export default async function VideoDetailPage({
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat label="Vistas" value={formatCount(metrics.views)} />
         <Stat label="Likes" value={formatCount(metrics.likes)} />
         <Stat label="Comentarios" value={formatCount(metrics.comments)} />
         <Stat label="Compartidos" value={formatCount(metrics.shares)} />
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
-    </Shell>
+    </PageShell>
   );
 }

@@ -195,15 +195,7 @@ function Overview({ overview }: { overview: TikTokOverview }) {
         <>
           <InsightsSection videos={videos} />
           <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Videos ({videos.length})</h3>
-              <Link
-                href="/debug/tiktok"
-                className="text-muted-foreground text-xs underline"
-              >
-                ver JSON crudo
-              </Link>
-            </div>
+            <h3 className="mb-3 text-sm font-semibold">Videos ({videos.length})</h3>
             <Table>
               <TableHeader>
                 <TableRow>

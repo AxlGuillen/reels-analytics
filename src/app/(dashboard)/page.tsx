@@ -81,9 +81,9 @@ function RecentVideos({ videos }: { videos: VideoWithMetrics[] }) {
 export default async function OverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string; range?: string }>;
+  searchParams: Promise<{ range?: string }>;
 }) {
-  const { connected, error, range: rangeParam } = await searchParams;
+  const { range: rangeParam } = await searchParams;
   const range = resolveRange(rangeParam);
   const session = await getSession();
   const result = await readTikTokOverview(session, {
@@ -101,17 +101,6 @@ export default async function OverviewPage({
         </div>
         <RangeSelect active={range} />
       </header>
-
-      {connected && (
-        <div className="rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-          Cuenta de {connected} conectada correctamente.
-        </div>
-      )}
-      {error && (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          Error al conectar: {error}
-        </div>
-      )}
 
       {result.status !== "ok" ? (
         <Card>

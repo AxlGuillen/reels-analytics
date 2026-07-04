@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
   Camera,
+  ChevronLeft,
+  ChevronRight,
   LayoutDashboard,
   Menu,
   Music2,
@@ -70,13 +72,26 @@ function StatusDot({ connected }: { connected: boolean }) {
   );
 }
 
+/** Estilo base compartido por links y botones del nav. */
+function rowClass(active: boolean, collapsed: boolean): string {
+  return cn(
+    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+    collapsed && "justify-center px-0",
+    active
+      ? "bg-primary/15 text-primary"
+      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+  );
+}
+
 function NavLink({
   item,
   status,
+  collapsed,
   onNavigate,
 }: {
   item: NavItem;
   status: ConnectionStatus;
+  collapsed: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -85,12 +100,19 @@ function NavLink({
   if (item.soon) {
     return (
       <div
-        className="text-muted-foreground/50 flex cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm"
+        className={cn(
+          "text-muted-foreground/50 flex cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm",
+          collapsed && "justify-center px-0",
+        )}
         title="Disponible al persistir snapshots históricos"
       >
-        <Icon className="size-[18px]" />
-        {item.label}
-        <span className="ml-auto text-[10px] tracking-wide uppercase">pronto</span>
+        <Icon className="size-[18px] shrink-0" />
+        {!collapsed && (
+          <>
+            {item.label}
+            <span className="ml-auto text-[10px] tracking-wide uppercase">pronto</span>
+          </>
+        )}
       </div>
     );
   }
@@ -101,82 +123,147 @@ function NavLink({
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-        active
-          ? "bg-primary/15 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
+      title={collapsed ? item.label : undefined}
+      className={rowClass(active, collapsed)}
     >
-      <Icon className="size-[18px]" />
-      {item.label}
-      {item.status && <StatusDot connected={status[item.status]} />}
+      <Icon className="size-[18px] shrink-0" />
+      {!collapsed && (
+        <>
+          {item.label}
+          {item.status && <StatusDot connected={status[item.status]} />}
+        </>
+      )}
     </Link>
   );
 }
 
 function SidebarNav({
   status,
+  collapsed,
+  onToggle,
   onNavigate,
 }: {
   status: ConnectionStatus;
+  collapsed: boolean;
+  onToggle?: () => void;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const connectionsActive = isActive(pathname, "/settings/connections");
+
   return (
     <div className="flex h-full flex-col gap-1 p-3">
       <Link
         href="/"
         onClick={onNavigate}
-        className="mb-3 flex items-center gap-2 px-2 py-1"
+        title={collapsed ? "Reels Analytics" : undefined}
+        className={cn(
+          "mb-3 flex items-center gap-2 px-2 py-1",
+          collapsed && "justify-center px-0",
+        )}
       >
-        <Activity className="text-primary size-5" />
-        <span className="font-display text-sm tracking-wide">Reels Analytics</span>
+        <Activity className="text-primary size-5 shrink-0" />
+        {!collapsed && (
+          <span className="font-display text-sm tracking-wide">Reels Analytics</span>
+        )}
       </Link>
 
       {GROUPS.map((group) => (
         <div key={group.title} className="mt-2">
-          <div className="text-muted-foreground/60 px-3 pb-1 text-[11px] tracking-wide">
-            {group.title}
-          </div>
+          {!collapsed && (
+            <div className="text-muted-foreground/60 px-3 pb-1 text-[11px] tracking-wide">
+              {group.title}
+            </div>
+          )}
           {group.items.map((item) => (
             <NavLink
               key={item.label}
               item={item}
               status={status}
+              collapsed={collapsed}
               onNavigate={onNavigate}
             />
           ))}
         </div>
       ))}
 
-      <div className="mt-auto border-t pt-2">
+      <div className="mt-auto space-y-1 border-t pt-2">
         <Link
           href="/settings/connections"
           onClick={onNavigate}
           aria-current={connectionsActive ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-            connectionsActive
-              ? "bg-primary/15 text-primary"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          )}
+          title={collapsed ? "Conexiones" : undefined}
+          className={rowClass(connectionsActive, collapsed)}
         >
-          <Plug className="size-[18px]" />
-          Conexiones
+          <Plug className="size-[18px] shrink-0" />
+          {!collapsed && "Conexiones"}
         </Link>
+
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+            title={collapsed ? "Expandir" : undefined}
+            className={cn(
+              "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              collapsed && "justify-center px-0",
+            )}
+          >
+            {collapsed ? (
+              <ChevronRight className="size-[18px] shrink-0" />
+            ) : (
+              <>
+                <ChevronLeft className="size-[18px] shrink-0" />
+                Colapsar
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-/** Columna persistente en desktop (oculta en móvil). */
+const COLLAPSE_KEY = "sidebar-collapsed";
+const COLLAPSE_EVENT = "sidebar-collapsed-change";
+
+function subscribeCollapsed(callback: () => void) {
+  window.addEventListener(COLLAPSE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(COLLAPSE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+/** Estado colapsado leído de localStorage (external store, sin flash de hidratación). */
+function useCollapsed(): [boolean, () => void] {
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    () => localStorage.getItem(COLLAPSE_KEY) === "1",
+    () => false,
+  );
+  const toggle = () => {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? "0" : "1");
+    window.dispatchEvent(new Event(COLLAPSE_EVENT));
+  };
+  return [collapsed, toggle];
+}
+
+/** Columna persistente en desktop (oculta en móvil). Colapsable a rail de iconos. */
 export function DesktopSidebar({ status }: { status: ConnectionStatus }) {
+  const [collapsed, toggle] = useCollapsed();
+
   return (
-    <aside className="bg-card/40 hidden w-60 shrink-0 border-r md:block">
+    <aside
+      className={cn(
+        "bg-card/40 hidden shrink-0 border-r transition-[width] duration-200 md:block",
+        collapsed ? "w-16" : "w-60",
+      )}
+    >
       <div className="sticky top-0 h-dvh">
-        <SidebarNav status={status} />
+        <SidebarNav status={status} collapsed={collapsed} onToggle={toggle} />
       </div>
     </aside>
   );
@@ -216,7 +303,7 @@ export function MobileNav({ status }: { status: ConnectionStatus }) {
             >
               <X className="size-5" />
             </button>
-            <SidebarNav status={status} onNavigate={close} />
+            <SidebarNav status={status} collapsed={false} onNavigate={close} />
           </div>
         </div>
       )}

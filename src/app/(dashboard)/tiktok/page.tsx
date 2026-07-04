@@ -7,9 +7,9 @@ import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
 export default async function TikTokPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; connected?: string; error?: string }>;
 }) {
-  const { range: rangeParam } = await searchParams;
+  const { range: rangeParam, connected, error } = await searchParams;
   const range = resolveRange(rangeParam);
   const session = await getSession();
   const result = await readTikTokOverview(session, {
@@ -27,6 +27,17 @@ export default async function TikTokPage({
         </div>
         <RangeSelect active={range} />
       </header>
+
+      {connected && (
+        <div className="rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          Cuenta de TikTok conectada correctamente.
+        </div>
+      )}
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          Error al conectar: {error}
+        </div>
+      )}
 
       <TikTokPanel result={result} />
     </div>

@@ -10,7 +10,9 @@ export const runtime = "nodejs";
  */
 export async function GET(request: NextRequest) {
   const origin = new URL(request.url).origin;
-  const home = (params: string) => NextResponse.redirect(new URL(params, origin));
+  // Al terminar el OAuth aterrizamos en el dashboard de TikTok.
+  const dashboard = (params: string) =>
+    NextResponse.redirect(new URL(`/tiktok${params}`, origin));
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -21,24 +23,24 @@ export async function GET(request: NextRequest) {
 
   if (oauthError) {
     const description = searchParams.get("error_description") ?? oauthError;
-    return home(`/?error=${encodeURIComponent(description)}`);
+    return dashboard(`?error=${encodeURIComponent(description)}`);
   }
   if (!code || !returnedState) {
-    return home(`/?error=${encodeURIComponent("Respuesta de TikTok incompleta")}`);
+    return dashboard(`?error=${encodeURIComponent("Respuesta de TikTok incompleta")}`);
   }
   if (!savedState || returnedState !== savedState) {
-    return home(`/?error=${encodeURIComponent("State inválido (posible CSRF)")}`);
+    return dashboard(`?error=${encodeURIComponent("State inválido (posible CSRF)")}`);
   }
   if (!verifier) {
-    return home(`/?error=${encodeURIComponent("Falta el verifier PKCE; reintenta")}`);
+    return dashboard(`?error=${encodeURIComponent("Falta el verifier PKCE; reintenta")}`);
   }
 
   try {
     const tokens = await exchangeCodeForToken(code, verifier);
     await saveSession(tokens);
-    return home(`/?connected=tiktok`);
+    return dashboard(`?connected=1`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "error desconocido";
-    return home(`/?error=${encodeURIComponent(message)}`);
+    return dashboard(`?error=${encodeURIComponent(message)}`);
   }
 }
