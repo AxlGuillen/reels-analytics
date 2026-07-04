@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  LogOut,
   Menu,
   Music2,
   Plug,
@@ -16,6 +17,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { signOutAction } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 
 export interface ConnectionStatus {
@@ -198,6 +200,21 @@ function SidebarNav({
           <Plug className="size-[18px] shrink-0" />
           {!collapsed && "Conexiones"}
         </Link>
+
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            aria-label="Cerrar sesión"
+            title={collapsed ? "Cerrar sesión" : undefined}
+            className={cn(
+              "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              collapsed && "justify-center px-0",
+            )}
+          >
+            <LogOut className="size-[18px] shrink-0" />
+            {!collapsed && "Cerrar sesión"}
+          </button>
+        </form>
 
         {onToggle && (
           <button

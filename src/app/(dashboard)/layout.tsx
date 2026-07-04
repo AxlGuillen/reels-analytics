@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { DesktopSidebar, MobileNav } from "@/components/dashboard/sidebar";
 import { env } from "@/core/config/env";
+import { createServerSupabase } from "@/core/supabase/server";
 import { getSession, isExpired } from "@/modules/tiktok/session";
 
 /**
@@ -11,6 +13,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Defensa en profundidad: el middleware ya bloquea, pero verificamos también
+  // aquí por si el matcher se desconfigura.
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const session = await getSession();
   const status = {
     tiktok: !!session && !isExpired(session),

@@ -1,6 +1,7 @@
 "use server";
 
 import type { Platform } from "@/core/domain";
+import { createServerSupabase } from "@/core/supabase/server";
 import { captureInstagram, captureTikTok } from "@/modules/ingestion/capture";
 import type { IngestResult } from "@/modules/ingestion/persist";
 
@@ -12,6 +13,13 @@ export type CaptureResult =
 export async function captureSnapshotAction(
   platform: Platform,
 ): Promise<CaptureResult> {
+  // Solo un usuario autenticado puede disparar capturas (evita POST directo).
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "No autorizado." };
+
   try {
     const result =
       platform === "tiktok" ? await captureTikTok() : await captureInstagram();

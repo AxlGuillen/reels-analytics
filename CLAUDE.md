@@ -50,14 +50,23 @@ capa de ingesta con Supabase) y persistir snapshots.
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
 > `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
 
-**Supabase (base de datos creada):** proyecto **`Axl-Projects`** (id `impscwgourdxhdejwkhe`,
-región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se namespacean con prefijo
-**`ra_`**). Ya existe el esquema de 5 tablas + enum `ra_platform` (migraciones
+**Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
+`impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
+namespacean con prefijo **`ra_`**). Esquema de 5 tablas + enum `ra_platform` (migraciones
 `create_ra_analytics_schema`, `harden_ra_set_updated_at_search_path`) con **RLS activado sin
 políticas** (acceso solo server-side vía service role). Tipos en
-`src/core/supabase/database.types.ts`. **Pendiente:** clientes (`server/browser/admin`),
-env vars, y la capa de ingesta que escribe snapshots (+ mover el token de TikTok de la cookie a
-`ra_connections` con refresh).
+`src/core/supabase/database.types.ts`. Cliente admin (`src/core/supabase/admin.ts`, secret key,
+ignora RLS). Capa de ingesta (`modules/ingestion/{persist,capture}.ts`) escribe snapshots;
+tokens en `ra_connections` con refresh (`modules/accounts/tokens.ts`). **Cron diario** a las
+08:00 CDMX (`app/api/cron/ingest`, `vercel.json`, protegido con `CRON_SECRET`).
+
+**Auth (login single-user, implementado):** Supabase Auth email+password para el único usuario
+(el creador); registros deshabilitados en el Dashboard. Clientes `@supabase/ssr`:
+`src/core/supabase/server.ts` (publishable key, cookies vía `next/headers`). La compuerta vive
+en `src/proxy.ts` (convención `proxy.ts` de Next 16, ex-`middleware.ts`): `getUser()` + redirect
+a `/login`; excluye `/login`, estáticos y `api/cron` (el cron se autentica con `CRON_SECRET`).
+Defensa en profundidad extra: guard en `(dashboard)/layout.tsx` y en el server action de captura.
+Login en `src/app/login/*` (`signInAction`/`signOutAction`); logout en el footer del sidebar.
 
 ## Stack
 
