@@ -68,6 +68,27 @@ a `/login`; excluye `/login`, estáticos y `api/cron` (el cron se autentica con 
 Defensa en profundidad extra: guard en `(dashboard)/layout.tsx` y en el server action de captura.
 Login en `src/app/login/*` (`signInAction`/`signOutAction`); logout en el footer del sidebar.
 
+**Vista de Crecimiento (lee de Supabase, implementada):** `src/app/(dashboard)/growth`. Es el
+primer consumidor de los snapshots persistidos (las páginas por plataforma siguen leyendo en vivo).
+Capa de lectura `modules/analytics/history.ts` (`readGrowth`, admin client): serie de crecimiento
+de cuenta (`ra_account_snapshots`) + métrica vigente por video (última captura, ventana de 7 días,
+dedupe en TS) reconstruida como `VideoWithMetrics` para reusar `insights.ts`. La vista muestra
+seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo, tabla por mes de
+publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
+`?platform=`.
+
+**Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
+hashtag identificador — **`#audioviral`**, **`#dui`**, **`#duiyhal`** (el `&` no es válido en
+hashtags). Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya guardado con
+`classifyContentType` (`src/core/lib/content-type.ts`, precedencia `duiyhal > dui > audioviral`).
+Cambiar reglas o sumar un tipo = editar ese diccionario, sin migración. Los tags reservados se
+excluyen del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`).
+
+> Limitación conocida (IG): el cron persiste hasta 90 Reels (`MAX_REELS` en
+> `modules/instagram/read.ts`). Con ~20 videos/semana, la historia **por video** de IG se congela
+> para lo más viejo que ~4.5 semanas (el crecimiento de **cuenta** no se afecta). Follow-up: subir
+> el tope solo del cron o backfill por lotes.
+
 ## Stack
 
 | Capa | Tecnología |

@@ -46,7 +46,7 @@ const GROUPS: NavGroup[] = [
     title: "general",
     items: [
       { label: "Overview", href: "/", icon: LayoutDashboard },
-      { label: "Crecimiento", href: "/growth", icon: TrendingUp, soon: true },
+      { label: "Crecimiento", href: "/growth", icon: TrendingUp },
     ],
   },
   {
