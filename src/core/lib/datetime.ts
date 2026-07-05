@@ -51,3 +51,26 @@ export function weekdayIndex(date: Date, timeZone?: string): number {
 export function weekday(date: Date, timeZone?: string): Weekday {
   return WEEKDAYS[weekdayIndex(date, timeZone)];
 }
+
+/** Clave de mes `YYYY-MM` en la zona dada (ordenable lexicográficamente). */
+export function monthKey(date: Date, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    timeZone,
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  return `${year}-${month}`;
+}
+
+/** Etiqueta de mes legible en español (p. ej. "jul 2026") a partir de `YYYY-MM`. */
+export function monthLabel(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(year, (month ?? 1) - 1, 1));
+  return new Intl.DateTimeFormat("es-MX", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}

@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  LogOut,
   Menu,
   Music2,
   Plug,
@@ -16,7 +17,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { signOutAction } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme-toggle";
 
 export interface ConnectionStatus {
   tiktok: boolean;
@@ -43,7 +46,7 @@ const GROUPS: NavGroup[] = [
     title: "general",
     items: [
       { label: "Overview", href: "/", icon: LayoutDashboard },
-      { label: "Crecimiento", href: "/growth", icon: TrendingUp, soon: true },
+      { label: "Crecimiento", href: "/growth", icon: TrendingUp },
     ],
   },
   {
@@ -65,7 +68,7 @@ function StatusDot({ connected }: { connected: boolean }) {
     <span
       className={cn(
         "ml-auto size-2 rounded-full",
-        connected ? "bg-green-500" : "bg-border",
+        connected ? "bg-success" : "bg-border",
       )}
       aria-label={connected ? "conectada" : "sin conectar"}
     />
@@ -198,6 +201,23 @@ function SidebarNav({
           <Plug className="size-[18px] shrink-0" />
           {!collapsed && "Conexiones"}
         </Link>
+
+        <ThemeToggle collapsed={collapsed} />
+
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            aria-label="Cerrar sesión"
+            title={collapsed ? "Cerrar sesión" : undefined}
+            className={cn(
+              "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              collapsed && "justify-center px-0",
+            )}
+          >
+            <LogOut className="size-[18px] shrink-0" />
+            {!collapsed && "Cerrar sesión"}
+          </button>
+        </form>
 
         {onToggle && (
           <button

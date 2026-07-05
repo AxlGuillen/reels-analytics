@@ -35,7 +35,7 @@ export function CaptureButton({ platform }: { platform: Platform }) {
         {pending ? "Guardando…" : "Capturar snapshot"}
       </Button>
       {msg && (
-        <p className={cn("text-xs", msg.ok ? "text-green-400" : "text-red-400")}>
+        <p className={cn("text-xs", msg.ok ? "text-success" : "text-destructive")}>
           {msg.text}
         </p>
       )}

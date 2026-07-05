@@ -15,7 +15,11 @@ type ConnState = "connected" | "expired" | "disconnected";
 
 function StateBadge({ state }: { state: ConnState }) {
   if (state === "connected")
-    return <Badge className="bg-green-600 hover:bg-green-600">conectada</Badge>;
+    return (
+      <Badge className="bg-success hover:bg-success text-success-foreground">
+        conectada
+      </Badge>
+    );
   if (state === "expired") return <Badge variant="secondary">sesión expirada</Badge>;
   return <Badge variant="secondary">sin conectar</Badge>;
 }
@@ -58,7 +62,9 @@ export default async function ConnectionsPage() {
             <CardTitle className="flex items-center gap-2">
               Instagram{" "}
               {instagramConnected ? (
-                <Badge className="bg-green-600 hover:bg-green-600">conectada</Badge>
+                <Badge className="bg-success hover:bg-success text-success-foreground">
+                  conectada
+                </Badge>
               ) : (
                 <Badge variant="secondary">sin conectar</Badge>
               )}

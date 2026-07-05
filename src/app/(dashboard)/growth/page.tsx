@@ -1,0 +1,368 @@
+import Link from "next/link";
+import type { Platform } from "@/core/domain";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  InsightBarChart,
+  type InsightDatum,
+} from "@/components/charts/insight-bar-chart";
+import {
+  GrowthLineChart,
+  type GrowthPoint,
+  type GrowthSeries,
+} from "@/components/charts/growth-line-chart";
+import { readGrowth, type AccountSeries } from "@/modules/analytics/history";
+import {
+  bestBucket,
+  groupByContentType,
+  postingCadence,
+  summarize,
+  topHashtags,
+  videosByPublishMonth,
+  viewsByHour,
+  viewsByWeekday,
+} from "@/modules/analytics/insights";
+import { RESERVED_TAGS } from "@/core/lib/content-type";
+import { formatCount, formatDate, formatPercent } from "@/core/lib/format";
+import { cn } from "@/lib/utils";
+
+const PLATFORM_COLORS: Record<Platform, string> = {
+  tiktok: "var(--color-chart-1)",
+  instagram: "var(--color-chart-3)",
+};
+
+const FILTERS: { label: string; value?: Platform }[] = [
+  { label: "Todas" },
+  { label: "TikTok", value: "tiktok" },
+  { label: "Instagram", value: "instagram" },
+];
+
+function PlatformFilter({ active }: { active?: Platform }) {
+  return (
+    <div className="flex gap-1">
+      {FILTERS.map((f) => {
+        const isActive = active === f.value;
+        return (
+          <Link
+            key={f.label}
+            href={f.value ? `/growth?platform=${f.value}` : "/growth"}
+            className={cn(
+              buttonVariants({ variant: isActive ? "default" : "outline", size: "sm" }),
+            )}
+          >
+            {f.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="bg-card/50 rounded-lg border p-4">
+      <div className="text-muted-foreground text-xs">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+      {hint && <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>}
+    </div>
+  );
+}
+
+/** Delta de seguidores de los últimos `days` días (o null si no hay historia). */
+function followerDelta(series: AccountSeries, days: number): number | null {
+  const points = series.points.filter((p) => p.followers !== null);
+  if (points.length < 2) return null;
+  const latest = points[points.length - 1];
+  const cutoff = new Date(latest.capturedAt).getTime() - days * 86_400_000;
+  const past = [...points]
+    .reverse()
+    .find((p) => new Date(p.capturedAt).getTime() <= cutoff);
+  if (!past) return null;
+  return (latest.followers ?? 0) - (past.followers ?? 0);
+}
+
+function signed(value: number | null): string {
+  if (value === null) return "—";
+  return value >= 0 ? `+${formatCount(value)}` : formatCount(value);
+}
+
+/** Mergea las series por día calendario (una columna por plataforma). */
+function mergeSeries(seriesList: AccountSeries[]): {
+  data: GrowthPoint[];
+  series: GrowthSeries[];
+} {
+  const byDay = new Map<string, Record<string, number | null>>();
+  for (const s of seriesList) {
+    for (const point of s.points) {
+      const day = point.capturedAt.slice(0, 10);
+      const row = byDay.get(day) ?? {};
+      row[s.platform] = point.followers; // última captura del día gana
+      byDay.set(day, row);
+    }
+  }
+  const data: GrowthPoint[] = [...byDay.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([day, values]) => ({
+      date: formatDate(new Date(`${day}T00:00:00Z`), "UTC"),
+      ...values,
+    }));
+
+  const series: GrowthSeries[] = seriesList
+    .filter((s) => s.points.some((p) => p.followers !== null))
+    .map((s) => ({
+      key: s.platform,
+      label: `@${s.handle ?? s.platform}`,
+      color: PLATFORM_COLORS[s.platform],
+    }));
+
+  return { data, series };
+}
+
+export default async function GrowthPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ platform?: string }>;
+}) {
+  const { platform: platformParam } = await searchParams;
+  const platform: Platform | undefined =
+    platformParam === "tiktok" || platformParam === "instagram"
+      ? platformParam
+      : undefined;
+
+  const { videos, accountSeries } = await readGrowth({ platform });
+  const { data: growthData, series: growthSeries } = mergeSeries(accountSeries);
+
+  const byType = groupByContentType(videos);
+  const byMonth = videosByPublishMonth(videos);
+  const cadence = postingCadence(videos);
+  const summary = summarize(videos);
+
+  const weekdayBuckets = viewsByWeekday(videos);
+  const bestDay = bestBucket(weekdayBuckets);
+  const hourBuckets = viewsByHour(videos);
+  const bestHour = bestBucket(hourBuckets);
+
+  const weekdayData: InsightDatum[] = weekdayBuckets.map((b) => ({
+    label: b.label.slice(0, 3),
+    value: Math.round(b.avgViews),
+    highlight: b.label === bestDay?.label,
+  }));
+  const hashtagData: InsightDatum[] = topHashtags(videos, 8, RESERVED_TAGS).map((h) => ({
+    label: `#${h.tag}`,
+    value: h.totalViews,
+  }));
+
+  const empty = videos.length === 0 && growthData.length === 0;
+
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl tracking-wide">Crecimiento</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Historia acumulada desde los snapshots guardados.
+          </p>
+        </div>
+        <PlatformFilter active={platform} />
+      </header>
+
+      {empty ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Aún no hay datos guardados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              El cron guarda un snapshot al día. Vuelve en unos días para ver el
+              crecimiento acumulado.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Crecimiento de cuenta */}
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {accountSeries.map((s) => (
+              <Kpi
+                key={s.platform}
+                label={`Seguidores @${s.handle ?? s.platform}`}
+                value={formatCount(
+                  s.points.filter((p) => p.followers !== null).at(-1)?.followers ?? null,
+                )}
+                hint={`${signed(followerDelta(s, 7))} 7d · ${signed(followerDelta(s, 30))} 30d`}
+              />
+            ))}
+          </section>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Seguidores en el tiempo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GrowthLineChart data={growthData} series={growthSeries} />
+            </CardContent>
+          </Card>
+
+          {/* Rendimiento por tipo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Rendimiento por tipo de video</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Videos</TableHead>
+                    <TableHead className="text-right">Vistas prom.</TableHead>
+                    <TableHead className="text-right">Vistas totales</TableHead>
+                    <TableHead className="text-right">Engagement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {byType.map((t) => (
+                    <TableRow key={t.label}>
+                      <TableCell className="font-medium">{t.label}</TableCell>
+                      <TableCell className="text-right tabular-nums">{t.count}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(Math.round(t.avgViews))}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(t.totalViews)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatPercent(t.avgEngagement)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Tabla mensual */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Por mes de publicación</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mes</TableHead>
+                    <TableHead className="text-right">Videos</TableHead>
+                    <TableHead className="text-right">Vistas</TableHead>
+                    <TableHead className="text-right">Comentarios</TableHead>
+                    <TableHead className="text-right">Engagement prom.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {byMonth.map((m) => (
+                    <TableRow key={m.month}>
+                      <TableCell className="font-medium">{m.label}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.count}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(m.totalViews)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(m.totalComments)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatPercent(m.avgEngagement)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Cadencia + KPIs */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  Espaciado entre publicaciones → vistas prom.
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Gap desde el post anterior</TableHead>
+                      <TableHead className="text-right">Videos</TableHead>
+                      <TableHead className="text-right">Vistas prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cadence.map((c) => (
+                      <TableRow key={c.label}>
+                        <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-right tabular-nums">{c.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCount(Math.round(c.avgViews))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-3 content-start">
+              <Kpi label="Videos" value={formatCount(summary.totalVideos)} />
+              <Kpi label="Vistas totales" value={formatCount(summary.totalViews)} />
+              <Kpi
+                label="Mejor día"
+                value={bestDay ? bestDay.label : "—"}
+                hint={bestDay ? `${formatCount(Math.round(bestDay.avgViews))} vistas prom.` : undefined}
+              />
+              <Kpi
+                label="Mejor hora"
+                value={bestHour ? bestHour.label : "—"}
+                hint={bestHour ? `${formatCount(Math.round(bestHour.avgViews))} vistas prom.` : undefined}
+              />
+            </div>
+          </section>
+
+          {/* Hashtags / día / hora */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Vistas promedio por día</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InsightBarChart data={weekdayData} valueLabel="vistas prom." />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Top hashtags por vistas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InsightBarChart
+                  data={hashtagData}
+                  valueLabel="vistas"
+                  orientation="vertical"
+                />
+              </CardContent>
+            </Card>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}

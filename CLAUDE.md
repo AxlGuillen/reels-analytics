@@ -50,14 +50,44 @@ capa de ingesta con Supabase) y persistir snapshots.
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
 > `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
 
-**Supabase (base de datos creada):** proyecto **`Axl-Projects`** (id `impscwgourdxhdejwkhe`,
-región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se namespacean con prefijo
-**`ra_`**). Ya existe el esquema de 5 tablas + enum `ra_platform` (migraciones
+**Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
+`impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
+namespacean con prefijo **`ra_`**). Esquema de 5 tablas + enum `ra_platform` (migraciones
 `create_ra_analytics_schema`, `harden_ra_set_updated_at_search_path`) con **RLS activado sin
 políticas** (acceso solo server-side vía service role). Tipos en
-`src/core/supabase/database.types.ts`. **Pendiente:** clientes (`server/browser/admin`),
-env vars, y la capa de ingesta que escribe snapshots (+ mover el token de TikTok de la cookie a
-`ra_connections` con refresh).
+`src/core/supabase/database.types.ts`. Cliente admin (`src/core/supabase/admin.ts`, secret key,
+ignora RLS). Capa de ingesta (`modules/ingestion/{persist,capture}.ts`) escribe snapshots;
+tokens en `ra_connections` con refresh (`modules/accounts/tokens.ts`). **Cron diario** a las
+08:00 CDMX (`app/api/cron/ingest`, `vercel.json`, protegido con `CRON_SECRET`).
+
+**Auth (login single-user, implementado):** Supabase Auth email+password para el único usuario
+(el creador); registros deshabilitados en el Dashboard. Clientes `@supabase/ssr`:
+`src/core/supabase/server.ts` (publishable key, cookies vía `next/headers`). La compuerta vive
+en `src/proxy.ts` (convención `proxy.ts` de Next 16, ex-`middleware.ts`): `getUser()` + redirect
+a `/login`; excluye `/login`, estáticos y `api/cron` (el cron se autentica con `CRON_SECRET`).
+Defensa en profundidad extra: guard en `(dashboard)/layout.tsx` y en el server action de captura.
+Login en `src/app/login/*` (`signInAction`/`signOutAction`); logout en el footer del sidebar.
+
+**Vista de Crecimiento (lee de Supabase, implementada):** `src/app/(dashboard)/growth`. Es el
+primer consumidor de los snapshots persistidos (las páginas por plataforma siguen leyendo en vivo).
+Capa de lectura `modules/analytics/history.ts` (`readGrowth`, admin client): serie de crecimiento
+de cuenta (`ra_account_snapshots`) + métrica vigente por video (última captura, ventana de 7 días,
+dedupe en TS) reconstruida como `VideoWithMetrics` para reusar `insights.ts`. La vista muestra
+seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo, tabla por mes de
+publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
+`?platform=`.
+
+**Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
+hashtag identificador — **`#audioviral`**, **`#dui`**, **`#duiyhal`** (el `&` no es válido en
+hashtags). Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya guardado con
+`classifyContentType` (`src/core/lib/content-type.ts`, precedencia `duiyhal > dui > audioviral`).
+Cambiar reglas o sumar un tipo = editar ese diccionario, sin migración. Los tags reservados se
+excluyen del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`).
+
+> Limitación conocida (IG): el cron persiste hasta 90 Reels (`MAX_REELS` en
+> `modules/instagram/read.ts`). Con ~20 videos/semana, la historia **por video** de IG se congela
+> para lo más viejo que ~4.5 semanas (el crecimiento de **cuenta** no se afecta). Follow-up: subir
+> el tope solo del cron o backfill por lotes.
 
 ## Stack
 
@@ -85,21 +115,28 @@ bunx supabase gen types typescript --project-id <id> > src/core/supabase/databas
 > Regla: **siempre usar `bun` / `bunx`**. No introducir `package-lock.json` ni
 > `pnpm-lock.yaml`; el lockfile del proyecto es `bun.lock`.
 
-## Identidad visual — "Arcane" (dark neón morado)
+## Identidad visual — "Admin profesional" (índigo sobrio, claro + oscuro)
 
-Identidad definida con la skill `ui-ux-pro-max` (estilo *Data-Dense Dashboard*), tema
-**dark-first** ligado a la marca de contenido del creador (persona gaming/League).
+Estilo administrativo/dashboard, sobrio y neutral (migrado desde el antiguo "Arcane" gaming).
+Soporta **tema claro y oscuro** con toggle.
 
-- **Tokens** en `src/app/globals.css` (`:root, .dark` comparten palette; `<html class="dark">`):
-  fondo `#0f0f23`, card `#1e1c35`, **primario `#7c3aed`** (morado neón), acento de marca
-  `--brand #f43f5e` (rosa-coral), texto `#e2e8f0` / tenue `#94a3b8`, borde `#302b57`.
-  Los charts usan `--chart-1..5` (morado/rosa/cyan/violeta/ámbar).
-- **Tipografía** (`layout.tsx`, next/font): `Russo One` = `font-display` (marca/titulares,
-  úsala con moderación en textos grandes), `Chakra Petch` = `font-sans` (UI, números).
-- No hay tema claro por ahora. Al agregar componentes, usar **tokens semánticos**
-  (`bg-primary`, `text-muted-foreground`, `border`, `bg-brand`...) nunca hex crudo.
-- Regla de la skill: 1 CTA primaria por vista, contraste WCAG AA, estados hover 150–300ms,
-  sin emojis como iconos (usar SVG/Lucide).
+- **Tokens** en `src/app/globals.css`: `:root` = **claro** (fondo `#f8fafc`, card `#ffffff`,
+  texto `#0f172a`), `.dark` = **oscuro** (fondo slate desaturado `#0b0f1a`, card `#121826`,
+  texto `#e2e8f0`). **Primario índigo** `#4f46e5` (claro) / `#6366f1` (oscuro); tenue `#64748b`
+  / `#94a3b8`; borde `#e2e8f0` / `#1e293b`. Estados: `--success`, `--destructive` (con sus
+  `-foreground`). Charts `--chart-1..5` (índigo/sky/teal/ámbar/slate). `--brand` alineado a
+  índigo pero **sin uso** en componentes hoy.
+- **Tema** vía `next-themes` (`src/components/theme-provider.tsx`, `attribute="class"`,
+  `defaultTheme="system"`); `<html>` lleva `suppressHydrationWarning` (sin `class="dark"` fijo).
+  El toggle vive en el footer del sidebar (`src/components/dashboard/theme-toggle.tsx`, cicla
+  claro→oscuro→sistema).
+- **Tipografía** (`layout.tsx`, next/font): `Inter` para todo (UI, números y titulares).
+  `font-sans` y `font-display` apuntan a Inter; los `font-display` de los headings se conservan.
+- Usar siempre **tokens semánticos** (`bg-primary`, `bg-card`, `text-muted-foreground`,
+  `text-success`, `text-destructive`, `border`...) nunca hex crudo ni colores de Tailwind con
+  número (`green-500`); así el componente se adapta a claro/oscuro solo.
+- Reglas: 1 CTA primaria por vista, contraste WCAG AA, hover 150–300ms, sin emojis como iconos
+  (usar Lucide/SVG).
 
 ## Arquitectura
 

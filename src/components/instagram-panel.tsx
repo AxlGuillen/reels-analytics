@@ -238,7 +238,7 @@ export function InstagramPanel({ result }: { result: InstagramReadResult }) {
       );
     case "error":
       return (
-        <p className="text-sm text-red-400">
+        <p className="text-destructive text-sm">
           No se pudieron leer los datos: {result.message}
         </p>
       );
