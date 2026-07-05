@@ -24,9 +24,11 @@ import {
   type GrowthPoint,
   type GrowthSeries,
 } from "@/components/charts/growth-line-chart";
+import { MonthSelect } from "@/components/dashboard/month-select";
 import { readGrowth, type AccountSeries } from "@/modules/analytics/history";
 import {
   bestBucket,
+  CREATOR_TIMEZONE,
   groupByContentType,
   postingCadence,
   summarize,
@@ -36,8 +38,20 @@ import {
   viewsByWeekday,
 } from "@/modules/analytics/insights";
 import { RESERVED_TAGS } from "@/core/lib/content-type";
+import { monthKey } from "@/core/lib/datetime";
 import { formatCount, formatDate, formatPercent } from "@/core/lib/format";
 import { cn } from "@/lib/utils";
+
+/** Mínimo de videos para que un mes sea elegible como "mejor engagement". */
+const ENGAGEMENT_MIN_VIDEOS = 5;
+
+/** Elige el elemento con el mayor valor según `sel` (o undefined si está vacío). */
+function maxBy<T>(items: T[], sel: (item: T) => number): T | undefined {
+  return items.reduce<T | undefined>(
+    (best, item) => (!best || sel(item) > sel(best) ? item : best),
+    undefined,
+  );
+}
 
 const PLATFORM_COLORS: Record<Platform, string> = {
   tiktok: "var(--color-chart-1)",
@@ -134,9 +148,9 @@ function mergeSeries(seriesList: AccountSeries[]): {
 export default async function GrowthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ platform?: string }>;
+  searchParams: Promise<{ platform?: string; month?: string }>;
 }) {
-  const { platform: platformParam } = await searchParams;
+  const { platform: platformParam, month: monthParam } = await searchParams;
   const platform: Platform | undefined =
     platformParam === "tiktok" || platformParam === "instagram"
       ? platformParam
@@ -150,9 +164,36 @@ export default async function GrowthPage({
   const cadence = postingCadence(videos);
   const summary = summarize(videos);
 
-  const weekdayBuckets = viewsByWeekday(videos);
+  // Destacados del bloque mensual.
+  const monthMostViews = maxBy(byMonth, (m) => m.totalViews);
+  const monthMostVideos = maxBy(byMonth, (m) => m.count);
+  const monthBestEngagement = maxBy(
+    byMonth.filter((m) => m.count >= ENGAGEMENT_MIN_VIDEOS),
+    (m) => m.avgEngagement,
+  );
+  // Gráfica mensual (cronológica: byMonth viene nuevo-primero).
+  const monthViewsData: InsightDatum[] = [...byMonth].reverse().map((m) => ({
+    label: m.label,
+    value: m.totalViews,
+    highlight: m.month === monthMostViews?.month,
+  }));
+
+  // Filtro por mes: acota SOLO las gráficas de día/hashtags.
+  const monthOptions = byMonth.map((m) => ({ value: m.month, label: m.label }));
+  const month =
+    monthParam && monthOptions.some((o) => o.value === monthParam)
+      ? monthParam
+      : undefined;
+  const activeMonthLabel = month
+    ? monthOptions.find((o) => o.value === month)?.label
+    : undefined;
+  const videosForCharts = month
+    ? videos.filter((v) => monthKey(v.video.publishedAt, CREATOR_TIMEZONE) === month)
+    : videos;
+
+  const weekdayBuckets = viewsByWeekday(videosForCharts);
   const bestDay = bestBucket(weekdayBuckets);
-  const hourBuckets = viewsByHour(videos);
+  const hourBuckets = viewsByHour(videosForCharts);
   const bestHour = bestBucket(hourBuckets);
 
   const weekdayData: InsightDatum[] = weekdayBuckets.map((b) => ({
@@ -160,10 +201,16 @@ export default async function GrowthPage({
     value: Math.round(b.avgViews),
     highlight: b.label === bestDay?.label,
   }));
-  const hashtagData: InsightDatum[] = topHashtags(videos, 8, RESERVED_TAGS).map((h) => ({
+  const hashtagData: InsightDatum[] = topHashtags(
+    videosForCharts,
+    8,
+    RESERVED_TAGS,
+  ).map((h) => ({
     label: `#${h.tag}`,
     value: h.totalViews,
   }));
+
+  const monthSuffix = activeMonthLabel ? ` — ${activeMonthLabel}` : "";
 
   const empty = videos.length === 0 && growthData.length === 0;
 
@@ -253,12 +300,40 @@ export default async function GrowthPage({
             </CardContent>
           </Card>
 
-          {/* Tabla mensual */}
+          {/* Destacados por mes */}
+          <section className="grid gap-3 sm:grid-cols-3">
+            <Kpi
+              label="Mes con más vistas"
+              value={monthMostViews ? monthMostViews.label : "—"}
+              hint={
+                monthMostViews
+                  ? `${formatCount(monthMostViews.totalViews)} vistas`
+                  : undefined
+              }
+            />
+            <Kpi
+              label="Mes con más videos"
+              value={monthMostVideos ? monthMostVideos.label : "—"}
+              hint={monthMostVideos ? `${monthMostVideos.count} videos` : undefined}
+            />
+            <Kpi
+              label="Mejor engagement"
+              value={monthBestEngagement ? monthBestEngagement.label : "—"}
+              hint={
+                monthBestEngagement
+                  ? `${formatPercent(monthBestEngagement.avgEngagement)} · ${monthBestEngagement.count} videos`
+                  : `sin meses con ≥${ENGAGEMENT_MIN_VIDEOS} videos`
+              }
+            />
+          </section>
+
+          {/* Bloque mensual: gráfica + tabla */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Por mes de publicación</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              <InsightBarChart data={monthViewsData} valueLabel="vistas" />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -338,28 +413,42 @@ export default async function GrowthPage({
             </div>
           </section>
 
-          {/* Hashtags / día / hora */}
-          <section className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Vistas promedio por día</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InsightBarChart data={weekdayData} valueLabel="vistas prom." />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Top hashtags por vistas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InsightBarChart
-                  data={hashtagData}
-                  valueLabel="vistas"
-                  orientation="vertical"
-                />
-              </CardContent>
-            </Card>
+          {/* Hashtags / día — filtrables por mes */}
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-muted-foreground text-xs">
+                {activeMonthLabel
+                  ? `Gráficas filtradas: ${activeMonthLabel} (${videosForCharts.length} videos)`
+                  : "Gráficas sobre todos los meses"}
+              </span>
+              <MonthSelect active={month} options={monthOptions} />
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">
+                    Vistas promedio por día{monthSuffix}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <InsightBarChart data={weekdayData} valueLabel="vistas prom." />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">
+                    Top hashtags por vistas{monthSuffix}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <InsightBarChart
+                    data={hashtagData}
+                    valueLabel="vistas"
+                    orientation="vertical"
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </section>
         </>
       )}
