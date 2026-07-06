@@ -10,6 +10,8 @@ import {
 } from "@/core/lib/format";
 import { weekday } from "@/core/lib/datetime";
 import { CREATOR_TIMEZONE as TZ, engagementRate } from "@/modules/analytics/insights";
+import { readVideoHistory } from "@/modules/analytics/history";
+import { VideoGrowth } from "@/components/video-growth";
 import { queryVideos } from "@/modules/tiktok/api";
 import { toVideo, toVideoMetrics } from "@/modules/tiktok/mappers";
 import { getSession, isExpired } from "@/modules/tiktok/session";
@@ -79,6 +81,7 @@ export default async function VideoDetailPage({
 
   const video = toVideo(raw);
   const metrics = toVideoMetrics(raw);
+  const history = await readVideoHistory("tiktok", id);
 
   return (
     <PageShell>
@@ -139,6 +142,8 @@ export default async function VideoDetailPage({
         <Stat label="Compartidos" value={formatCount(metrics.shares)} />
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
+
+      <VideoGrowth points={history} />
     </PageShell>
   );
 }
