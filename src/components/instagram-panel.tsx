@@ -112,11 +112,11 @@ function InsightCharts({ videos }: { videos: VideoWithMetrics[] }) {
 
 function VideoTableRow({ row }: { row: VideoWithMetrics }) {
   const { video, metrics } = row;
-  const href = video.url ?? "#";
+  const href = `/video/instagram/${video.externalId}`;
   return (
     <TableRow>
       <TableCell>
-        <Link href={href} target="_blank" rel="noreferrer">
+        <Link href={href}>
           {video.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- CDN de Instagram con URL firmada
             <img
@@ -140,7 +140,9 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
         </div>
       </TableCell>
       <TableCell className="max-w-xs">
-        <p className="truncate text-sm">{video.caption ?? "—"}</p>
+        <Link href={href} className="hover:underline">
+          <p className="truncate text-sm">{video.caption ?? "—"}</p>
+        </Link>
         {video.hashtags.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {video.hashtags.slice(0, 4).map((tag) => (
