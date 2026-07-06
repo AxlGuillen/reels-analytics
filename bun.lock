@@ -5,6 +5,7 @@
     "": {
       "name": "reels-analytics",
       "dependencies": {
+        "@animateicons/react": "^0.3.4",
         "@base-ui/react": "^1.6.0",
         "@supabase/ssr": "^0.12.0",
         "@supabase/supabase-js": "^2.110.0",
@@ -39,6 +40,8 @@
   ],
   "packages": {
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
+
+    "@animateicons/react": ["@animateicons/react@0.3.4", "", { "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-7IO7aLBdp7p4awGx3sOTVVcU8s9kzHXBK2R27y1gGKfk3nI1gYh8+McVCtCkwa7ouiFwmBEDwrUEODpNOv+bSQ=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 

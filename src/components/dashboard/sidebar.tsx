@@ -1,25 +1,51 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import {
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ForwardRefExoticComponent,
+  type RefAttributes,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
-  Camera,
-  ChevronLeft,
-  ChevronRight,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Music2,
-  Plug,
-  TrendingUp,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+  ActivityIcon,
+  AudioLinesIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  InstagramIcon,
+  LayoutGridIcon,
+  LinkIcon,
+  LogoutIcon,
+  MenuIcon,
+  TrendingUpIcon,
+} from "@animateicons/react/lucide";
+import { X } from "lucide-react";
 import { signOutAction } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+
+/** Handle imperativo que expone cada icono de AnimateIcons. */
+export interface IconHandle {
+  startAnimation: () => void;
+  stopAnimation: () => void;
+}
+
+/** Forma común de un icono animado (subconjunto de props que usamos). */
+type AnimatedIcon = ForwardRefExoticComponent<
+  { size?: number; className?: string } & RefAttributes<IconHandle>
+>;
+
+/** Ref + handlers para animar un icono al hacer hover en toda su fila. */
+function useHoverIcon() {
+  const ref = useRef<IconHandle>(null);
+  const hover = {
+    onMouseEnter: () => ref.current?.startAnimation(),
+    onMouseLeave: () => ref.current?.stopAnimation(),
+  };
+  return [ref, hover] as const;
+}
 
 export interface ConnectionStatus {
   tiktok: boolean;
@@ -29,7 +55,7 @@ export interface ConnectionStatus {
 interface NavItem {
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: AnimatedIcon;
   /** clave de estado de conexión a mostrar como punto. */
   status?: keyof ConnectionStatus;
   /** deshabilitado: ruta aún no disponible (se explica, no se oculta). */
@@ -45,15 +71,15 @@ const GROUPS: NavGroup[] = [
   {
     title: "general",
     items: [
-      { label: "Overview", href: "/", icon: LayoutDashboard },
-      { label: "Crecimiento", href: "/growth", icon: TrendingUp },
+      { label: "Overview", href: "/", icon: LayoutGridIcon },
+      { label: "Crecimiento", href: "/growth", icon: TrendingUpIcon },
     ],
   },
   {
     title: "plataformas",
     items: [
-      { label: "TikTok", href: "/tiktok", icon: Music2, status: "tiktok" },
-      { label: "Instagram", href: "/instagram", icon: Camera, status: "instagram" },
+      { label: "TikTok", href: "/tiktok", icon: AudioLinesIcon, status: "tiktok" },
+      { label: "Instagram", href: "/instagram", icon: InstagramIcon, status: "instagram" },
     ],
   },
 ];
@@ -98,6 +124,7 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const [iconRef, hover] = useHoverIcon();
   const Icon = item.icon;
 
   if (item.soon) {
@@ -109,7 +136,7 @@ function NavLink({
         )}
         title="Disponible al persistir snapshots históricos"
       >
-        <Icon className="size-[18px] shrink-0" />
+        <Icon size={18} className="shrink-0" />
         {!collapsed && (
           <>
             {item.label}
@@ -128,8 +155,9 @@ function NavLink({
       aria-current={active ? "page" : undefined}
       title={collapsed ? item.label : undefined}
       className={rowClass(active, collapsed)}
+      {...hover}
     >
-      <Icon className="size-[18px] shrink-0" />
+      <Icon ref={iconRef} size={18} className="shrink-0" />
       {!collapsed && (
         <>
           {item.label}
@@ -153,6 +181,10 @@ function SidebarNav({
 }) {
   const pathname = usePathname();
   const connectionsActive = isActive(pathname, "/settings/connections");
+  const [brandRef, brandHover] = useHoverIcon();
+  const [connRef, connHover] = useHoverIcon();
+  const [logoutRef, logoutHover] = useHoverIcon();
+  const [collapseRef, collapseHover] = useHoverIcon();
 
   return (
     <div className="flex h-full flex-col gap-1 p-3">
@@ -164,8 +196,9 @@ function SidebarNav({
           "mb-3 flex items-center gap-2 px-2 py-1",
           collapsed && "justify-center px-0",
         )}
+        {...brandHover}
       >
-        <Activity className="text-primary size-5 shrink-0" />
+        <ActivityIcon ref={brandRef} size={20} className="text-primary shrink-0" />
         {!collapsed && (
           <span className="font-display text-sm tracking-wide">Reels Analytics</span>
         )}
@@ -197,8 +230,9 @@ function SidebarNav({
           aria-current={connectionsActive ? "page" : undefined}
           title={collapsed ? "Conexiones" : undefined}
           className={rowClass(connectionsActive, collapsed)}
+          {...connHover}
         >
-          <Plug className="size-[18px] shrink-0" />
+          <LinkIcon ref={connRef} size={18} className="shrink-0" />
           {!collapsed && "Conexiones"}
         </Link>
 
@@ -213,8 +247,9 @@ function SidebarNav({
               "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
               collapsed && "justify-center px-0",
             )}
+            {...logoutHover}
           >
-            <LogOut className="size-[18px] shrink-0" />
+            <LogoutIcon ref={logoutRef} size={18} className="shrink-0" />
             {!collapsed && "Cerrar sesión"}
           </button>
         </form>
@@ -229,12 +264,13 @@ function SidebarNav({
               "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
               collapsed && "justify-center px-0",
             )}
+            {...collapseHover}
           >
             {collapsed ? (
-              <ChevronRight className="size-[18px] shrink-0" />
+              <ChevronRightIcon ref={collapseRef} size={18} className="shrink-0" />
             ) : (
               <>
-                <ChevronLeft className="size-[18px] shrink-0" />
+                <ChevronLeftIcon ref={collapseRef} size={18} className="shrink-0" />
                 Colapsar
               </>
             )}
@@ -303,10 +339,10 @@ export function MobileNav({ status }: { status: ConnectionStatus }) {
           aria-label="Abrir menú"
           className="text-muted-foreground hover:text-foreground"
         >
-          <Menu className="size-5" />
+          <MenuIcon size={20} />
         </button>
         <div className="flex items-center gap-2">
-          <Activity className="text-primary size-5" />
+          <ActivityIcon size={20} className="text-primary" />
           <span className="font-display text-sm tracking-wide">Reels Analytics</span>
         </div>
       </header>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { MoveLeftIcon } from "@animateicons/react/lucide";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -30,7 +30,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
         href="/tiktok"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
       >
-        <ArrowLeft className="size-4" /> TikTok
+        <MoveLeftIcon size={16} /> TikTok
       </Link>
       {children}
     </div>

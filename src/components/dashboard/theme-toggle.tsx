@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { MoonIcon, SunIcon } from "@animateicons/react/lucide";
+import { Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,6 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   const next =
     current === "light" ? "dark" : current === "dark" ? "system" : "light";
 
-  const Icon = current === "light" ? Sun : current === "dark" ? Moon : Monitor;
   const label =
     current === "light"
       ? "Tema: claro"
@@ -46,7 +46,13 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
         collapsed && "justify-center px-0",
       )}
     >
-      <Icon className="size-[18px] shrink-0" />
+      {current === "light" ? (
+        <SunIcon size={18} className="shrink-0" />
+      ) : current === "dark" ? (
+        <MoonIcon size={18} className="shrink-0" />
+      ) : (
+        <Monitor className="size-[18px] shrink-0" />
+      )}
       {!collapsed && <span>{mounted ? label : "Tema"}</span>}
     </button>
   );
