@@ -50,6 +50,11 @@ import {
   viewsByHour,
   viewsByWeekday,
 } from "@/modules/analytics/insights";
+import {
+  attributeFollowers,
+  dailyFollowerDeltas,
+  type FollowerDelta,
+} from "@/modules/analytics/attribution";
 import { RESERVED_TAGS } from "@/core/lib/content-type";
 import { monthKey } from "@/core/lib/datetime";
 import { formatCount, formatDate, formatPercent } from "@/core/lib/format";
@@ -182,6 +187,22 @@ export default async function GrowthPage({
   const cadence = postingCadence(videos);
   const summary = summarize(videos);
 
+  // Atribución de seguidores: deltas diarios por plataforma × ventana de cada video.
+  const deltasByPlatform = new Map<Platform, FollowerDelta[]>(
+    accountSeries.map((s) => [
+      s.platform,
+      dailyFollowerDeltas(
+        s.points.map((p) => ({
+          capturedAt: new Date(p.capturedAt),
+          followers: p.followers,
+        })),
+      ),
+    ]),
+  );
+  const attributed = attributeFollowers(videos, deltasByPlatform)
+    .filter((a) => a.gained > 0)
+    .slice(0, 8);
+
   // Quick wins: momentum del catálogo, duración (solo TikTok) y caption.
   const momentum = gainedByMonth(await readSnapshotSeries({ platform }));
   const momentumData: InsightDatum[] = momentum.map((m) => ({
@@ -304,6 +325,64 @@ export default async function GrowthPage({
               <GrowthLineChart data={growthData} series={growthSeries} />
             </CardContent>
           </Card>
+
+          {/* Atribución de seguidores */}
+          {attributed.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  Videos que coinciden con seguidores nuevos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Seguidores ganados por la cuenta en la ventana de publicación
+                  (día del post + siguiente). Correlación, no causalidad: el
+                  delta es de toda la cuenta.
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Video</TableHead>
+                      <TableHead>Plataforma</TableHead>
+                      <TableHead>Publicado</TableHead>
+                      <TableHead className="text-right">Seguidores</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attributed.map(({ row, gained, sharedWindow }) => (
+                      <TableRow key={`${row.video.platform}-${row.video.externalId}`}>
+                        <TableCell className="max-w-xs">
+                          <Link
+                            href={`/video/${row.video.platform}/${row.video.externalId}`}
+                            className="hover:underline"
+                          >
+                            <p className="truncate text-sm">
+                              {row.video.caption ?? "—"}
+                            </p>
+                          </Link>
+                          {sharedWindow && (
+                            <span className="text-muted-foreground text-xs">
+                              ventana compartida con otro video
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {row.video.platform}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {formatDate(row.video.publishedAt, CREATOR_TIMEZONE)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          +{formatCount(gained)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Rendimiento por tipo */}
           <Card>
