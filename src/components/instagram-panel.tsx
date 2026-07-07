@@ -110,7 +110,13 @@ function InsightCharts({ videos }: { videos: VideoWithMetrics[] }) {
   );
 }
 
-function VideoTableRow({ row }: { row: VideoWithMetrics }) {
+function VideoTableRow({
+  row,
+  breakout,
+}: {
+  row: VideoWithMetrics;
+  breakout?: boolean;
+}) {
   const { video, metrics } = row;
   const href = `/video/instagram/${video.externalId}`;
   return (
@@ -141,7 +147,14 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
       </TableCell>
       <TableCell className="max-w-xs">
         <Link href={href} className="hover:underline">
-          <p className="truncate text-sm">{video.caption ?? "—"}</p>
+          <p className="truncate text-sm">
+            {breakout && (
+              <Badge className="border-transparent bg-primary/15 text-primary mr-1.5 align-middle">
+                Breakout
+              </Badge>
+            )}
+            {video.caption ?? "—"}
+          </p>
         </Link>
         {video.hashtags.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -165,7 +178,13 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
   );
 }
 
-function Overview({ overview }: { overview: InstagramOverview }) {
+function Overview({
+  overview,
+  breakouts,
+}: {
+  overview: InstagramOverview;
+  breakouts?: Set<string>;
+}) {
   const { account, videos } = overview;
   const summary = summarize(videos);
   const bestDay = bestBucket(viewsByWeekday(videos));
@@ -218,7 +237,11 @@ function Overview({ overview }: { overview: InstagramOverview }) {
               </TableHeader>
               <TableBody>
                 {videos.map((row) => (
-                  <VideoTableRow key={row.video.externalId} row={row} />
+                  <VideoTableRow
+                    key={row.video.externalId}
+                    row={row}
+                    breakout={breakouts?.has(row.video.externalId)}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -229,7 +252,13 @@ function Overview({ overview }: { overview: InstagramOverview }) {
   );
 }
 
-export function InstagramPanel({ result }: { result: InstagramReadResult }) {
+export function InstagramPanel({
+  result,
+  breakouts,
+}: {
+  result: InstagramReadResult;
+  breakouts?: Set<string>;
+}) {
   switch (result.status) {
     case "disconnected":
       return (
@@ -245,7 +274,7 @@ export function InstagramPanel({ result }: { result: InstagramReadResult }) {
         </p>
       );
     case "ok":
-      return <Overview overview={result.overview} />;
+      return <Overview overview={result.overview} breakouts={breakouts} />;
   }
 }
 
