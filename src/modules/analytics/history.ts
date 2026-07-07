@@ -2,6 +2,7 @@ import "server-only";
 import type { Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
 import type { VideoWithMetrics } from "./insights";
+import { toAgePoints, type AgePoint } from "./timeseries";
 
 /**
  * Capa de lectura de la historia persistida en Supabase (`ra_*`). Es el primer
@@ -199,5 +200,77 @@ export async function readVideoHistory(
     comments: s.comments,
     shares: s.shares,
     saved: s.saved,
+  }));
+}
+
+export interface VideoSeries {
+  externalId: string;
+  platform: Platform;
+  points: AgePoint[];
+}
+
+/** Solo consideramos videos recientes: la edad-N solo aplica a los que tienen
+ *  historia temprana (publicados tras arrancar la ingesta). */
+const SERIES_PUBLISHED_WITHIN_DAYS = 120;
+const SNAPSHOT_PAGE = 1000;
+
+/** Trae TODOS los snapshots de un set de videos, paginando para no toparse con
+ *  el límite de filas por request de Supabase (default 1000). */
+async function fetchAllVideoSnapshots(
+  supabase: ReturnType<typeof createAdminClient>,
+  videoIds: string[],
+): Promise<{ video_id: string; captured_at: string; views: number }[]> {
+  const rows: { video_id: string; captured_at: string; views: number }[] = [];
+  for (let from = 0; ; from += SNAPSHOT_PAGE) {
+    const { data, error } = await supabase
+      .from("ra_video_snapshots")
+      .select("video_id, captured_at, views")
+      .in("video_id", videoIds)
+      .order("captured_at", { ascending: true })
+      .range(from, from + SNAPSHOT_PAGE - 1);
+    if (error) throw new Error(`ra_video_snapshots: ${error.message}`);
+    rows.push(...(data ?? []));
+    if (!data || data.length < SNAPSHOT_PAGE) break;
+  }
+  return rows;
+}
+
+/**
+ * Serie por edad de cada video reciente, para calcular métricas normalizadas
+ * (vistas a N días, velocidad inicial) sobre el conjunto. Es más pesada que
+ * `readGrowth` (trae toda la historia), por eso se acota a videos recientes.
+ */
+export async function readVideoSeries(
+  { platform }: { platform?: Platform } = {},
+): Promise<VideoSeries[]> {
+  const supabase = createAdminClient();
+  const cutoff = new Date(
+    Date.now() - SERIES_PUBLISHED_WITHIN_DAYS * 86_400_000,
+  ).toISOString();
+
+  let query = supabase
+    .from("ra_videos")
+    .select("id, external_id, platform, published_at")
+    .gte("published_at", cutoff);
+  if (platform) query = query.eq("platform", platform);
+  const { data: videos, error } = await query;
+  if (error) throw new Error(`ra_videos: ${error.message}`);
+  if (!videos || videos.length === 0) return [];
+
+  const snaps = await fetchAllVideoSnapshots(
+    supabase,
+    videos.map((v) => v.id),
+  );
+  const byVideo = new Map<string, { capturedAt: Date; views: number }[]>();
+  for (const s of snaps) {
+    const list = byVideo.get(s.video_id) ?? [];
+    list.push({ capturedAt: new Date(s.captured_at), views: s.views });
+    byVideo.set(s.video_id, list);
+  }
+
+  return videos.map((v) => ({
+    externalId: v.external_id,
+    platform: v.platform,
+    points: toAgePoints(new Date(v.published_at), byVideo.get(v.id) ?? []),
   }));
 }

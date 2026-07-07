@@ -25,7 +25,16 @@ import {
   type GrowthSeries,
 } from "@/components/charts/growth-line-chart";
 import { MonthSelect } from "@/components/dashboard/month-select";
-import { readGrowth, type AccountSeries } from "@/modules/analytics/history";
+import {
+  MetricToggle,
+  type MetricMode,
+} from "@/components/dashboard/metric-toggle";
+import {
+  readGrowth,
+  readVideoSeries,
+  type AccountSeries,
+} from "@/modules/analytics/history";
+import { DEFAULT_AGE_DAYS, viewsAtAge } from "@/modules/analytics/timeseries";
 import {
   bestBucket,
   CREATOR_TIMEZONE,
@@ -148,9 +157,14 @@ function mergeSeries(seriesList: AccountSeries[]): {
 export default async function GrowthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ platform?: string; month?: string }>;
+  searchParams: Promise<{ platform?: string; month?: string; metric?: string }>;
 }) {
-  const { platform: platformParam, month: monthParam } = await searchParams;
+  const {
+    platform: platformParam,
+    month: monthParam,
+    metric: metricParam,
+  } = await searchParams;
+  const metric: MetricMode = metricParam === "age7" ? "age7" : "total";
   const platform: Platform | undefined =
     platformParam === "tiktok" || platformParam === "instagram"
       ? platformParam
@@ -191,9 +205,25 @@ export default async function GrowthPage({
     ? videos.filter((v) => monthKey(v.video.publishedAt, CREATOR_TIMEZONE) === month)
     : videos;
 
-  const weekdayBuckets = viewsByWeekday(videosForCharts);
+  // Normalización por edad: reemplaza las vistas de por vida por las vistas a 7
+  // días (comparación justa). Los videos sin historia temprana se excluyen.
+  const viewsAt7 = new Map(
+    (metric === "age7" ? await readVideoSeries({ platform }) : []).map((s) => [
+      s.externalId,
+      viewsAtAge(s.points, DEFAULT_AGE_DAYS),
+    ]),
+  );
+  const chartRows =
+    metric === "age7"
+      ? videosForCharts.flatMap((r) => {
+          const v = viewsAt7.get(r.video.externalId);
+          return v == null ? [] : [{ ...r, metrics: { ...r.metrics, views: v } }];
+        })
+      : videosForCharts;
+
+  const weekdayBuckets = viewsByWeekday(chartRows);
   const bestDay = bestBucket(weekdayBuckets);
-  const hourBuckets = viewsByHour(videosForCharts);
+  const hourBuckets = viewsByHour(chartRows);
   const bestHour = bestBucket(hourBuckets);
 
   const weekdayData: InsightDatum[] = weekdayBuckets.map((b) => ({
@@ -201,14 +231,12 @@ export default async function GrowthPage({
     value: Math.round(b.avgViews),
     highlight: b.label === bestDay?.label,
   }));
-  const hashtagData: InsightDatum[] = topHashtags(
-    videosForCharts,
-    8,
-    RESERVED_TAGS,
-  ).map((h) => ({
-    label: `#${h.tag}`,
-    value: h.totalViews,
-  }));
+  const hashtagData: InsightDatum[] = topHashtags(chartRows, 8, RESERVED_TAGS).map(
+    (h) => ({
+      label: `#${h.tag}`,
+      value: h.totalViews,
+    }),
+  );
 
   const monthSuffix = activeMonthLabel ? ` — ${activeMonthLabel}` : "";
 
@@ -417,11 +445,16 @@ export default async function GrowthPage({
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground text-xs">
-                {activeMonthLabel
-                  ? `Gráficas filtradas: ${activeMonthLabel} (${videosForCharts.length} videos)`
-                  : "Gráficas sobre todos los meses"}
+                {metric === "age7"
+                  ? `Vistas a ${DEFAULT_AGE_DAYS} días — ${chartRows.length} de ${videosForCharts.length} videos con historia temprana`
+                  : activeMonthLabel
+                    ? `Gráficas filtradas: ${activeMonthLabel} (${videosForCharts.length} videos)`
+                    : "Gráficas sobre todos los meses"}
               </span>
-              <MonthSelect active={month} options={monthOptions} />
+              <div className="flex flex-wrap items-center gap-2">
+                <MetricToggle active={metric} />
+                <MonthSelect active={month} options={monthOptions} />
+              </div>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
