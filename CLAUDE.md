@@ -53,6 +53,12 @@ sin exceder el rate limit de IG (~200 llamadas/usuario/hora) ni los 60 s del pla
 semanal por Telegram** (`modules/digest`, `core/lib/telegram.ts`) que además hace de
 watchdog de la ingesta. Ver `ROADMAP.md` para las fases de análisis planificadas.
 
+**Servidor MCP** (`/api/mcp`, route en `app/api/[transport]/route.ts` con `mcp-handler`):
+expone la analítica persistida como tools de solo lectura (`modules/mcp/tools.ts`:
+search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_summary)
+para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
+rendimiento real. Auth: `Authorization: Bearer MCP_SECRET` (excluido del middleware).
+
 > Nota de UI: shadcn quedó sobre **Base UI** (`@base-ui/react`), no Radix. El `Button` NO
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
 > `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
