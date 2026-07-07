@@ -60,6 +60,107 @@ export function viewsAtAge(
   return Math.round(lower.views + t * (upper.views - lower.views));
 }
 
+// ------------------------------------------------------------- Cohortes
+
+/** Mínimo de videos con dato a una edad para que la mediana sea representativa. */
+export const MIN_COHORT = 4;
+
+/** Umbral de breakout: cuántas veces la mediana hay que superar. */
+export const BREAKOUT_FACTOR = 2;
+
+/** Mediana simple; null para lista vacía. */
+export function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Mediana de vistas del cohorte a una edad dada. Solo cuentan los videos cuya
+ * serie realmente acota esa edad (`viewsAtAge` no-null); si son menos de
+ * `minCohort`, no hay mediana honesta → null.
+ */
+export function medianViewsAt(
+  cohort: AgePoint[][],
+  ageDays: number,
+  minCohort = MIN_COHORT,
+): number | null {
+  const values = cohort
+    .map((points) => viewsAtAge(points, ageDays))
+    .filter((v): v is number => v !== null);
+  if (values.length < minCohort) return null;
+  return median(values);
+}
+
+/**
+ * Curva "típica" del cohorte: mediana de vistas a cada edad entera 1..maxAge.
+ * Se corta donde el cohorte deja de ser suficiente (los videos más viejos son
+ * pocos). Es el benchmark que se superpone a la curva de un video.
+ */
+export function medianCurve(
+  cohort: AgePoint[][],
+  maxAgeDays = 30,
+  minCohort = MIN_COHORT,
+): AgePoint[] {
+  const curve: AgePoint[] = [];
+  for (let age = 1; age <= maxAgeDays; age++) {
+    const value = medianViewsAt(cohort, age, minCohort);
+    if (value === null) break;
+    curve.push({ ageDays: age, views: Math.round(value) });
+  }
+  return curve;
+}
+
+export interface BenchmarkResult {
+  /** cuántas veces la mediana lleva el video (1 = igual al típico). */
+  multiple: number;
+  /** edad (días) a la que se comparó. */
+  atAgeDays: number;
+  /** vistas del video y de la mediana a esa edad. */
+  videoViews: number;
+  medianViews: number;
+}
+
+/**
+ * Compara un video contra su cohorte a la mayor edad entera donde AMBOS tienen
+ * dato (el video la acota con snapshots y el cohorte alcanza `minCohort`).
+ * Null si nunca coinciden — p. ej. video sin historia temprana o cohorte chico.
+ */
+export function benchmarkAgainstCohort(
+  points: AgePoint[],
+  cohort: AgePoint[][],
+  minCohort = MIN_COHORT,
+): BenchmarkResult | null {
+  const maxAge = points.length > 0 ? Math.floor(points[points.length - 1].ageDays) : 0;
+  for (let age = maxAge; age >= 1; age--) {
+    const videoViews = viewsAtAge(points, age);
+    if (videoViews === null) continue;
+    const medianViews = medianViewsAt(cohort, age, minCohort);
+    if (medianViews === null || medianViews <= 0) continue;
+    return {
+      multiple: videoViews / medianViews,
+      atAgeDays: age,
+      videoViews,
+      medianViews,
+    };
+  }
+  return null;
+}
+
+/** Un video "despega" si supera `factor`× la mediana de su cohorte a su edad. */
+export function isBreakout(
+  points: AgePoint[],
+  cohort: AgePoint[][],
+  factor = BREAKOUT_FACTOR,
+  minCohort = MIN_COHORT,
+): boolean {
+  const result = benchmarkAgainstCohort(points, cohort, minCohort);
+  return result !== null && result.multiple >= factor;
+}
+
 /** Ventana (días) para medir el arranque de un video. */
 const INITIAL_WINDOW_DAYS = 3;
 
