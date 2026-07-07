@@ -49,7 +49,9 @@ en `ra_connections` y se **auto-refrescan antes de usar** (`modules/accounts/tok
 Instagram usa **rotación**: franja reciente (30 días) + lote de ~50 Reels viejos con el
 snapshot más antiguo por corrida — así todo el catálogo recibe snapshot al menos semanal
 sin exceder el rate limit de IG (~200 llamadas/usuario/hora) ni los 60 s del plan Hobby
-(máx. 2 crons, 1 disparo/día). Ver `ROADMAP.md` para las fases de análisis planificadas.
+(máx. 2 crons, 1 disparo/día). El 2.º cron (`/api/cron/digest`, lunes) manda un **digest
+semanal por Telegram** (`modules/digest`, `core/lib/telegram.ts`) que además hace de
+watchdog de la ingesta. Ver `ROADMAP.md` para las fases de análisis planificadas.
 
 > Nota de UI: shadcn quedó sobre **Base UI** (`@base-ui/react`), no Radix. El `Button` NO
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
