@@ -120,7 +120,7 @@ export default async function InstagramVideoPage({
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
 
-      <VideoGrowth points={history} />
+      <VideoGrowth points={history} publishedAt={video.publishedAt} />
     </PageShell>
   );
 }

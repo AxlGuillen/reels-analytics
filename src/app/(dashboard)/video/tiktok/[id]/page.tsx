@@ -143,7 +143,7 @@ export default async function VideoDetailPage({
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
 
-      <VideoGrowth points={history} />
+      <VideoGrowth points={history} publishedAt={video.publishedAt} />
     </PageShell>
   );
 }
