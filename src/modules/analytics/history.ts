@@ -274,3 +274,33 @@ export async function readVideoSeries(
     points: toAgePoints(new Date(v.published_at), byVideo.get(v.id) ?? []),
   }));
 }
+
+/**
+ * Series calendario (capturedAt + views) de TODOS los videos de la plataforma,
+ * para el momentum del catálogo (`gainedByMonth`). A diferencia de
+ * `readVideoSeries`, no filtra por fecha de publicación: los deltas de los
+ * videos viejos (rotación) también cuentan.
+ */
+export async function readSnapshotSeries(
+  { platform }: { platform?: Platform } = {},
+): Promise<{ capturedAt: Date; views: number }[][]> {
+  const supabase = createAdminClient();
+
+  let query = supabase.from("ra_videos").select("id");
+  if (platform) query = query.eq("platform", platform);
+  const { data: videos, error } = await query;
+  if (error) throw new Error(`ra_videos: ${error.message}`);
+  if (!videos || videos.length === 0) return [];
+
+  const snaps = await fetchAllVideoSnapshots(
+    supabase,
+    videos.map((v) => v.id),
+  );
+  const byVideo = new Map<string, { capturedAt: Date; views: number }[]>();
+  for (const s of snaps) {
+    const list = byVideo.get(s.video_id) ?? [];
+    list.push({ capturedAt: new Date(s.captured_at), views: s.views });
+    byVideo.set(s.video_id, list);
+  }
+  return [...byVideo.values()];
+}

@@ -31,18 +31,22 @@ import {
 } from "@/components/dashboard/metric-toggle";
 import {
   readGrowth,
+  readSnapshotSeries,
   readVideoSeries,
   type AccountSeries,
 } from "@/modules/analytics/history";
 import { DEFAULT_AGE_DAYS, viewsAtAge } from "@/modules/analytics/timeseries";
 import {
   bestBucket,
+  captionStats,
   CREATOR_TIMEZONE,
+  gainedByMonth,
   groupByContentType,
   postingCadence,
   summarize,
   topHashtags,
   videosByPublishMonth,
+  viewsByDuration,
   viewsByHour,
   viewsByWeekday,
 } from "@/modules/analytics/insights";
@@ -177,6 +181,16 @@ export default async function GrowthPage({
   const byMonth = videosByPublishMonth(videos);
   const cadence = postingCadence(videos);
   const summary = summarize(videos);
+
+  // Quick wins: momentum del catálogo, duración (solo TikTok) y caption.
+  const momentum = gainedByMonth(await readSnapshotSeries({ platform }));
+  const momentumData: InsightDatum[] = momentum.map((m) => ({
+    label: m.label,
+    value: m.gained,
+  }));
+  const durationBuckets = viewsByDuration(videos);
+  const durationCount = durationBuckets.reduce((sum, b) => sum + b.count, 0);
+  const captions = captionStats(videos);
 
   // Destacados del bloque mensual.
   const monthMostViews = maxBy(byMonth, (m) => m.totalViews);
@@ -393,6 +407,23 @@ export default async function GrowthPage({
             </CardContent>
           </Card>
 
+          {/* Momentum: vistas ganadas por mes (deltas de snapshots) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">
+                Momentum del catálogo — vistas ganadas por mes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-muted-foreground text-xs">
+                Suma de los deltas entre snapshots: cuánto creció TODO tu
+                contenido cada mes (no solo lo publicado ese mes). Empieza a
+                contar desde que arrancó la ingesta.
+              </p>
+              <InsightBarChart data={momentumData} valueLabel="vistas ganadas" />
+            </CardContent>
+          </Card>
+
           {/* Cadencia + KPIs */}
           <section className="grid gap-4 lg:grid-cols-2">
             <Card>
@@ -438,7 +469,79 @@ export default async function GrowthPage({
                 value={bestHour ? bestHour.label : "—"}
                 hint={bestHour ? `${formatCount(Math.round(bestHour.avgViews))} vistas prom.` : undefined}
               />
+              <Kpi
+                label="Engagement ponderado"
+                value={formatPercent(summary.weightedEngagement)}
+                hint={`prom. simple: ${formatPercent(summary.avgEngagement)}`}
+              />
             </div>
+          </section>
+
+          {/* Formato y caption */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Duración → vistas prom.</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Solo TikTok expone la duración ({durationCount} videos
+                  considerados; Instagram no la da).
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Duración</TableHead>
+                      <TableHead className="text-right">Videos</TableHead>
+                      <TableHead className="text-right">Vistas prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {durationBuckets.map((b) => (
+                      <TableRow key={b.label}>
+                        <TableCell className="font-medium">{b.label}</TableCell>
+                        <TableCell className="text-right tabular-nums">{b.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCount(Math.round(b.avgViews))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Caption → vistas prom.</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Sobre el texto antes de los hashtags. Correlación, no
+                  causalidad.
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Característica</TableHead>
+                      <TableHead className="text-right">Videos</TableHead>
+                      <TableHead className="text-right">Vistas prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {captions.map((c) => (
+                      <TableRow key={c.label}>
+                        <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-right tabular-nums">{c.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCount(Math.round(c.avgViews))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Hashtags / día — filtrables por mes */}
