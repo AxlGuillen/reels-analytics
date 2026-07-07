@@ -154,3 +154,50 @@ export async function readGrowth(
 
   return { videos, accountSeries: [...seriesByAccount.values()] };
 }
+
+export interface VideoHistoryPoint {
+  capturedAt: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number | null;
+}
+
+/**
+ * Serie temporal COMPLETA de un video (todos sus snapshots, orden cronológico).
+ * Es el insumo para graficar el crecimiento de un video restando capturas.
+ * Devuelve `[]` si el video aún no se ha ingerido a `ra_videos`.
+ */
+export async function readVideoHistory(
+  platform: Platform,
+  externalId: string,
+): Promise<VideoHistoryPoint[]> {
+  const supabase = createAdminClient();
+
+  const { data: videos, error: vidErr } = await supabase
+    .from("ra_videos")
+    .select("id")
+    .eq("platform", platform)
+    .eq("external_id", externalId)
+    .limit(1);
+  if (vidErr) throw new Error(`ra_videos: ${vidErr.message}`);
+  const videoId = videos?.[0]?.id;
+  if (!videoId) return [];
+
+  const { data: snaps, error: snapErr } = await supabase
+    .from("ra_video_snapshots")
+    .select("captured_at, views, likes, comments, shares, saved")
+    .eq("video_id", videoId)
+    .order("captured_at", { ascending: true });
+  if (snapErr) throw new Error(`ra_video_snapshots: ${snapErr.message}`);
+
+  return (snaps ?? []).map((s) => ({
+    capturedAt: s.captured_at,
+    views: s.views,
+    likes: s.likes,
+    comments: s.comments,
+    shares: s.shares,
+    saved: s.saved,
+  }));
+}

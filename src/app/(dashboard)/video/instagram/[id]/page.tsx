@@ -2,19 +2,12 @@ import Link from "next/link";
 import { MoveLeftIcon } from "@animateicons/react/lucide";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  formatCount,
-  formatDateTime,
-  formatDuration,
-  formatPercent,
-} from "@/core/lib/format";
+import { formatCount, formatDateTime, formatPercent } from "@/core/lib/format";
 import { weekday } from "@/core/lib/datetime";
 import { CREATOR_TIMEZONE as TZ, engagementRate } from "@/modules/analytics/insights";
 import { readVideoHistory } from "@/modules/analytics/history";
 import { VideoGrowth } from "@/components/video-growth";
-import { queryVideos } from "@/modules/tiktok/api";
-import { toVideo, toVideoMetrics } from "@/modules/tiktok/mappers";
-import { getSession, isExpired } from "@/modules/tiktok/session";
+import { readInstagramVideo } from "@/modules/instagram/read";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -29,65 +22,51 @@ function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 md:px-8">
       <Link
-        href="/tiktok"
+        href="/instagram"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
       >
-        <MoveLeftIcon size={16} /> TikTok
+        <MoveLeftIcon size={16} /> Instagram
       </Link>
       {children}
     </div>
   );
 }
 
-export default async function VideoDetailPage({
+export default async function InstagramVideoPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await getSession();
+  const result = await readInstagramVideo(id);
 
-  if (!session || isExpired(session)) {
+  if (result.status === "disconnected") {
     return (
       <PageShell>
         <p className="text-muted-foreground text-sm">
-          Sesión no disponible. Vuelve a conectar TikTok desde Conexiones.
+          Falta configurar el acceso a Instagram para leer este Reel.
         </p>
       </PageShell>
     );
   }
-
-  let raw;
-  try {
-    const results = await queryVideos(session.accessToken, [id]);
-    raw = results[0];
-  } catch (err) {
+  if (result.status === "error") {
     return (
       <PageShell>
         <p className="text-destructive text-sm">
-          Error al leer el video: {err instanceof Error ? err.message : "desconocido"}
+          Error al leer el Reel: {result.message}
         </p>
       </PageShell>
     );
   }
 
-  if (!raw) {
-    return (
-      <PageShell>
-        <p className="text-muted-foreground text-sm">Video no encontrado.</p>
-      </PageShell>
-    );
-  }
-
-  const video = toVideo(raw);
-  const metrics = toVideoMetrics(raw);
-  const history = await readVideoHistory("tiktok", id);
+  const { video, metrics } = result.row;
+  const history = await readVideoHistory("instagram", id);
 
   return (
     <PageShell>
       <div className="flex flex-col gap-6 sm:flex-row">
         {video.thumbnailUrl && (
-          // eslint-disable-next-line @next/next/no-img-element -- CDN de TikTok con URL firmada
+          // eslint-disable-next-line @next/next/no-img-element -- CDN de Instagram con URL firmada
           <img
             src={video.thumbnailUrl}
             alt=""
@@ -99,14 +78,11 @@ export default async function VideoDetailPage({
         )}
         <div className="space-y-4">
           <div>
-            <h1 className="font-display text-2xl tracking-wide">Detalle del video</h1>
+            <h1 className="font-display text-2xl tracking-wide">Detalle del Reel</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Publicado el {formatDateTime(video.publishedAt, TZ)} (
               <span className="capitalize">{weekday(video.publishedAt, TZ)}</span>) ·
               zona {TZ}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Duración {formatDuration(video.durationSeconds)}
             </p>
           </div>
 
@@ -129,7 +105,7 @@ export default async function VideoDetailPage({
               rel="noreferrer"
               className={buttonVariants({ variant: "outline" })}
             >
-              Ver en TikTok ↗
+              Ver en Instagram ↗
             </Link>
           )}
         </div>
@@ -140,6 +116,7 @@ export default async function VideoDetailPage({
         <Stat label="Likes" value={formatCount(metrics.likes)} />
         <Stat label="Comentarios" value={formatCount(metrics.comments)} />
         <Stat label="Compartidos" value={formatCount(metrics.shares)} />
+        <Stat label="Guardados" value={formatCount(metrics.saved)} />
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
 

@@ -1,7 +1,12 @@
 import { env } from "@/core/config/env";
 import type { AccountStats } from "@/core/domain";
 import type { VideoWithMetrics } from "@/modules/analytics/insights";
-import { fetchMediaInsights, fetchMediaPage, fetchUserInfo } from "./api";
+import {
+  fetchMediaById,
+  fetchMediaInsights,
+  fetchMediaPage,
+  fetchUserInfo,
+} from "./api";
 import { toAccountStats, toVideo, toVideoMetrics } from "./mappers";
 import type { IgMedia } from "./types";
 
@@ -124,6 +129,38 @@ export async function readInstagramOverview(
     return {
       status: "ok",
       overview: await readInstagramOverviewByToken(accessToken, options),
+    };
+  } catch (err) {
+    return {
+      status: "error",
+      message: err instanceof Error ? err.message : "error desconocido",
+    };
+  }
+}
+
+export type InstagramVideoResult =
+  | { status: "disconnected" }
+  | { status: "error"; message: string }
+  | { status: "ok"; row: VideoWithMetrics };
+
+/** Métricas vigentes de un Reel concreto (nodo media + insights). */
+export async function readInstagramVideo(
+  mediaId: string,
+): Promise<InstagramVideoResult> {
+  const accessToken = env("INSTAGRAM_ACCESS_TOKEN");
+  if (!accessToken) return { status: "disconnected" };
+
+  try {
+    const capturedAt = new Date();
+    const media = await fetchMediaById(accessToken, mediaId);
+    // Insights puede fallar en Reels muy nuevos: cae al nodo media.
+    const insights = await fetchMediaInsights(accessToken, mediaId).catch(() => ({}));
+    return {
+      status: "ok",
+      row: {
+        video: toVideo(media),
+        metrics: toVideoMetrics(media, insights, capturedAt),
+      },
     };
   } catch (err) {
     return {

@@ -109,6 +109,14 @@ export async function refreshLongLivedToken(
   };
 }
 
+/** Un Reel concreto por su id (mismos campos que la lista). */
+export function fetchMediaById(
+  accessToken: string,
+  mediaId: string,
+): Promise<IgMedia> {
+  return request<IgMedia>(mediaId, accessToken, { fields: MEDIA_FIELDS.join(",") });
+}
+
 /** Una página de media de la cuenta. `after` = cursor de la página previa. */
 export function fetchMediaPage(
   accessToken: string,
