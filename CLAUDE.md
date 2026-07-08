@@ -55,7 +55,8 @@ watchdog de la ingesta. Ver `ROADMAP.md` para las fases de análisis planificada
 
 **Servidor MCP** (`/api/mcp`, route en `app/api/[transport]/route.ts` con `mcp-handler`):
 expone la analítica persistida como tools de solo lectura (`modules/mcp/tools.ts`:
-search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_summary)
+search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_summary,
+get_activity_timeline día/semana/mes, get_hashtag_stats, compare_platforms)
 para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
 rendimiento real. Auth: `Authorization: Bearer MCP_SECRET` (excluido del middleware).
 
