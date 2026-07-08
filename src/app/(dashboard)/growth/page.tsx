@@ -72,8 +72,8 @@ function maxBy<T>(items: T[], sel: (item: T) => number): T | undefined {
 }
 
 const PLATFORM_COLORS: Record<Platform, string> = {
-  tiktok: "var(--color-chart-1)",
-  instagram: "var(--color-chart-3)",
+  tiktok: "var(--color-platform-tiktok)",
+  instagram: "var(--color-platform-instagram)",
 };
 
 const FILTERS: { label: string; value?: Platform }[] = [
@@ -105,9 +105,9 @@ function PlatformFilter({ active }: { active?: Platform }) {
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-card/50 rounded-lg border p-4">
+    <div className="bg-card shadow-card rounded-lg border p-4">
       <div className="text-muted-foreground text-xs">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="mt-1 font-mono text-2xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>}
     </div>
   );

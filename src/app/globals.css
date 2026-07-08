@@ -13,7 +13,7 @@
   --color-success-foreground: var(--success-foreground);
   --color-destructive-foreground: var(--destructive-foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-sans);
+  --font-mono: var(--font-mono);
   --font-display: var(--font-sans);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -29,6 +29,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-platform-tiktok: var(--platform-tiktok);
+  --color-platform-instagram: var(--platform-instagram);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -101,6 +103,9 @@
   --sidebar-accent-foreground: #0f172a;
   --sidebar-border: #e2e8f0;
   --sidebar-ring: #6366f1;
+  /* Acentos por plataforma: SOLO en contextos comparativos (charts, badges). */
+  --platform-tiktok: #0891b2;
+  --platform-instagram: #db2777;
   /* Elevación (claro): sombras índigo-gris suaves; la profundidad la da la luz. */
   --elev-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 2px 8px -2px rgb(15 23 42 / 0.08);
   --elev-lift:
@@ -145,6 +150,9 @@
   --sidebar-accent-foreground: #e2e8f0;
   --sidebar-border: #1e293b;
   --sidebar-ring: #6366f1;
+  /* Acentos por plataforma (variantes claras para fondo oscuro). */
+  --platform-tiktok: #22d3ee;
+  --platform-instagram: #f472b6;
   /* Elevación (oscuro): la sombra negra apenas se ve → borde luminoso superior
      (inset) + halo índigo hacen el trabajo de separar planos. */
   --elev-card:
@@ -182,7 +190,15 @@
         40rem 26rem at -10% 105%,
         color-mix(in oklab, var(--primary) 5%, transparent),
         transparent 65%
+      ),
+      radial-gradient(
+        color-mix(in oklab, var(--foreground) 6%, transparent) 1px,
+        transparent 1px
       );
+    background-size:
+      auto,
+      auto,
+      26px 26px;
   }
 
   /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */
