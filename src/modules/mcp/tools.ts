@@ -5,7 +5,7 @@ import {
   contentTypeLabel,
   type ContentTypeKey,
 } from "@/core/lib/content-type";
-import { dayKey } from "@/core/lib/datetime";
+import { dayKey, monthKey } from "@/core/lib/datetime";
 import { dailyFollowerDeltas } from "@/modules/analytics/attribution";
 import {
   readBreakoutDetails,
@@ -19,6 +19,7 @@ import {
 } from "@/modules/analytics/history";
 import {
   bestBucket,
+  CREATOR_TIMEZONE,
   engagementRate,
   gainedByMonth,
   summarize,
@@ -212,10 +213,13 @@ export async function getActivityTimeline(params: {
     granularity,
   );
 
-  // Las claves (YYYY-MM-DD / YYYY-MM) son lexicográficamente ordenables.
-  const cutoffKey = new Date(Date.now() - sinceDays * 86_400_000)
-    .toISOString()
-    .slice(0, granularity === "month" ? 7 : 10);
+  // Las claves (YYYY-MM-DD / YYYY-MM) son lexicográficamente ordenables. El
+  // cutoff se llavea en la MISMA zona que los buckets (evita desfase de bordes).
+  const cutoffDate = new Date(Date.now() - sinceDays * 86_400_000);
+  const cutoffKey =
+    granularity === "month"
+      ? monthKey(cutoffDate, CREATOR_TIMEZONE)
+      : dayKey(cutoffDate, CREATOR_TIMEZONE);
   const firstCapture = accountSeries
     .flatMap((s) => s.points.map((p) => p.capturedAt))
     .sort()[0];
@@ -284,7 +288,8 @@ export async function getHashtagStats(params: {
 export async function comparePlatforms(params: { sinceDays?: number } = {}) {
   const sinceDays = params.sinceDays ?? 30;
   const cutoff = Date.now() - sinceDays * 86_400_000;
-  const cutoffDay = new Date(cutoff).toISOString().slice(0, 10);
+  // Mismo día calendario que los deltas de seguidores (que usan CREATOR_TIMEZONE).
+  const cutoffDay = dayKey(new Date(cutoff), CREATOR_TIMEZONE);
 
   const platforms: Platform[] = ["tiktok", "instagram"];
   const results = await Promise.all(
@@ -400,7 +405,7 @@ async function scriptPlatformSection(
   return [
     `  ${row.video.platform}:`,
     `    id: "${row.video.externalId}"`,
-    `    publicado: "${dayKey(row.video.publishedAt, "America/Mexico_City")}"`,
+    `    publicado: "${dayKey(row.video.publishedAt, CREATOR_TIMEZONE)}"`,
     `    vistas: ${m.views}`,
     `    likes: ${m.likes}`,
     `    comentarios: ${m.comments}`,
@@ -461,7 +466,7 @@ export async function getScriptStatsBlock(params: {
 
   const yaml = [
     "stats:",
-    `  actualizado: "${dayKey(new Date(), "America/Mexico_City")}"`,
+    `  actualizado: "${dayKey(new Date(), CREATOR_TIMEZONE)}"`,
     `  corte_dias: ${ageDays}`,
     ...sections,
     "  total:",
