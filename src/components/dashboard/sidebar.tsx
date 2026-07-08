@@ -101,14 +101,17 @@ function StatusDot({ connected }: { connected: boolean }) {
   );
 }
 
-/** Estilo base compartido por links y botones del nav. */
+/**
+ * Estilo base compartido por links y botones del nav. El activo lleva triple
+ * jerarquía: barra indicadora (pseudo-elemento), fondo tenue y color primario.
+ */
 function rowClass(active: boolean, collapsed: boolean): string {
   return cn(
-    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+    "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
     collapsed && "justify-center px-0",
     active
-      ? "bg-primary/15 text-primary"
-      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+      ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary"
+      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
   );
 }
 
@@ -198,7 +201,9 @@ function SidebarNav({
         )}
         {...brandHover}
       >
-        <ActivityIcon ref={brandRef} size={20} className="text-primary shrink-0" />
+        <span className="from-primary/20 to-primary/5 ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ring-1">
+          <ActivityIcon ref={brandRef} size={17} className="text-primary" />
+        </span>
         {!collapsed && (
           <span className="font-display text-sm tracking-wide">Reels Analytics</span>
         )}
@@ -207,7 +212,7 @@ function SidebarNav({
       {GROUPS.map((group) => (
         <div key={group.title} className="mt-2">
           {!collapsed && (
-            <div className="text-muted-foreground/60 px-3 pb-1 text-[11px] tracking-wide">
+            <div className="text-muted-foreground/70 px-3 pb-1.5 text-[10px] font-medium tracking-widest uppercase">
               {group.title}
             </div>
           )}
@@ -244,7 +249,7 @@ function SidebarNav({
             aria-label="Cerrar sesión"
             title={collapsed ? "Cerrar sesión" : undefined}
             className={cn(
-              "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
               collapsed && "justify-center px-0",
             )}
             {...logoutHover}
@@ -261,7 +266,7 @@ function SidebarNav({
             aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
             title={collapsed ? "Expandir" : undefined}
             className={cn(
-              "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
               collapsed && "justify-center px-0",
             )}
             {...collapseHover}
@@ -314,7 +319,7 @@ export function DesktopSidebar({ status }: { status: ConnectionStatus }) {
   return (
     <aside
       className={cn(
-        "bg-card/40 hidden shrink-0 border-r transition-[width] duration-200 md:block",
+        "bg-sidebar text-sidebar-foreground shadow-rail hidden shrink-0 border-r transition-[width] duration-200 md:block",
         collapsed ? "w-16" : "w-60",
       )}
     >
@@ -332,7 +337,7 @@ export function MobileNav({ status }: { status: ConnectionStatus }) {
 
   return (
     <div className="md:hidden">
-      <header className="bg-card/40 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3">
+      <header className="bg-sidebar/95 shadow-card sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -350,7 +355,7 @@ export function MobileNav({ status }: { status: ConnectionStatus }) {
       {open && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/50" onClick={close} aria-hidden />
-          <div className="bg-card absolute inset-y-0 left-0 w-64 border-r">
+          <div className="bg-sidebar shadow-rail absolute inset-y-0 left-0 w-64 border-r">
             <button
               type="button"
               onClick={close}

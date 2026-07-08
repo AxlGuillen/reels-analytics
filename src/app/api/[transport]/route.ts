@@ -2,7 +2,12 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { env } from "@/core/config/env";
 import {
+  comparePlatforms,
+  getActivityTimeline,
+  getBreakouts,
   getGrowthSummary,
+  getHashtagStats,
+  getScriptStatsBlock,
   getTopVideos,
   getVideoStats,
   searchVideos,
@@ -76,6 +81,82 @@ const mcpHandler = createMcpHandler(
         },
       },
       async (args) => json(await getTopVideos(args)),
+    );
+
+    server.registerTool(
+      "get_activity_timeline",
+      {
+        title: "Actividad por periodo",
+        description:
+          "Serie por día/semana/mes: videos publicados, vistas/likes/comentarios/compartidos GANADOS en el periodo (deltas de snapshots) y seguidores ganados. Filtrable por plataforma. Solo cubre desde el inicio de la ingesta.",
+        inputSchema: {
+          granularity: z.enum(["day", "week", "month"]).optional(),
+          platform: platformSchema.optional(),
+          sinceDays: z.number().int().min(1).max(730).optional(),
+        },
+      },
+      async (args) => json(await getActivityTimeline(args)),
+    );
+
+    server.registerTool(
+      "get_hashtag_stats",
+      {
+        title: "Estadísticas de un hashtag",
+        description:
+          "Rendimiento agregado de CUALQUIER hashtag (#news, #humor, ...): cuántos videos lo llevan, vistas totales/promedio, engagement ponderado, totales de interacción y su top de videos.",
+        inputSchema: {
+          hashtag: z.string().min(1).describe("El hashtag, con o sin #"),
+          platform: platformSchema.optional(),
+          publishedWithinDays: z.number().int().min(1).optional(),
+          topN: z.number().int().min(1).max(20).optional(),
+        },
+      },
+      async (args) => json(await getHashtagStats(args)),
+    );
+
+    server.registerTool(
+      "compare_platforms",
+      {
+        title: "Comparar plataformas",
+        description:
+          "TikTok vs Instagram lado a lado en la misma ventana: seguidores y su delta, videos publicados, vistas ganadas por el catálogo y engagement de lo publicado.",
+        inputSchema: {
+          sinceDays: z.number().int().min(1).max(365).optional(),
+        },
+      },
+      async (args) => json(await comparePlatforms(args)),
+    );
+
+    server.registerTool(
+      "get_breakouts",
+      {
+        title: "Videos despegando ahora",
+        description:
+          "Videos que van a ≥2× la mediana de su plataforma a su misma edad, con su múltiplo. Vacío si el cohorte con historia temprana aún es chico.",
+        inputSchema: {
+          platform: platformSchema.optional(),
+        },
+      },
+      async (args) => json(await getBreakouts(args)),
+    );
+
+    server.registerTool(
+      "get_script_stats_block",
+      {
+        title: "Bloque de stats para un guion",
+        description:
+          "Busca el video de un guion en AMBAS plataformas por el texto/código del caption y devuelve un bloque YAML listo para pegar en el frontmatter de la nota de Obsidian (con corte por edad, default 30 días).",
+        inputSchema: {
+          query: z
+            .string()
+            .min(1)
+            .describe("El código/texto del caption que identifica al guion"),
+          ageDays: z.number().int().min(1).max(180).optional(),
+        },
+      },
+      async (args) => ({
+        content: [{ type: "text" as const, text: await getScriptStatsBlock(args) }],
+      }),
     );
 
     server.registerTool(

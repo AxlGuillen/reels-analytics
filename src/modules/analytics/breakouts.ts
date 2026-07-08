@@ -16,18 +16,36 @@ import {
  * Si el cohorte aún es chico (ingesta joven), devuelve vacío/null — honesto.
  */
 
-/** externalIds de los videos que van ≥2× la mediana de su plataforma a su edad. */
-export async function readBreakoutIds(platform: Platform): Promise<Set<string>> {
+export interface BreakoutDetail {
+  externalId: string;
+  result: BenchmarkResult;
+}
+
+/** Breakouts con su múltiplo, ordenados del más fuerte al más débil. */
+export async function readBreakoutDetails(
+  platform: Platform,
+): Promise<BreakoutDetail[]> {
   const series = await readVideoSeries({ platform });
-  const cohort = series.map((s) => s.points);
-  const ids = new Set<string>();
+  const details: BreakoutDetail[] = [];
   for (const s of series) {
     // Cohorte sin el propio video: que no compita contra sí mismo.
-    const others = series.filter((o) => o.externalId !== s.externalId);
-    if (isBreakout(s.points, others.map((o) => o.points))) ids.add(s.externalId);
+    const others = series
+      .filter((o) => o.externalId !== s.externalId)
+      .map((o) => o.points);
+    const result = benchmarkAgainstCohort(s.points, others);
+    if (result && isBreakout(s.points, others)) {
+      details.push({ externalId: s.externalId, result });
+    }
   }
   // Guard: si "todo" despega es que el cohorte no discrimina; mejor nada.
-  return ids.size * 2 > cohort.length ? new Set() : ids;
+  if (details.length * 2 > series.length) return [];
+  return details.sort((a, b) => b.result.multiple - a.result.multiple);
+}
+
+/** externalIds de los videos que van ≥2× la mediana de su plataforma a su edad. */
+export async function readBreakoutIds(platform: Platform): Promise<Set<string>> {
+  const details = await readBreakoutDetails(platform);
+  return new Set(details.map((d) => d.externalId));
 }
 
 export interface VideoBenchmark {

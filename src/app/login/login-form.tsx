@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { EyeIcon, EyeOffIcon } from "@animateicons/react/lucide";
-import { Loader2 } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signInAction, type SignInState } from "./actions";
 
@@ -16,7 +16,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-muted-foreground text-sm">
+        <label htmlFor="email" className="text-sm font-medium">
           Email
         </label>
         <input
@@ -25,12 +25,12 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="border-border bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-lg border px-3 text-sm outline-none focus-visible:ring-3"
+          className="border-border bg-background focus-visible:border-ring focus-visible:ring-ring/40 hover:border-ring/40 h-10 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3"
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-muted-foreground text-sm">
+        <label htmlFor="password" className="text-sm font-medium">
           Contraseña
         </label>
         <div className="relative">
@@ -40,7 +40,7 @@ export function LoginForm() {
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             required
-            className="border-border bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-lg border pr-10 pl-3 text-sm outline-none focus-visible:ring-3"
+            className="border-border bg-background focus-visible:border-ring focus-visible:ring-ring/40 hover:border-ring/40 h-10 w-full rounded-lg border pr-10 pl-3 text-sm transition-colors outline-none focus-visible:ring-3"
           />
           <button
             type="button"
@@ -59,9 +59,13 @@ export function LoginForm() {
       </div>
 
       {state.error && (
-        <p className="text-destructive text-sm" role="alert">
+        <div
+          className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm"
+          role="alert"
+        >
+          <CircleAlert className="mt-0.5 size-4 shrink-0" />
           {state.error}
-        </p>
+        </div>
       )}
 
       <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">

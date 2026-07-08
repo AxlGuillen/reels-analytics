@@ -38,8 +38,8 @@ import type {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card/50 rounded-lg border p-4">
-      <div className="text-2xl font-semibold tabular-nums">{value}</div>
+    <div className="bg-card shadow-card rounded-lg border p-4">
+      <div className="font-mono text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-muted-foreground text-sm">{label}</div>
     </div>
   );
