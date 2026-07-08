@@ -130,10 +130,31 @@ bunx supabase gen types typescript --project-id <id> > src/core/supabase/databas
 > Regla: **siempre usar `bun` / `bunx`**. No introducir `package-lock.json` ni
 > `pnpm-lock.yaml`; el lockfile del proyecto es `bun.lock`.
 
-## Identidad visual — "Admin profesional" (índigo sobrio, claro + oscuro)
+## Identidad visual — "Precisión editorial + Estudio de creador" (híbrido A+C)
 
 Estilo administrativo/dashboard, sobrio y neutral (migrado desde el antiguo "Arcane" gaming).
 Soporta **tema claro y oscuro** con toggle.
+
+### Contrato de estilo (la constitución; los PRs se revisan contra esto)
+
+- **Dirección**: minimalismo con profundidad suave (escuela Linear/Stripe). La profundidad
+  viene de la LUZ (sombras `shadow-card/lift/rail`, glow ambiental), nunca de ornamento.
+- **Semántica de superficies**: 3 planos — fondo → sidebar (`--sidebar` + `shadow-rail`) →
+  cards (`bg-card` + `shadow-card`). `shadow-lift` SOLO para lo que flota o pide atención
+  (login card, modales, hover de elementos clicables). KPIs a nivel de página = mini-card
+  elevada; stats DENTRO de una card = tile hundido (`bg-muted/30`, sin sombra).
+- **Números = precisión**: todo valor numérico protagonista (KPIs, métricas) usa
+  `font-mono tabular-nums` (JetBrains Mono). El texto sigue en Inter.
+- **Textura**: solo micro y ambiental (dot-grid al ~5% en fondos de página tipo login);
+  prohibido ruido pesado o patterns decorativos.
+- **Glass**: solo como acento en superficies que flotan sobre contenido (headers sticky,
+  drawers) vía `backdrop-blur`; nunca como sistema.
+- **Momentos de calidez (la parte C, dosificada)**: acentos por plataforma
+  (`--platform-tiktok` cian / `--platform-instagram` rosa) SOLO donde se comparan
+  plataformas (charts, badges comparativos); empty states con personalidad (pendiente de
+  componente); movimiento 150–300ms con significado, `prefers-reduced-motion` siempre.
+- **Restricción**: 1 CTA primaria por vista; contraste AA en ambos temas; sin emojis como
+  iconos (Lucide/AnimateIcons outline).
 
 - **Tokens** en `src/app/globals.css`: `:root` = **claro** (fondo `#f8fafc`, card `#ffffff`,
   texto `#0f172a`), `.dark` = **oscuro** (fondo slate desaturado `#0b0f1a`, card `#121826`,
