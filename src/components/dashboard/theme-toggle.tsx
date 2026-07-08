@@ -42,7 +42,7 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
       aria-label={label}
       title={collapsed ? label : undefined}
       className={cn(
-        "text-muted-foreground hover:bg-muted hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
         collapsed && "justify-center px-0",
       )}
     >

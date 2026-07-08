@@ -52,6 +52,10 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Elevación por tema (ver --elev-* en :root/.dark) → shadow-card/lift/rail. */
+  --shadow-card: var(--elev-card);
+  --shadow-lift: var(--elev-lift);
+  --shadow-rail: var(--elev-rail);
 }
 
 /*
@@ -97,6 +101,11 @@
   --sidebar-accent-foreground: #0f172a;
   --sidebar-border: #e2e8f0;
   --sidebar-ring: #6366f1;
+  /* Elevación (claro): sombras índigo-gris suaves; la profundidad la da la luz. */
+  --elev-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 2px 8px -2px rgb(15 23 42 / 0.08);
+  --elev-lift:
+    0 2px 8px -2px rgb(15 23 42 / 0.1), 0 12px 32px -12px rgb(79 70 229 / 0.25);
+  --elev-rail: 4px 0 24px -18px rgb(15 23 42 / 0.35);
 }
 
 .dark {
@@ -136,6 +145,15 @@
   --sidebar-accent-foreground: #e2e8f0;
   --sidebar-border: #1e293b;
   --sidebar-ring: #6366f1;
+  /* Elevación (oscuro): la sombra negra apenas se ve → borde luminoso superior
+     (inset) + halo índigo hacen el trabajo de separar planos. */
+  --elev-card:
+    inset 0 1px 0 rgb(255 255 255 / 0.03), 0 1px 2px rgb(0 0 0 / 0.4),
+    0 4px 16px -6px rgb(0 0 0 / 0.5);
+  --elev-lift:
+    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 12px 32px -10px rgb(0 0 0 / 0.6),
+    0 0 32px -10px rgb(99 102 241 / 0.35);
+  --elev-rail: 4px 0 28px -18px rgb(0 0 0 / 0.7);
 }
 
 @layer base {
@@ -147,5 +165,44 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  /* Luz ambiental de marca: dos radiales índigo muy tenues sobre el fondo.
+     Da profundidad sin romper la sobriedad; funciona en claro y oscuro. */
+  .bg-page-glow {
+    background-image:
+      radial-gradient(
+        56rem 32rem at 85% -10%,
+        color-mix(in oklab, var(--primary) 8%, transparent),
+        transparent 65%
+      ),
+      radial-gradient(
+        40rem 26rem at -10% 105%,
+        color-mix(in oklab, var(--primary) 5%, transparent),
+        transparent 65%
+      );
+  }
+
+  /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */
+  .animate-fade-up {
+    animation: fade-up 0.45s ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up {
+      animation: none;
+    }
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
