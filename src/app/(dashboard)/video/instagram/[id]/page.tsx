@@ -6,6 +6,7 @@ import { formatCount, formatDateTime, formatPercent } from "@/core/lib/format";
 import { weekday } from "@/core/lib/datetime";
 import { CREATOR_TIMEZONE as TZ, engagementRate } from "@/modules/analytics/insights";
 import { readVideoHistory } from "@/modules/analytics/history";
+import { readVideoBenchmark } from "@/modules/analytics/breakouts";
 import { VideoGrowth } from "@/components/video-growth";
 import { readInstagramVideo } from "@/modules/instagram/read";
 
@@ -61,6 +62,8 @@ export default async function InstagramVideoPage({
 
   const { video, metrics } = result.row;
   const history = await readVideoHistory("instagram", id);
+  // El benchmark es azúcar: si falla o no hay cohorte, la página sigue.
+  const benchmark = await readVideoBenchmark("instagram", id).catch(() => null);
 
   return (
     <PageShell>
@@ -120,7 +123,11 @@ export default async function InstagramVideoPage({
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
 
-      <VideoGrowth points={history} />
+      <VideoGrowth
+        points={history}
+        publishedAt={video.publishedAt}
+        benchmark={benchmark}
+      />
     </PageShell>
   );
 }

@@ -27,6 +27,11 @@ const SPEC = {
   INSTAGRAM_ACCESS_TOKEN: { required: false },
   // Protege el endpoint del cron (Vercel envía Bearer con este valor).
   CRON_SECRET: { required: false },
+  // Digest semanal por Telegram (bot de @BotFather + chat del creador).
+  TELEGRAM_BOT_TOKEN: { required: false },
+  TELEGRAM_CHAT_ID: { required: false },
+  // Protege el servidor MCP (/api/mcp): el cliente manda Bearer con este valor.
+  MCP_SECRET: { required: false },
 } satisfies Record<string, EnvSpec>;
 
 export type EnvKey = keyof typeof SPEC;

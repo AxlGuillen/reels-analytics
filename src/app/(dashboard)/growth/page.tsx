@@ -25,18 +25,36 @@ import {
   type GrowthSeries,
 } from "@/components/charts/growth-line-chart";
 import { MonthSelect } from "@/components/dashboard/month-select";
-import { readGrowth, type AccountSeries } from "@/modules/analytics/history";
+import {
+  MetricToggle,
+  type MetricMode,
+} from "@/components/dashboard/metric-toggle";
+import {
+  readGrowth,
+  readSnapshotSeries,
+  readVideoSeries,
+  type AccountSeries,
+} from "@/modules/analytics/history";
+import { DEFAULT_AGE_DAYS, viewsAtAge } from "@/modules/analytics/timeseries";
 import {
   bestBucket,
+  captionStats,
   CREATOR_TIMEZONE,
+  gainedByMonth,
   groupByContentType,
   postingCadence,
   summarize,
   topHashtags,
   videosByPublishMonth,
+  viewsByDuration,
   viewsByHour,
   viewsByWeekday,
 } from "@/modules/analytics/insights";
+import {
+  attributeFollowers,
+  dailyFollowerDeltas,
+  type FollowerDelta,
+} from "@/modules/analytics/attribution";
 import { RESERVED_TAGS } from "@/core/lib/content-type";
 import { monthKey } from "@/core/lib/datetime";
 import { formatCount, formatDate, formatPercent } from "@/core/lib/format";
@@ -148,9 +166,14 @@ function mergeSeries(seriesList: AccountSeries[]): {
 export default async function GrowthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ platform?: string; month?: string }>;
+  searchParams: Promise<{ platform?: string; month?: string; metric?: string }>;
 }) {
-  const { platform: platformParam, month: monthParam } = await searchParams;
+  const {
+    platform: platformParam,
+    month: monthParam,
+    metric: metricParam,
+  } = await searchParams;
+  const metric: MetricMode = metricParam === "age7" ? "age7" : "total";
   const platform: Platform | undefined =
     platformParam === "tiktok" || platformParam === "instagram"
       ? platformParam
@@ -163,6 +186,32 @@ export default async function GrowthPage({
   const byMonth = videosByPublishMonth(videos);
   const cadence = postingCadence(videos);
   const summary = summarize(videos);
+
+  // Atribución de seguidores: deltas diarios por plataforma × ventana de cada video.
+  const deltasByPlatform = new Map<Platform, FollowerDelta[]>(
+    accountSeries.map((s) => [
+      s.platform,
+      dailyFollowerDeltas(
+        s.points.map((p) => ({
+          capturedAt: new Date(p.capturedAt),
+          followers: p.followers,
+        })),
+      ),
+    ]),
+  );
+  const attributed = attributeFollowers(videos, deltasByPlatform)
+    .filter((a) => a.gained > 0)
+    .slice(0, 8);
+
+  // Quick wins: momentum del catálogo, duración (solo TikTok) y caption.
+  const momentum = gainedByMonth(await readSnapshotSeries({ platform }));
+  const momentumData: InsightDatum[] = momentum.map((m) => ({
+    label: m.label,
+    value: m.gained,
+  }));
+  const durationBuckets = viewsByDuration(videos);
+  const durationCount = durationBuckets.reduce((sum, b) => sum + b.count, 0);
+  const captions = captionStats(videos);
 
   // Destacados del bloque mensual.
   const monthMostViews = maxBy(byMonth, (m) => m.totalViews);
@@ -191,9 +240,25 @@ export default async function GrowthPage({
     ? videos.filter((v) => monthKey(v.video.publishedAt, CREATOR_TIMEZONE) === month)
     : videos;
 
-  const weekdayBuckets = viewsByWeekday(videosForCharts);
+  // Normalización por edad: reemplaza las vistas de por vida por las vistas a 7
+  // días (comparación justa). Los videos sin historia temprana se excluyen.
+  const viewsAt7 = new Map(
+    (metric === "age7" ? await readVideoSeries({ platform }) : []).map((s) => [
+      s.externalId,
+      viewsAtAge(s.points, DEFAULT_AGE_DAYS),
+    ]),
+  );
+  const chartRows =
+    metric === "age7"
+      ? videosForCharts.flatMap((r) => {
+          const v = viewsAt7.get(r.video.externalId);
+          return v == null ? [] : [{ ...r, metrics: { ...r.metrics, views: v } }];
+        })
+      : videosForCharts;
+
+  const weekdayBuckets = viewsByWeekday(chartRows);
   const bestDay = bestBucket(weekdayBuckets);
-  const hourBuckets = viewsByHour(videosForCharts);
+  const hourBuckets = viewsByHour(chartRows);
   const bestHour = bestBucket(hourBuckets);
 
   const weekdayData: InsightDatum[] = weekdayBuckets.map((b) => ({
@@ -201,14 +266,12 @@ export default async function GrowthPage({
     value: Math.round(b.avgViews),
     highlight: b.label === bestDay?.label,
   }));
-  const hashtagData: InsightDatum[] = topHashtags(
-    videosForCharts,
-    8,
-    RESERVED_TAGS,
-  ).map((h) => ({
-    label: `#${h.tag}`,
-    value: h.totalViews,
-  }));
+  const hashtagData: InsightDatum[] = topHashtags(chartRows, 8, RESERVED_TAGS).map(
+    (h) => ({
+      label: `#${h.tag}`,
+      value: h.totalViews,
+    }),
+  );
 
   const monthSuffix = activeMonthLabel ? ` — ${activeMonthLabel}` : "";
 
@@ -262,6 +325,64 @@ export default async function GrowthPage({
               <GrowthLineChart data={growthData} series={growthSeries} />
             </CardContent>
           </Card>
+
+          {/* Atribución de seguidores */}
+          {attributed.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  Videos que coinciden con seguidores nuevos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Seguidores ganados por la cuenta en la ventana de publicación
+                  (día del post + siguiente). Correlación, no causalidad: el
+                  delta es de toda la cuenta.
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Video</TableHead>
+                      <TableHead>Plataforma</TableHead>
+                      <TableHead>Publicado</TableHead>
+                      <TableHead className="text-right">Seguidores</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attributed.map(({ row, gained, sharedWindow }) => (
+                      <TableRow key={`${row.video.platform}-${row.video.externalId}`}>
+                        <TableCell className="max-w-xs">
+                          <Link
+                            href={`/video/${row.video.platform}/${row.video.externalId}`}
+                            className="hover:underline"
+                          >
+                            <p className="truncate text-sm">
+                              {row.video.caption ?? "—"}
+                            </p>
+                          </Link>
+                          {sharedWindow && (
+                            <span className="text-muted-foreground text-xs">
+                              ventana compartida con otro video
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {row.video.platform}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {formatDate(row.video.publishedAt, CREATOR_TIMEZONE)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          +{formatCount(gained)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Rendimiento por tipo */}
           <Card>
@@ -365,6 +486,23 @@ export default async function GrowthPage({
             </CardContent>
           </Card>
 
+          {/* Momentum: vistas ganadas por mes (deltas de snapshots) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">
+                Momentum del catálogo — vistas ganadas por mes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-muted-foreground text-xs">
+                Suma de los deltas entre snapshots: cuánto creció TODO tu
+                contenido cada mes (no solo lo publicado ese mes). Empieza a
+                contar desde que arrancó la ingesta.
+              </p>
+              <InsightBarChart data={momentumData} valueLabel="vistas ganadas" />
+            </CardContent>
+          </Card>
+
           {/* Cadencia + KPIs */}
           <section className="grid gap-4 lg:grid-cols-2">
             <Card>
@@ -410,18 +548,95 @@ export default async function GrowthPage({
                 value={bestHour ? bestHour.label : "—"}
                 hint={bestHour ? `${formatCount(Math.round(bestHour.avgViews))} vistas prom.` : undefined}
               />
+              <Kpi
+                label="Engagement ponderado"
+                value={formatPercent(summary.weightedEngagement)}
+                hint={`prom. simple: ${formatPercent(summary.avgEngagement)}`}
+              />
             </div>
+          </section>
+
+          {/* Formato y caption */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Duración → vistas prom.</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Solo TikTok expone la duración ({durationCount} videos
+                  considerados; Instagram no la da).
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Duración</TableHead>
+                      <TableHead className="text-right">Videos</TableHead>
+                      <TableHead className="text-right">Vistas prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {durationBuckets.map((b) => (
+                      <TableRow key={b.label}>
+                        <TableCell className="font-medium">{b.label}</TableCell>
+                        <TableCell className="text-right tabular-nums">{b.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCount(Math.round(b.avgViews))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Caption → vistas prom.</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Sobre el texto antes de los hashtags. Correlación, no
+                  causalidad.
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Característica</TableHead>
+                      <TableHead className="text-right">Videos</TableHead>
+                      <TableHead className="text-right">Vistas prom.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {captions.map((c) => (
+                      <TableRow key={c.label}>
+                        <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-right tabular-nums">{c.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCount(Math.round(c.avgViews))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Hashtags / día — filtrables por mes */}
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground text-xs">
-                {activeMonthLabel
-                  ? `Gráficas filtradas: ${activeMonthLabel} (${videosForCharts.length} videos)`
-                  : "Gráficas sobre todos los meses"}
+                {metric === "age7"
+                  ? `Vistas a ${DEFAULT_AGE_DAYS} días — ${chartRows.length} de ${videosForCharts.length} videos con historia temprana`
+                  : activeMonthLabel
+                    ? `Gráficas filtradas: ${activeMonthLabel} (${videosForCharts.length} videos)`
+                    : "Gráficas sobre todos los meses"}
               </span>
-              <MonthSelect active={month} options={monthOptions} />
+              <div className="flex flex-wrap items-center gap-2">
+                <MetricToggle active={metric} />
+                <MonthSelect active={month} options={monthOptions} />
+              </div>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>

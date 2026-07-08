@@ -66,10 +66,10 @@ export async function proxy(request: NextRequest) {
 export const config = {
   /**
    * Corre en todo salvo: internals de Next, favicon, archivos con extensión
-   * (imágenes, etc.) y `api/cron` (el cron se autentica con `CRON_SECRET`, no
-   * tiene sesión de usuario).
+   * (imágenes, etc.), `api/cron` (se autentica con `CRON_SECRET`) y `api/mcp`
+   * (se autentica con `MCP_SECRET` en su route handler).
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/cron|.*\\.[\\w]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/cron|api/mcp|.*\\.[\\w]+$).*)",
   ],
 };

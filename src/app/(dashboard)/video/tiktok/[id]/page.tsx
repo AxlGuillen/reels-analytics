@@ -11,6 +11,7 @@ import {
 import { weekday } from "@/core/lib/datetime";
 import { CREATOR_TIMEZONE as TZ, engagementRate } from "@/modules/analytics/insights";
 import { readVideoHistory } from "@/modules/analytics/history";
+import { readVideoBenchmark } from "@/modules/analytics/breakouts";
 import { VideoGrowth } from "@/components/video-growth";
 import { queryVideos } from "@/modules/tiktok/api";
 import { toVideo, toVideoMetrics } from "@/modules/tiktok/mappers";
@@ -82,6 +83,8 @@ export default async function VideoDetailPage({
   const video = toVideo(raw);
   const metrics = toVideoMetrics(raw);
   const history = await readVideoHistory("tiktok", id);
+  // El benchmark es azúcar: si falla o no hay cohorte, la página sigue.
+  const benchmark = await readVideoBenchmark("tiktok", id).catch(() => null);
 
   return (
     <PageShell>
@@ -143,7 +146,11 @@ export default async function VideoDetailPage({
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
 
-      <VideoGrowth points={history} />
+      <VideoGrowth
+        points={history}
+        publishedAt={video.publishedAt}
+        benchmark={benchmark}
+      />
     </PageShell>
   );
 }

@@ -124,7 +124,13 @@ function InsightsSection({ videos }: { videos: VideoWithMetrics[] }) {
   );
 }
 
-function VideoTableRow({ row }: { row: VideoWithMetrics }) {
+function VideoTableRow({
+  row,
+  breakout,
+}: {
+  row: VideoWithMetrics;
+  breakout?: boolean;
+}) {
   const { video, metrics } = row;
   const href = `/video/tiktok/${video.externalId}`;
   return (
@@ -155,7 +161,14 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
       </TableCell>
       <TableCell className="max-w-xs">
         <Link href={href} className="hover:underline">
-          <p className="truncate text-sm">{video.caption ?? "—"}</p>
+          <p className="truncate text-sm">
+            {breakout && (
+              <Badge className="border-transparent bg-primary/15 text-primary mr-1.5 align-middle">
+                Breakout
+              </Badge>
+            )}
+            {video.caption ?? "—"}
+          </p>
         </Link>
         {video.hashtags.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -181,7 +194,13 @@ function VideoTableRow({ row }: { row: VideoWithMetrics }) {
   );
 }
 
-function Overview({ overview }: { overview: TikTokOverview }) {
+function Overview({
+  overview,
+  breakouts,
+}: {
+  overview: TikTokOverview;
+  breakouts?: Set<string>;
+}) {
   const { account, videos } = overview;
   return (
     <div className="space-y-8">
@@ -212,7 +231,11 @@ function Overview({ overview }: { overview: TikTokOverview }) {
               </TableHeader>
               <TableBody>
                 {videos.map((row) => (
-                  <VideoTableRow key={row.video.externalId} row={row} />
+                  <VideoTableRow
+                    key={row.video.externalId}
+                    row={row}
+                    breakout={breakouts?.has(row.video.externalId)}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -223,7 +246,13 @@ function Overview({ overview }: { overview: TikTokOverview }) {
   );
 }
 
-export function TikTokPanel({ result }: { result: TikTokReadResult }) {
+export function TikTokPanel({
+  result,
+  breakouts,
+}: {
+  result: TikTokReadResult;
+  breakouts?: Set<string>;
+}) {
   switch (result.status) {
     case "disconnected":
       return (
@@ -253,7 +282,7 @@ export function TikTokPanel({ result }: { result: TikTokReadResult }) {
         </div>
       );
     case "ok":
-      return <Overview overview={result.overview} />;
+      return <Overview overview={result.overview} breakouts={breakouts} />;
   }
 }
 

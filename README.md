@@ -19,15 +19,20 @@ Core initialized. **TikTok integration is functional** (read-only): OAuth Login 
 PKCE + state, an interim httpOnly-cookie session, Display API client, mappers to the
 domain model, and a dashboard that renders the profile header, derived analytics
 (best day/hour, engagement rate, top hashtags, averages) and an enriched video table.
-There is a debug view at `/debug/tiktok` that dumps the raw JSON, and a per-video detail
-view at `/video/tiktok/[id]`.
+Each video has a detail view (`/video/tiktok/[id]`, `/video/instagram/[id]`) with its
+current metrics and growth curve.
 
-- **Instagram**: provider is a stub (throws `NotImplementedError`); not wired yet.
-- **Supabase**: intentionally postponed. The target schema exists in `CLAUDE.md`, but no
-  migration or connection exists yet. `src/core/domain/models.ts` is the source of truth
-  the schema will derive from.
-- **Pending**: token auto-refresh (today an expired token requires reconnecting) and
-  persisting snapshots — both land with the Supabase ingestion layer.
+- **Instagram**: functional read module (Graph API with Instagram Login) — profile, Reels,
+  per-Reel insights (views/shares/saved), charts and an internal detail view. Auth is an
+  interim long-lived token (`INSTAGRAM_ACCESS_TOKEN`), auto-extended before use.
+- **Supabase**: connected. Daily Vercel cron ingests immutable snapshots
+  (`ra_account_snapshots`, `ra_video_snapshots`); tokens persist in `ra_connections` with
+  auto-refresh. Instagram ingestion rotates old Reels to stay under API rate limits.
+- **Growth**: `/growth` reads the persisted history (followers over time, content-type
+  and monthly performance, posting cadence) and each video detail shows its own growth
+  curve built from snapshots.
+- **Auth**: single-user Supabase login guards all routes.
+- **Roadmap**: see `ROADMAP.md` for the phased analytics plan.
 
 > Deployed to Vercel (auto-deploy from GitHub). Development happens against the deploy
 > because TikTok does not accept `localhost` as a redirect URI.
@@ -58,9 +63,11 @@ fill values as each integration is connected:
 
 - **TikTok Display API**: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`
   (must match the redirect URI registered in the TikTok portal exactly).
-- **Instagram Graph API**: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`.
-- **Supabase** (pending): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-  `SUPABASE_SERVICE_ROLE_KEY`.
+- **Instagram Graph API**: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`,
+  `INSTAGRAM_USER_ID`, `INSTAGRAM_ACCESS_TOKEN` (interim long-lived token).
+- **Supabase**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `SUPABASE_SECRET_KEY`.
+- **Cron**: `CRON_SECRET` protects `/api/cron/ingest`.
 
 > `insights.ts` aggregates by day/hour using `CREATOR_TIMEZONE` (default
 > `America/Mexico_City`) because the server runs in UTC.
@@ -77,7 +84,7 @@ Platform (TikTok / Instagram)
         ▼
   Normalization (mappers → single domain model)
         ▼
-  Persistence (Supabase: timestamped snapshots) — planned
+  Persistence (Supabase: timestamped snapshots, daily cron)
         ▼
   Read / analytics layer (aggregates, compares over time)
         ▼
@@ -91,7 +98,7 @@ cross-platform logic lives in `modules/analytics`.
 
 ```
 src/
-  app/          # App Router: thin routes, no business logic (+ api/, debug/, video/)
+  app/          # App Router: thin routes, no business logic (+ api/, video/)
   modules/
     tiktok/     # Display API client, mappers, provider, OAuth, session, read layer
     instagram/  # provider stub (not wired yet)

@@ -138,17 +138,30 @@ export interface Summary {
   totalVideos: number;
   totalViews: number;
   avgViews: number;
+  /** promedio simple de tasas: cada video pesa igual (100 vistas = 100k vistas). */
   avgEngagement: number;
+  /** interacciones totales / vistas totales: pesa por audiencia real. */
+  weightedEngagement: number;
   bestVideo?: VideoWithMetrics;
 }
 
 /** Totales y promedios del conjunto de videos. */
 export function summarize(rows: VideoWithMetrics[]): Summary {
   if (rows.length === 0) {
-    return { totalVideos: 0, totalViews: 0, avgViews: 0, avgEngagement: 0 };
+    return {
+      totalVideos: 0,
+      totalViews: 0,
+      avgViews: 0,
+      avgEngagement: 0,
+      weightedEngagement: 0,
+    };
   }
   const totalViews = rows.reduce((sum, r) => sum + r.metrics.views, 0);
   const totalEngagement = rows.reduce((sum, r) => sum + engagementRate(r.metrics), 0);
+  const totalInteractions = rows.reduce(
+    (sum, r) => sum + r.metrics.likes + r.metrics.comments + r.metrics.shares,
+    0,
+  );
   const bestVideo = rows.reduce((best, r) =>
     r.metrics.views > best.metrics.views ? r : best,
   );
@@ -157,8 +170,110 @@ export function summarize(rows: VideoWithMetrics[]): Summary {
     totalViews,
     avgViews: totalViews / rows.length,
     avgEngagement: totalEngagement / rows.length,
+    weightedEngagement: totalViews > 0 ? totalInteractions / totalViews : 0,
     bestVideo,
   };
+}
+
+/**
+ * Vistas promedio por duración del video. Solo TikTok expone la duración
+ * (IG no la da), así que los videos sin dato se omiten y se reporta cuántos.
+ */
+export function viewsByDuration(rows: VideoWithMetrics[]): Bucket[] {
+  const buckets = [
+    { label: "< 20 s", min: 0, max: 20 },
+    { label: "20–40 s", min: 20, max: 40 },
+    { label: "40–60 s", min: 40, max: 60 },
+    { label: "60 s +", min: 60, max: Infinity },
+  ];
+  const sums = buckets.map(() => ({ views: 0, count: 0 }));
+  for (const row of rows) {
+    const d = row.video.durationSeconds;
+    if (d == null) continue;
+    const i = buckets.findIndex((b) => d >= b.min && d < b.max);
+    if (i >= 0) {
+      sums[i].views += row.metrics.views;
+      sums[i].count += 1;
+    }
+  }
+  return buckets.map((b, i) => ({
+    label: b.label,
+    avgViews: sums[i].count > 0 ? sums[i].views / sums[i].count : 0,
+    count: sums[i].count,
+  }));
+}
+
+/** Texto "real" del caption: lo que va antes del primer hashtag. */
+function captionText(caption: string | null): string {
+  if (!caption) return "";
+  const hashIndex = caption.indexOf("#");
+  return (hashIndex >= 0 ? caption.slice(0, hashIndex) : caption).trim();
+}
+
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+
+/**
+ * Rendimiento por características del caption (longitud del texto antes de los
+ * hashtags, si pregunta, si lleva emoji). Señales baratas y a veces reveladoras;
+ * correlación, no causalidad.
+ */
+export function captionStats(rows: VideoWithMetrics[]): Bucket[] {
+  const groups: { label: string; match: (text: string) => boolean }[] = [
+    { label: "Sin texto (solo hashtags)", match: (t) => t.length === 0 },
+    { label: "Corto (≤ 50)", match: (t) => t.length > 0 && t.length <= 50 },
+    { label: "Medio (51–150)", match: (t) => t.length > 50 && t.length <= 150 },
+    { label: "Largo (150 +)", match: (t) => t.length > 150 },
+    { label: "Con pregunta", match: (t) => t.includes("?") || t.includes("¿") },
+    { label: "Con emoji", match: (t) => EMOJI_RE.test(t) },
+  ];
+  return groups.map((g) => {
+    const matched = rows.filter((r) => g.match(captionText(r.video.caption)));
+    const views = matched.reduce((sum, r) => sum + r.metrics.views, 0);
+    return {
+      label: g.label,
+      avgViews: matched.length > 0 ? views / matched.length : 0,
+      count: matched.length,
+    };
+  });
+}
+
+export interface MonthGained {
+  month: string;
+  label: string;
+  /** vistas ganadas en el mes según los deltas entre snapshots consecutivos. */
+  gained: number;
+}
+
+/**
+ * Momentum del catálogo: vistas GANADAS por mes calendario, sumando el delta
+ * entre snapshots consecutivos de cada video (atribuido al mes de la captura).
+ * Responde "¿cuánto creció todo mi contenido este mes?" — distinto de
+ * `videosByPublishMonth` ("¿cómo rindió lo publicado este mes?"). El primer
+ * snapshot de un video no aporta delta (lo previo no se observó). Los deltas
+ * negativos (correcciones de la plataforma) se suman tal cual.
+ */
+export function gainedByMonth(
+  seriesList: { capturedAt: Date; views: number }[][],
+  timeZone = CREATOR_TIMEZONE,
+): MonthGained[] {
+  const sums = new Map<string, number>();
+  for (const series of seriesList) {
+    const sorted = [...series].sort(
+      (a, b) => a.capturedAt.getTime() - b.capturedAt.getTime(),
+    );
+    for (let i = 1; i < sorted.length; i++) {
+      const key = monthKey(sorted[i].capturedAt, timeZone);
+      const delta = sorted[i].views - sorted[i - 1].views;
+      sums.set(key, (sums.get(key) ?? 0) + delta);
+    }
+  }
+  return [...sums.entries()]
+    .map(([month, gained]) => ({
+      month,
+      label: monthLabel(month),
+      gained: Math.round(gained),
+    }))
+    .sort((a, b) => (a.month < b.month ? -1 : 1));
 }
 
 export interface ContentTypeStat {

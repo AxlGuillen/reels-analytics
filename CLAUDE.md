@@ -35,16 +35,29 @@ estados disconnected/expired/error/ok). Se paginan TODOS los videos (`read.ts`, 
 El dashboard muestra header de perfil (avatar, @usuario, verificado, bio, seguidores/
 siguiendo/likes/videos), **analítica derivada** (`modules/analytics/insights.ts`:
 mejor día/hora, engagement rate, top hashtags, promedios) y tabla enriquecida (miniatura
-clicable, duración, hashtags, vistas/likes/comentarios/compartidos/engagement). Hay una
-vista debug en `/debug/tiktok` que vuelca el JSON crudo.
+clicable, duración, hashtags, vistas/likes/comentarios/compartidos/engagement). Cada video
+tiene vista de detalle (`/video/{tiktok,instagram}/[id]`) con su curva de crecimiento.
 Desplegado en Vercel (auto-deploy desde GitHub); se desarrolla contra el deploy porque
 TikTok no acepta localhost como redirect URI.
 
 > `insights.ts` agrega por día/hora usando `CREATOR_TIMEZONE` (default
 > `America/Mexico_City`) porque el server corre en UTC; ajustar a la zona del público.
 
-Pendiente: auto-refresh del token (hoy si expira se pide reconectar; el refresh irá en la
-capa de ingesta con Supabase) y persistir snapshots.
+**Ingesta (funcional):** cron diario de Vercel (`/api/cron/ingest`, protegido con
+`CRON_SECRET`, `maxDuration=60`) captura snapshots de ambas plataformas. Los tokens viven
+en `ra_connections` y se **auto-refrescan antes de usar** (`modules/accounts/tokens.ts`).
+Instagram usa **rotación**: franja reciente (30 días) + lote de ~50 Reels viejos con el
+snapshot más antiguo por corrida — así todo el catálogo recibe snapshot al menos semanal
+sin exceder el rate limit de IG (~200 llamadas/usuario/hora) ni los 60 s del plan Hobby
+(máx. 2 crons, 1 disparo/día). El 2.º cron (`/api/cron/digest`, lunes) manda un **digest
+semanal por Telegram** (`modules/digest`, `core/lib/telegram.ts`) que además hace de
+watchdog de la ingesta. Ver `ROADMAP.md` para las fases de análisis planificadas.
+
+**Servidor MCP** (`/api/mcp`, route en `app/api/[transport]/route.ts` con `mcp-handler`):
+expone la analítica persistida como tools de solo lectura (`modules/mcp/tools.ts`:
+search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_summary)
+para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
+rendimiento real. Auth: `Authorization: Bearer MCP_SECRET` (excluido del middleware).
 
 > Nota de UI: shadcn quedó sobre **Base UI** (`@base-ui/react`), no Radix. El `Button` NO
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el

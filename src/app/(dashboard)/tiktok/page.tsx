@@ -1,6 +1,7 @@
 import { CaptureButton } from "@/components/dashboard/capture-button";
 import { RangeSelect } from "@/components/dashboard/range-select";
 import { TikTokPanel } from "@/components/tiktok-panel";
+import { readBreakoutIds } from "@/modules/analytics/breakouts";
 import { getSession } from "@/modules/tiktok/session";
 import { readTikTokOverview } from "@/modules/tiktok/read";
 import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
@@ -13,9 +14,11 @@ export default async function TikTokPage({
   const { range: rangeParam, connected, error } = await searchParams;
   const range = resolveRange(rangeParam);
   const session = await getSession();
-  const result = await readTikTokOverview(session, {
-    since: sinceForRange(range),
-  });
+  const [result, breakouts] = await Promise.all([
+    readTikTokOverview(session, { since: sinceForRange(range) }),
+    // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
+    readBreakoutIds("tiktok").catch(() => new Set<string>()),
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
@@ -43,7 +46,7 @@ export default async function TikTokPage({
         </div>
       )}
 
-      <TikTokPanel result={result} />
+      <TikTokPanel result={result} breakouts={breakouts} />
     </div>
   );
 }

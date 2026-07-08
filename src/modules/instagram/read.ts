@@ -1,5 +1,6 @@
 import { env } from "@/core/config/env";
 import type { AccountStats } from "@/core/domain";
+import { mapConcurrent } from "@/core/lib/concurrency";
 import type { VideoWithMetrics } from "@/modules/analytics/insights";
 import {
   fetchMediaById,
@@ -24,12 +25,18 @@ import type { IgMedia } from "./types";
 /** Tope de seguridad de páginas de media (50 por página). */
 const MAX_PAGES = 10;
 /** Tope de Reels procesados en la lectura viva del dashboard. */
-const MAX_REELS = 90;
+const DASHBOARD_MAX_REELS = 90;
 /** Llamadas de insights simultáneas. */
 const INSIGHTS_CONCURRENCY = 6;
 
 export interface ReadOptions {
   since?: Date;
+  /**
+   * Tope de Reels a procesar. El dashboard usa el default (90) para responder
+   * rápido; la ingesta pasa el suyo propio (su presupuesto es el rate limit de
+   * IG, no la latencia del render).
+   */
+  maxReels?: number;
 }
 
 export interface InstagramOverview {
@@ -42,29 +49,11 @@ export type InstagramReadResult =
   | { status: "error"; message: string }
   | { status: "ok"; overview: InstagramOverview };
 
-async function mapConcurrent<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out = new Array<R>(items.length);
-  let cursor = 0;
-  async function worker() {
-    while (cursor < items.length) {
-      const index = cursor++;
-      out[index] = await fn(items[index]);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, worker),
-  );
-  return out;
-}
-
 /** Recorre las páginas de media quedándose solo con Reels dentro del rango. */
 async function collectReels(
   accessToken: string,
   since?: Date,
+  maxReels = DASHBOARD_MAX_REELS,
 ): Promise<IgMedia[]> {
   const cutoff = since?.getTime();
   const reels: IgMedia[] = [];
@@ -83,21 +72,21 @@ async function collectReels(
     }
 
     const next = paging?.cursors?.after;
-    if (reachedCutoff || !paging?.next || !next || reels.length >= MAX_REELS) break;
+    if (reachedCutoff || !paging?.next || !next || reels.length >= maxReels) break;
     after = next;
   }
-  return reels.slice(0, MAX_REELS);
+  return reels.slice(0, maxReels);
 }
 
 /** Lee el overview a partir de un access token ya válido (lo usa la ingesta/cron). */
 export async function readInstagramOverviewByToken(
   accessToken: string,
-  { since }: ReadOptions = {},
+  { since, maxReels }: ReadOptions = {},
 ): Promise<InstagramOverview> {
   const capturedAt = new Date();
   const [user, reels] = await Promise.all([
     fetchUserInfo(accessToken),
-    collectReels(accessToken, since),
+    collectReels(accessToken, since, maxReels),
   ]);
 
   const videos = await mapConcurrent(reels, INSIGHTS_CONCURRENCY, async (media) => {

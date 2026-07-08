@@ -7,7 +7,7 @@
  * migración ni re-backfill. Este archivo es la única fuente de verdad.
  */
 
-export type ContentTypeKey = "audioviral" | "dui" | "duiyhal";
+export type ContentTypeKey = "audioviral" | "dui" | "duiyhal" | "news";
 
 export interface ContentTypeDef {
   /** hashtag identificador (sin `#`, en minúsculas, como lo devuelve el parser). */
@@ -20,6 +20,7 @@ export const CONTENT_TYPES: Record<ContentTypeKey, ContentTypeDef> = {
   audioviral: { tag: "audioviral", label: "Audio viral" },
   dui: { tag: "dui", label: "Dui (narración)" },
   duiyhal: { tag: "duiyhal", label: "Dui y Hal" },
+  news: { tag: "news", label: "Noticias" },
 };
 
 /** Etiqueta para los videos sin ningún tag de tipo. */
@@ -30,7 +31,7 @@ export const UNCLASSIFIED_LABEL = "Sin clasificar";
  * de tipo, gana el primero de esta lista. `duiyhal` va antes que `dui` por si
  * ambos aparecieran juntos.
  */
-const PRECEDENCE: ContentTypeKey[] = ["duiyhal", "dui", "audioviral"];
+const PRECEDENCE: ContentTypeKey[] = ["duiyhal", "dui", "news", "audioviral"];
 
 /** Conjunto de tags reservados (para excluirlos del análisis de hashtags temáticos). */
 export const RESERVED_TAGS: ReadonlySet<string> = new Set(
