@@ -62,6 +62,19 @@ export function dayKey(date: Date, timeZone?: string): string {
   }).format(date);
 }
 
+/**
+ * Clave de semana: el `YYYY-MM-DD` del **lunes** de la semana a la que pertenece
+ * la fecha (en la zona dada). Ordenable lexicográficamente, igual que dayKey.
+ */
+export function weekKey(date: Date, timeZone?: string): string {
+  const day = dayKey(date, timeZone);
+  // días transcurridos desde el lunes (weekdayIndex: 0 = domingo).
+  const sinceMonday = (weekdayIndex(date, timeZone) + 6) % 7;
+  const monday = new Date(`${day}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() - sinceMonday);
+  return monday.toISOString().slice(0, 10);
+}
+
 /** Clave de mes `YYYY-MM` en la zona dada (ordenable lexicográficamente). */
 export function monthKey(date: Date, timeZone?: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {

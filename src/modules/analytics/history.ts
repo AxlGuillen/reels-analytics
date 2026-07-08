@@ -214,17 +214,26 @@ export interface VideoSeries {
 const SERIES_PUBLISHED_WITHIN_DAYS = 120;
 const SNAPSHOT_PAGE = 1000;
 
+interface SnapshotRow {
+  video_id: string;
+  captured_at: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+}
+
 /** Trae TODOS los snapshots de un set de videos, paginando para no toparse con
  *  el límite de filas por request de Supabase (default 1000). */
 async function fetchAllVideoSnapshots(
   supabase: ReturnType<typeof createAdminClient>,
   videoIds: string[],
-): Promise<{ video_id: string; captured_at: string; views: number }[]> {
-  const rows: { video_id: string; captured_at: string; views: number }[] = [];
+): Promise<SnapshotRow[]> {
+  const rows: SnapshotRow[] = [];
   for (let from = 0; ; from += SNAPSHOT_PAGE) {
     const { data, error } = await supabase
       .from("ra_video_snapshots")
-      .select("video_id, captured_at, views")
+      .select("video_id, captured_at, views, likes, comments, shares")
       .in("video_id", videoIds)
       .order("captured_at", { ascending: true })
       .range(from, from + SNAPSHOT_PAGE - 1);
@@ -275,15 +284,23 @@ export async function readVideoSeries(
   }));
 }
 
+export interface CalendarSnapshot {
+  capturedAt: Date;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+}
+
 /**
- * Series calendario (capturedAt + views) de TODOS los videos de la plataforma,
- * para el momentum del catálogo (`gainedByMonth`). A diferencia de
- * `readVideoSeries`, no filtra por fecha de publicación: los deltas de los
- * videos viejos (rotación) también cuentan.
+ * Series calendario (capturedAt + métricas) de TODOS los videos de la
+ * plataforma, para momentum y timelines. A diferencia de `readVideoSeries`,
+ * no filtra por fecha de publicación: los deltas de los videos viejos
+ * (rotación) también cuentan.
  */
 export async function readSnapshotSeries(
   { platform }: { platform?: Platform } = {},
-): Promise<{ capturedAt: Date; views: number }[][]> {
+): Promise<CalendarSnapshot[][]> {
   const supabase = createAdminClient();
 
   let query = supabase.from("ra_videos").select("id");
@@ -296,10 +313,16 @@ export async function readSnapshotSeries(
     supabase,
     videos.map((v) => v.id),
   );
-  const byVideo = new Map<string, { capturedAt: Date; views: number }[]>();
+  const byVideo = new Map<string, CalendarSnapshot[]>();
   for (const s of snaps) {
     const list = byVideo.get(s.video_id) ?? [];
-    list.push({ capturedAt: new Date(s.captured_at), views: s.views });
+    list.push({
+      capturedAt: new Date(s.captured_at),
+      views: s.views,
+      likes: s.likes,
+      comments: s.comments,
+      shares: s.shares,
+    });
     byVideo.set(s.video_id, list);
   }
   return [...byVideo.values()];
