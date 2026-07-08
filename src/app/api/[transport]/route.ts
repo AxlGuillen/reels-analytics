@@ -4,8 +4,10 @@ import { env } from "@/core/config/env";
 import {
   comparePlatforms,
   getActivityTimeline,
+  getBreakouts,
   getGrowthSummary,
   getHashtagStats,
+  getScriptStatsBlock,
   getTopVideos,
   getVideoStats,
   searchVideos,
@@ -123,6 +125,38 @@ const mcpHandler = createMcpHandler(
         },
       },
       async (args) => json(await comparePlatforms(args)),
+    );
+
+    server.registerTool(
+      "get_breakouts",
+      {
+        title: "Videos despegando ahora",
+        description:
+          "Videos que van a ≥2× la mediana de su plataforma a su misma edad, con su múltiplo. Vacío si el cohorte con historia temprana aún es chico.",
+        inputSchema: {
+          platform: platformSchema.optional(),
+        },
+      },
+      async (args) => json(await getBreakouts(args)),
+    );
+
+    server.registerTool(
+      "get_script_stats_block",
+      {
+        title: "Bloque de stats para un guion",
+        description:
+          "Busca el video de un guion en AMBAS plataformas por el texto/código del caption y devuelve un bloque YAML listo para pegar en el frontmatter de la nota de Obsidian (con corte por edad, default 30 días).",
+        inputSchema: {
+          query: z
+            .string()
+            .min(1)
+            .describe("El código/texto del caption que identifica al guion"),
+          ageDays: z.number().int().min(1).max(180).optional(),
+        },
+      },
+      async (args) => ({
+        content: [{ type: "text" as const, text: await getScriptStatsBlock(args) }],
+      }),
     );
 
     server.registerTool(

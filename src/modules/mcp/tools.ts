@@ -5,8 +5,12 @@ import {
   contentTypeLabel,
   type ContentTypeKey,
 } from "@/core/lib/content-type";
+import { dayKey } from "@/core/lib/datetime";
 import { dailyFollowerDeltas } from "@/modules/analytics/attribution";
-import { readVideoBenchmark } from "@/modules/analytics/breakouts";
+import {
+  readBreakoutDetails,
+  readVideoBenchmark,
+} from "@/modules/analytics/breakouts";
 import {
   readGrowth,
   readSnapshotSeries,
@@ -331,6 +335,148 @@ export async function comparePlatforms(params: { sinceDays?: number } = {}) {
     note: "viewsGainedByCatalog = deltas de snapshots de TODO el catálogo en la ventana; publishedInWindow = solo lo publicado en la ventana (métricas acumuladas).",
     platforms: results,
   };
+}
+
+/** Videos que están despegando AHORA (≥2× la mediana de su plataforma a su edad). */
+export async function getBreakouts(params: { platform?: Platform } = {}) {
+  const platforms: Platform[] = params.platform
+    ? [params.platform]
+    : ["tiktok", "instagram"];
+
+  const results = await Promise.all(
+    platforms.map(async (platform) => {
+      const [details, { videos }] = await Promise.all([
+        readBreakoutDetails(platform).catch(() => []),
+        readGrowth({ platform }),
+      ]);
+      const byId = new Map(videos.map((r) => [r.video.externalId, r]));
+      return details.flatMap((d) => {
+        const row = byId.get(d.externalId);
+        return row
+          ? [
+              {
+                ...videoSummary(row),
+                breakout: {
+                  multiple: Number(d.result.multiple.toFixed(2)),
+                  atAgeDays: d.result.atAgeDays,
+                  medianViews: d.result.medianViews,
+                },
+              },
+            ]
+          : [];
+      });
+    }),
+  );
+
+  const breakouts = results.flat();
+  return {
+    total: breakouts.length,
+    note:
+      breakouts.length === 0
+        ? "Sin breakouts ahora: nada supera 2× la mediana a su edad, o el cohorte con historia temprana aún es chico (crece solo con los días)."
+        : "multiple = cuántas veces la mediana de videos recientes de su plataforma lleva el video a su misma edad.",
+    breakouts,
+  };
+}
+
+function yamlNumber(value: number | null): string {
+  return value === null ? "null" : String(value);
+}
+
+/** Sección YAML de una plataforma para el bloque de stats de un guion. */
+async function scriptPlatformSection(
+  row: VideoWithMetrics,
+  ageDays: number,
+): Promise<string> {
+  const history = await readVideoHistory(
+    row.video.platform,
+    row.video.externalId,
+  );
+  const agePoints = toAgePoints(
+    row.video.publishedAt,
+    history.map((p) => ({ capturedAt: new Date(p.capturedAt), views: p.views })),
+  );
+  const m = row.metrics;
+  return [
+    `  ${row.video.platform}:`,
+    `    id: "${row.video.externalId}"`,
+    `    publicado: "${dayKey(row.video.publishedAt, "America/Mexico_City")}"`,
+    `    vistas: ${m.views}`,
+    `    likes: ${m.likes}`,
+    `    comentarios: ${m.comments}`,
+    `    compartidos: ${m.shares}`,
+    `    guardados: ${yamlNumber(m.saved)}`,
+    `    engagement: ${engagementRate(m).toFixed(4)}`,
+    `    vistas_a_${ageDays}_dias: ${yamlNumber(viewsAtAge(agePoints, ageDays))}`,
+    `    velocidad_inicial_dia: ${yamlNumber(initialVelocity(agePoints))}`,
+    `    url: "${row.video.url ?? ""}"`,
+  ].join("\n");
+}
+
+/**
+ * Bloque YAML listo para pegar en el frontmatter de un guion (Obsidian).
+ * Busca el video en AMBAS plataformas por el texto del caption (el "código"
+ * del guion) y arma las stats con el corte por edad pedido.
+ */
+export async function getScriptStatsBlock(params: {
+  query: string;
+  ageDays?: number;
+}): Promise<string> {
+  const ageDays = params.ageDays ?? 30;
+  const { videos } = await readGrowth();
+  const needle = params.query.toLowerCase().trim();
+  const matches = videos.filter((r) =>
+    (r.video.caption ?? "").toLowerCase().includes(needle),
+  );
+  if (matches.length === 0) {
+    return `No encontré ningún video cuyo caption contenga “${params.query}”. Prueba con el código exacto del guion (el texto antes de los hashtags).`;
+  }
+
+  const notes: string[] = [];
+  const sections: string[] = [];
+  let totalViews = 0;
+  let totalInteractions = 0;
+
+  for (const platform of ["tiktok", "instagram"] as const) {
+    const candidates = matches
+      .filter((r) => r.video.platform === platform)
+      .sort(
+        (a, b) => b.video.publishedAt.getTime() - a.video.publishedAt.getTime(),
+      );
+    const best = candidates[0];
+    if (!best) {
+      notes.push(`- ${platform}: sin coincidencias.`);
+      continue;
+    }
+    if (candidates.length > 1) {
+      notes.push(
+        `- ${platform}: ${candidates.length} coincidencias; usé la más reciente (${dayKey(best.video.publishedAt)}). Afina el código si no es la correcta.`,
+      );
+    }
+    sections.push(await scriptPlatformSection(best, ageDays));
+    totalViews += best.metrics.views;
+    totalInteractions +=
+      best.metrics.likes + best.metrics.comments + best.metrics.shares;
+  }
+
+  const yaml = [
+    "stats:",
+    `  actualizado: "${dayKey(new Date(), "America/Mexico_City")}"`,
+    `  corte_dias: ${ageDays}`,
+    ...sections,
+    "  total:",
+    `    vistas: ${totalViews}`,
+    `    engagement_ponderado: ${totalViews > 0 ? (totalInteractions / totalViews).toFixed(4) : 0}`,
+  ].join("\n");
+
+  return [
+    "```yaml",
+    yaml,
+    "```",
+    "",
+    `vistas_a_${ageDays}_dias null = el video aún no cumple ${ageDays} días o no se capturó su ventana temprana.`,
+    ...notes,
+  ].join("\n");
 }
 
 /** Resumen de la cuenta: seguidores, momentum mensual y mejores franjas. */
