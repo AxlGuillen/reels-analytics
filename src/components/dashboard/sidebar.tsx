@@ -52,6 +52,13 @@ export interface ConnectionStatus {
   instagram: boolean;
 }
 
+/** Datos del creador para la tarjeta del footer del sidebar. */
+export interface UserInfo {
+  name: string;
+  email: string;
+  initials: string;
+}
+
 interface NavItem {
   label: string;
   href: string;
@@ -173,11 +180,13 @@ function NavLink({
 
 function SidebarNav({
   status,
+  user,
   collapsed,
   onToggle,
   onNavigate,
 }: {
   status: ConnectionStatus;
+  user: UserInfo;
   collapsed: boolean;
   onToggle?: () => void;
   onNavigate?: () => void;
@@ -201,7 +210,7 @@ function SidebarNav({
         )}
         {...brandHover}
       >
-        <span className="from-primary/20 to-primary/5 ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ring-1">
+        <span className="bg-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
           <ActivityIcon ref={brandRef} size={17} className="text-primary" />
         </span>
         {!collapsed && (
@@ -241,7 +250,24 @@ function SidebarNav({
           {!collapsed && "Conexiones"}
         </Link>
 
-        <ThemeToggle collapsed={collapsed} />
+        {collapsed ? (
+          <ThemeToggle collapsed />
+        ) : (
+          <div className="border-border/70 bg-background/50 mt-1 flex items-center gap-2.5 rounded-md border px-2.5 py-2">
+            <span className="bg-foreground text-primary font-display flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold">
+              {user.initials}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12.5px] leading-tight font-semibold">
+                {user.name}
+              </div>
+              <div className="text-muted-foreground truncate font-mono text-[10.5px] leading-tight">
+                {user.email}
+              </div>
+            </div>
+            <ThemeToggle variant="icon" />
+          </div>
+        )}
 
         <form action={signOutAction}>
           <button
@@ -313,7 +339,13 @@ function useCollapsed(): [boolean, () => void] {
 }
 
 /** Columna persistente en desktop (oculta en móvil). Colapsable a rail de iconos. */
-export function DesktopSidebar({ status }: { status: ConnectionStatus }) {
+export function DesktopSidebar({
+  status,
+  user,
+}: {
+  status: ConnectionStatus;
+  user: UserInfo;
+}) {
   const [collapsed, toggle] = useCollapsed();
 
   return (
@@ -324,14 +356,25 @@ export function DesktopSidebar({ status }: { status: ConnectionStatus }) {
       )}
     >
       <div className="sticky top-0 h-dvh">
-        <SidebarNav status={status} collapsed={collapsed} onToggle={toggle} />
+        <SidebarNav
+          status={status}
+          user={user}
+          collapsed={collapsed}
+          onToggle={toggle}
+        />
       </div>
     </aside>
   );
 }
 
 /** Barra superior con menú desplegable en móvil (oculta en desktop). */
-export function MobileNav({ status }: { status: ConnectionStatus }) {
+export function MobileNav({
+  status,
+  user,
+}: {
+  status: ConnectionStatus;
+  user: UserInfo;
+}) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
@@ -364,7 +407,12 @@ export function MobileNav({ status }: { status: ConnectionStatus }) {
             >
               <X className="size-5" />
             </button>
-            <SidebarNav status={status} collapsed={false} onNavigate={close} />
+            <SidebarNav
+              status={status}
+              user={user}
+              collapsed={false}
+              onNavigate={close}
+            />
           </div>
         </div>
       )}
