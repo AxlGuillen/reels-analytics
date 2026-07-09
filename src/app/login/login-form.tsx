@@ -16,7 +16,10 @@ export function LoginForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label
+          htmlFor="email"
+          className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.14em] uppercase"
+        >
           Email
         </label>
         <input
@@ -30,7 +33,10 @@ export function LoginForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium">
+        <label
+          htmlFor="password"
+          className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.14em] uppercase"
+        >
           Contraseña
         </label>
         <div className="relative">

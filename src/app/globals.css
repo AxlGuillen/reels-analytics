@@ -14,8 +14,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-sans);
-  --font-heading: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,107 +61,111 @@
 }
 
 /*
- * Identidad "Admin profesional" — índigo sobrio, claro + oscuro. Ver CLAUDE.md.
- * :root = tema claro; .dark = tema oscuro (slate desaturado). El toggle lo
- * gestiona next-themes alternando la clase `.dark` en <html>.
+ * Identidad "Ledger" — libro de cuentas editorial: papel cálido, tinta teal,
+ * serif Spectral. Ver CLAUDE.md. :root = tema claro (papel); .dark = tema
+ * oscuro (papel nocturno). El toggle lo gestiona next-themes con la clase
+ * `.dark` en <html>. Teal (#0f6f5c) = tinta/acento (nav activo, links, datos,
+ * deltas positivos); tinta oscura (--foreground) = CTAs primarias.
  */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #4f46e5;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #eef2ff;
-  --accent-foreground: #4f46e5;
-  --brand: #4f46e5;
-  --brand-foreground: #ffffff;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --success: #16a34a;
-  --success-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #6366f1;
-  --chart-1: #4f46e5;
-  --chart-2: #0ea5e9;
-  --chart-3: #14b8a6;
-  --chart-4: #f59e0b;
-  --chart-5: #64748b;
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #4f46e5;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #6366f1;
-  /* Acentos por plataforma: SOLO en contextos comparativos (charts, badges). */
-  --platform-tiktok: #0891b2;
-  --platform-instagram: #db2777;
-  /* Elevación (claro): sombras índigo-gris suaves; la profundidad la da la luz. */
-  --elev-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 2px 8px -2px rgb(15 23 42 / 0.08);
+  --background: #f6f3ec;
+  --foreground: #191712;
+  --card: #fdfbf5;
+  --card-foreground: #191712;
+  --popover: #fdfbf5;
+  --popover-foreground: #191712;
+  --primary: #0f6f5c;
+  --primary-foreground: #f6f3ec;
+  --secondary: #ece6d8;
+  --secondary-foreground: #191712;
+  --muted: #ece6d8;
+  --muted-foreground: #6f685a;
+  --accent: #e6efea;
+  --accent-foreground: #0f6f5c;
+  --brand: #0f6f5c;
+  --brand-foreground: #f6f3ec;
+  --destructive: #b4442e;
+  --destructive-foreground: #f6f3ec;
+  --success: #0f6f5c;
+  --success-foreground: #f6f3ec;
+  --border: #ddd6c6;
+  --input: #ddd6c6;
+  --ring: #0f6f5c;
+  --chart-1: #0f6f5c;
+  --chart-2: #6fb0a3;
+  --chart-3: #c9c0ad;
+  --chart-4: #8a8270;
+  --chart-5: #b98a5e;
+  --radius: 0.5rem;
+  --sidebar: #fdfbf5;
+  --sidebar-foreground: #191712;
+  --sidebar-primary: #0f6f5c;
+  --sidebar-primary-foreground: #f6f3ec;
+  --sidebar-accent: #e6efea;
+  --sidebar-accent-foreground: #0f6f5c;
+  --sidebar-border: #ddd6c6;
+  --sidebar-ring: #0f6f5c;
+  /* Acentos por plataforma: SOLO en contextos comparativos (charts, badges).
+     Teal (TikTok) + terracota cálida (Instagram) para que dos series se lean
+     como dos tonos sin salir del mundo "papel". */
+  --platform-tiktok: #0f6f5c;
+  --platform-instagram: #bf6d5a;
+  /* Elevación (claro): sombras cálidas suaves; la profundidad la da la luz. */
+  --elev-card: 0 1px 2px rgb(25 23 18 / 0.05), 0 12px 26px -16px rgb(25 23 18 / 0.26);
   --elev-lift:
-    0 2px 8px -2px rgb(15 23 42 / 0.1), 0 12px 32px -12px rgb(79 70 229 / 0.25);
-  --elev-rail: 4px 0 24px -18px rgb(15 23 42 / 0.35);
+    0 2px 8px -2px rgb(25 23 18 / 0.1), 0 20px 44px -18px rgb(25 23 18 / 0.32);
+  --elev-rail: 4px 0 24px -20px rgb(25 23 18 / 0.35);
 }
 
 .dark {
-  --background: #0b0f1a;
-  --foreground: #e2e8f0;
-  --card: #121826;
-  --card-foreground: #e2e8f0;
-  --popover: #121826;
-  --popover-foreground: #e2e8f0;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #e2e8f0;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #1e293b;
-  --accent-foreground: #e2e8f0;
-  --brand: #818cf8;
-  --brand-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --success: #22c55e;
-  --success-foreground: #ffffff;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #6366f1;
-  --chart-1: #818cf8;
-  --chart-2: #38bdf8;
-  --chart-3: #2dd4bf;
-  --chart-4: #fbbf24;
-  --chart-5: #94a3b8;
-  --sidebar: #0e131f;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #6366f1;
+  --background: #14120c;
+  --foreground: #ece7da;
+  --card: #1e1a12;
+  --card-foreground: #ece7da;
+  --popover: #1e1a12;
+  --popover-foreground: #ece7da;
+  --primary: #3aa88f;
+  --primary-foreground: #14120c;
+  --secondary: #2a2418;
+  --secondary-foreground: #ece7da;
+  --muted: #2a2418;
+  --muted-foreground: #a8a08e;
+  --accent: #1d3730;
+  --accent-foreground: #7fd0bd;
+  --brand: #3aa88f;
+  --brand-foreground: #14120c;
+  --destructive: #e0714f;
+  --destructive-foreground: #14120c;
+  --success: #3aa88f;
+  --success-foreground: #14120c;
+  --border: #322d20;
+  --input: #322d20;
+  --ring: #3aa88f;
+  --chart-1: #3aa88f;
+  --chart-2: #6fb0a3;
+  --chart-3: #8a8270;
+  --chart-4: #c9a86e;
+  --chart-5: #b98a5e;
+  --sidebar: #1a170f;
+  --sidebar-foreground: #ece7da;
+  --sidebar-primary: #3aa88f;
+  --sidebar-primary-foreground: #14120c;
+  --sidebar-accent: #1d3730;
+  --sidebar-accent-foreground: #7fd0bd;
+  --sidebar-border: #322d20;
+  --sidebar-ring: #3aa88f;
   /* Acentos por plataforma (variantes claras para fondo oscuro). */
-  --platform-tiktok: #22d3ee;
-  --platform-instagram: #f472b6;
+  --platform-tiktok: #3aa88f;
+  --platform-instagram: #d98a6f;
   /* Elevación (oscuro): la sombra negra apenas se ve → borde luminoso superior
-     (inset) + halo índigo hacen el trabajo de separar planos. */
+     (inset) + halo teal hacen el trabajo de separar planos. */
   --elev-card:
     inset 0 1px 0 rgb(255 255 255 / 0.03), 0 1px 2px rgb(0 0 0 / 0.4),
-    0 4px 16px -6px rgb(0 0 0 / 0.5);
+    0 6px 20px -8px rgb(0 0 0 / 0.55);
   --elev-lift:
-    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 12px 32px -10px rgb(0 0 0 / 0.6),
-    0 0 32px -10px rgb(99 102 241 / 0.35);
-  --elev-rail: 4px 0 28px -18px rgb(0 0 0 / 0.7);
+    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 16px 40px -12px rgb(0 0 0 / 0.6),
+    0 0 32px -10px rgb(58 168 143 / 0.3);
+  --elev-rail: 4px 0 28px -20px rgb(0 0 0 / 0.7);
 }
 
 @layer base {
@@ -177,13 +181,22 @@
 }
 
 @layer utilities {
-  /* Luz ambiental de marca: dos radiales índigo muy tenues sobre el fondo.
-     Da profundidad sin romper la sobriedad; funciona en claro y oscuro. */
+  /* Textura "papel": retícula de puntos cálida muy tenue. El motivo del ledger;
+     funciona en claro y oscuro porque usa --foreground. */
+  .bg-dots {
+    background-image: radial-gradient(
+      color-mix(in oklab, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+  }
+
+  /* Fondo de páginas tipo login: retícula de puntos + halo teal ambiental. */
   .bg-page-glow {
     background-image:
       radial-gradient(
         56rem 32rem at 85% -10%,
-        color-mix(in oklab, var(--primary) 8%, transparent),
+        color-mix(in oklab, var(--primary) 7%, transparent),
         transparent 65%
       ),
       radial-gradient(
@@ -198,7 +211,7 @@
     background-size:
       auto,
       auto,
-      26px 26px;
+      22px 22px;
   }
 
   /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */
