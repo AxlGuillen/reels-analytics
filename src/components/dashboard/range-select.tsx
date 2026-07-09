@@ -12,7 +12,7 @@ import { VIDEO_RANGES, type RangeKey } from "@/modules/tiktok/ranges";
 export function RangeSelect({ active }: { active: RangeKey }) {
   const pathname = usePathname();
   return (
-    <div className="border-border bg-card inline-flex divide-x divide-[var(--border)] overflow-hidden rounded-md border">
+    <div className="border-border bg-card divide-border inline-flex divide-x overflow-hidden rounded-md border">
       {VIDEO_RANGES.map((r) => (
         <Link
           key={r.key}

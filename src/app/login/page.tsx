@@ -31,8 +31,10 @@ export default async function LoginPage() {
         <div
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{
+            // Derivado de --background (el panel es bg-foreground/invertido), así
+            // el punto contrasta igual en claro y oscuro. Ver .bg-dots en globals.css.
             backgroundImage:
-              "radial-gradient(circle, rgb(246 243 236 / 0.06) 1px, transparent 1px)",
+              "radial-gradient(circle, color-mix(in oklab, var(--background) 6%, transparent) 1px, transparent 1px)",
             backgroundSize: "22px 22px",
           }}
           aria-hidden
