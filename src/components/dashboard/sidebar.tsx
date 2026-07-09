@@ -17,13 +17,12 @@ import {
   InstagramIcon,
   LayoutGridIcon,
   LinkIcon,
-  LogoutIcon,
   MenuIcon,
   TrendingUpIcon,
 } from "@animateicons/react/lucide";
 import { X } from "lucide-react";
-import { signOutAction } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "./logout-button";
 import { ThemeToggle } from "./theme-toggle";
 
 /** Handle imperativo que expone cada icono de AnimateIcons. */
@@ -195,7 +194,6 @@ function SidebarNav({
   const connectionsActive = isActive(pathname, "/settings/connections");
   const [brandRef, brandHover] = useHoverIcon();
   const [connRef, connHover] = useHoverIcon();
-  const [logoutRef, logoutHover] = useHoverIcon();
   const [collapseRef, collapseHover] = useHoverIcon();
 
   return (
@@ -269,21 +267,7 @@ function SidebarNav({
           </div>
         )}
 
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            aria-label="Cerrar sesión"
-            title={collapsed ? "Cerrar sesión" : undefined}
-            className={cn(
-              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
-              collapsed && "justify-center px-0",
-            )}
-            {...logoutHover}
-          >
-            <LogoutIcon ref={logoutRef} size={18} className="shrink-0" />
-            {!collapsed && "Cerrar sesión"}
-          </button>
-        </form>
+        <LogoutButton collapsed={collapsed} />
 
         {onToggle && (
           <button
