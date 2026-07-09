@@ -20,7 +20,8 @@ import { getSession, isExpired } from "@/modules/tiktok/session";
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-card shadow-card rounded-lg border p-4">
-      <div className="font-mono text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="font-display text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="bg-primary my-2 h-0.5 w-7 rounded-full" />
       <div className="text-muted-foreground text-sm">{label}</div>
     </div>
   );

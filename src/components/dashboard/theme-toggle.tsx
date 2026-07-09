@@ -16,10 +16,18 @@ function useMounted() {
 }
 
 /**
- * Botón de tema con estilo de fila del nav. Cicla claro → oscuro → sistema.
- * Espera al montaje para leer el tema (evita desajuste de hidratación con SSR).
+ * Botón de tema. Cicla claro → oscuro → sistema. Espera al montaje para leer el
+ * tema (evita desajuste de hidratación con SSR). Dos presentaciones:
+ * - `row`: fila completa del nav (rail colapsado).
+ * - `icon`: botón cuadrado bordeado, para incrustar en la tarjeta de usuario.
  */
-export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
+export function ThemeToggle({
+  collapsed = false,
+  variant = "row",
+}: {
+  collapsed?: boolean;
+  variant?: "row" | "icon";
+}) {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
 
@@ -35,6 +43,29 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
         ? "Tema: oscuro"
         : "Tema: sistema";
 
+  const icon =
+    current === "light" ? (
+      <SunIcon size={variant === "icon" ? 15 : 18} className="shrink-0" />
+    ) : current === "dark" ? (
+      <MoonIcon size={variant === "icon" ? 15 : 18} className="shrink-0" />
+    ) : (
+      <Monitor className={variant === "icon" ? "size-[15px] shrink-0" : "size-[18px] shrink-0"} />
+    );
+
+  if (variant === "icon") {
+    return (
+      <button
+        type="button"
+        onClick={() => setTheme(next)}
+        aria-label={label}
+        title={label}
+        className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-ring/40 flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors duration-150"
+      >
+        {icon}
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -46,13 +77,7 @@ export function ThemeToggle({ collapsed }: { collapsed: boolean }) {
         collapsed && "justify-center px-0",
       )}
     >
-      {current === "light" ? (
-        <SunIcon size={18} className="shrink-0" />
-      ) : current === "dark" ? (
-        <MoonIcon size={18} className="shrink-0" />
-      ) : (
-        <Monitor className="size-[18px] shrink-0" />
-      )}
+      {icon}
       {!collapsed && <span>{mounted ? label : "Tema"}</span>}
     </button>
   );

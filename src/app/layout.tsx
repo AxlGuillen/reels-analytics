@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Spectral, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
-// Sans neutra y profesional para toda la UI (texto y titulares).
-const inter = Inter({
-  variable: "--font-sans",
+// Serif editorial "ledger" para titulares y números protagonistas.
+const spectral = Spectral({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-// Mono para valores numéricos protagonistas (KPIs, métricas): "precisión".
-const jetbrainsMono = JetBrains_Mono({
+// Sans de trabajo para toda la UI (texto, labels, controles).
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+// Mono para métricas tabulares (tablas, deltas, tokens): "libro de cuentas".
+const plexMono = IBM_Plex_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +39,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${spectral.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider

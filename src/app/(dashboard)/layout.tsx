@@ -27,12 +27,27 @@ export default async function DashboardLayout({
     instagram: !!env("INSTAGRAM_ACCESS_TOKEN"),
   };
 
+  const email = user.email ?? "";
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined) ??
+    "";
+  const name = fullName || email.split("@")[0] || "Cuenta";
+  const initials =
+    name
+      .split(/\s+/)
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "?";
+  const userInfo = { name, email, initials };
+
   return (
     <div className="flex min-h-dvh w-full">
-      <DesktopSidebar status={status} />
+      <DesktopSidebar status={status} user={userInfo} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <MobileNav status={status} />
-        <main className="flex-1">{children}</main>
+        <MobileNav status={status} user={userInfo} />
+        <main className="bg-dots flex-1">{children}</main>
       </div>
     </div>
   );

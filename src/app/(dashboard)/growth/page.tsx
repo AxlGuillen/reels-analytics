@@ -106,9 +106,14 @@ function PlatformFilter({ active }: { active?: Platform }) {
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="bg-card shadow-card rounded-lg border p-4">
-      <div className="text-muted-foreground text-xs">{label}</div>
-      <div className="mt-1 font-mono text-2xl font-semibold tabular-nums">{value}</div>
-      {hint && <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>}
+      <div className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+        {label}
+      </div>
+      <div className="font-display mt-1.5 text-2xl font-semibold tabular-nums">
+        {value}
+      </div>
+      <div className="bg-primary mt-2 h-0.5 w-7 rounded-full" />
+      {hint && <div className="text-muted-foreground mt-1.5 text-xs">{hint}</div>}
     </div>
   );
 }
