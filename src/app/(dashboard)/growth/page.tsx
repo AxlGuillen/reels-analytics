@@ -55,7 +55,7 @@ import {
   dailyFollowerDeltas,
   type FollowerDelta,
 } from "@/modules/analytics/attribution";
-import { RESERVED_TAGS } from "@/core/lib/content-type";
+import { contentHref, RESERVED_TAGS } from "@/core/lib/content-type";
 import { monthKey } from "@/core/lib/datetime";
 import { formatCount, formatDate, formatPercent } from "@/core/lib/format";
 
@@ -386,7 +386,7 @@ export default async function GrowthPage({
                     <TableRow key={t.label}>
                       <TableCell className="font-medium">
                         <Link
-                          href={`/content?type=${t.key ?? "unclassified"}${platform ? `&platform=${platform}` : ""}`}
+                          href={contentHref(t.key, platform)}
                           className="hover:text-primary hover:underline"
                         >
                           {t.label}

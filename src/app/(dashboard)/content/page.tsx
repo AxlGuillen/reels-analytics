@@ -17,15 +17,13 @@ import {
 } from "@/modules/analytics/insights";
 import {
   classifyContentType,
+  contentHref,
   contentTypeLabel,
   CONTENT_TYPES,
-  UNCLASSIFIED_LABEL,
+  UNCLASSIFIED_PARAM,
   type ContentTypeKey,
 } from "@/core/lib/content-type";
 import { formatCount, formatPercent } from "@/core/lib/format";
-
-/** Valor del query param para el grupo sin tag de tipo (la clave real es `null`). */
-const UNCLASSIFIED_PARAM = "unclassified";
 
 /** Parsea `?type=` a una clave válida (o `null` = sin clasificar, undefined = resumen). */
 function parseTypeParam(
@@ -34,13 +32,6 @@ function parseTypeParam(
   if (!raw) return undefined;
   if (raw === UNCLASSIFIED_PARAM) return null;
   return raw in CONTENT_TYPES ? (raw as ContentTypeKey) : undefined;
-}
-
-function typeHref(key: ContentTypeKey | null, platform?: Platform): string {
-  const params = new URLSearchParams();
-  params.set("type", key ?? UNCLASSIFIED_PARAM);
-  if (platform) params.set("platform", platform);
-  return `/content?${params.toString()}`;
 }
 
 /** KPI editorial del ledger: número Spectral + subrayado teal + label. */
@@ -120,7 +111,7 @@ export default async function ContentPage({
           {byType.map((t) => (
             <Link
               key={t.label}
-              href={typeHref(t.key, platform)}
+              href={contentHref(t.key, platform)}
               className="bg-card shadow-card hover:shadow-lift block rounded-lg border p-5 transition-shadow duration-200"
             >
               <div className="flex items-baseline justify-between gap-2">
@@ -155,14 +146,14 @@ export default async function ContentPage({
         <Card>
           <CardHeader>
             <CardTitle>
-              Sin videos {type ? `de "${contentTypeLabel(type)}"` : "sin clasificar"}
+              {type ? `Sin videos de "${contentTypeLabel(type)}"` : "Nada sin clasificar"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground text-sm">
               {type
                 ? `Etiqueta tus videos con #${CONTENT_TYPES[type].tag} para que aparezcan aquí.`
-                : `Todos los videos tienen tag de tipo. (${UNCLASSIFIED_LABEL} queda vacío.)`}
+                : "Todos los videos del catálogo ya tienen tag de tipo."}
             </p>
           </CardContent>
         </Card>
