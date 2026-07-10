@@ -54,7 +54,7 @@ function RecentVideos({ videos }: { videos: VideoWithMetrics[] }) {
       {videos.slice(0, 6).map(({ video, metrics }) => (
         <Link
           key={video.externalId}
-          href={`/video/tiktok/${video.externalId}`}
+          href={`/video/${video.platform}/${video.externalId}`}
           className="hover:bg-muted/40 flex items-center gap-3 px-1 py-2 transition-colors"
         >
           {video.thumbnailUrl ? (
