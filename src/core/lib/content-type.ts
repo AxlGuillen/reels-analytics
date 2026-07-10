@@ -55,3 +55,21 @@ export function classifyContentType(hashtags: string[]): ContentTypeKey | null {
 export function contentTypeLabel(key: ContentTypeKey | null): string {
   return key ? CONTENT_TYPES[key].label : UNCLASSIFIED_LABEL;
 }
+
+/** Valor del query param `?type=` para el grupo sin tag (la clave real es `null`). */
+export const UNCLASSIFIED_PARAM = "unclassified";
+
+/**
+ * URL canónica del drill-down de un tipo en la vista Contenido. Única fuente de
+ * verdad del link (la usan /content y /growth); así un cambio de convención del
+ * param no rompe enlaces en silencio.
+ */
+export function contentHref(
+  key: ContentTypeKey | null,
+  platform?: "tiktok" | "instagram",
+): string {
+  const params = new URLSearchParams();
+  params.set("type", key ?? UNCLASSIFIED_PARAM);
+  if (platform) params.set("platform", platform);
+  return `/content?${params.toString()}`;
+}

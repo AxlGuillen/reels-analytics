@@ -99,6 +99,14 @@ hashtags). Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]`
 Cambiar reglas o sumar un tipo = editar ese diccionario, sin migración. Los tags reservados se
 excluyen del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`).
 
+**Vista Contenido (`/content`, implementada):** catálogo dividido por tipo. Resumen = una card
+por tipo (iterando `groupByContentType`, dinámico — tipos nuevos aparecen solos) y drill-down vía
+`?type=<key|unclassified>` (+ `?platform=`): KPIs del grupo (`summarize`) + listado cross-platform
+con `VideoListTable` (`src/components/dashboard/video-list-table.tsx`, cada fila enlaza a
+`/video/{platform}/{id}`; badge con acento por plataforma). El filtro de plataforma es el
+componente compartido `src/components/dashboard/platform-filter.tsx` (preserva query extra); lo
+usan /growth y /content. La tabla "Rendimiento por tipo" de /growth enlaza al drill-down.
+
 > Limitación conocida (IG): el cron persiste hasta 90 Reels (`MAX_REELS` en
 > `modules/instagram/read.ts`). Con ~20 videos/semana, la historia **por video** de IG se congela
 > para lo más viejo que ~4.5 semanas (el crecimiento de **cuenta** no se afecta). Follow-up: subir
@@ -170,8 +178,9 @@ Migrado desde el índigo "Precisión editorial". Importado desde un diseño de C
   como en el diseño); `--destructive` = ladrillo cálido. Charts `--chart-1..5`
   (teal/verde-salvia/tan/topo/arena). `--brand` = teal.
 - **Tema** vía `next-themes` (`src/components/theme-provider.tsx`, `attribute="class"`,
-  `defaultTheme="system"`); `<html>` lleva `suppressHydrationWarning`. El toggle vive en el
-  footer del sidebar (`src/components/dashboard/theme-toggle.tsx`, cicla claro→oscuro→sistema).
+  `defaultTheme="system"` solo para la primera visita); `<html>` lleva `suppressHydrationWarning`.
+  El toggle vive en el footer del sidebar (`src/components/dashboard/theme-toggle.tsx`) y
+  **alterna solo claro ↔ oscuro** (usa `resolvedTheme`; no ofrece opción "sistema").
 - **Tipografía** (`layout.tsx`, next/font): **Spectral** (`--font-display`, serif — titulares y
   números hero), **IBM Plex Sans** (`--font-sans` — UI y texto), **IBM Plex Mono** (`--font-mono`
   — tabulares). `--font-heading` apunta a Spectral.

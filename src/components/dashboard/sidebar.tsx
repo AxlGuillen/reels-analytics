@@ -15,6 +15,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   InstagramIcon,
+  LayersIcon,
   LayoutGridIcon,
   LinkIcon,
   MenuIcon,
@@ -79,6 +80,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { label: "Overview", href: "/", icon: LayoutGridIcon },
       { label: "Crecimiento", href: "/growth", icon: TrendingUpIcon },
+      { label: "Contenido", href: "/content", icon: LayersIcon },
     ],
   },
   {

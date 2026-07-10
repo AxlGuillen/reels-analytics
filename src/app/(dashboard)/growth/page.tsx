@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Platform } from "@/core/domain";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -29,6 +28,7 @@ import {
   MetricToggle,
   type MetricMode,
 } from "@/components/dashboard/metric-toggle";
+import { PlatformFilter } from "@/components/dashboard/platform-filter";
 import {
   readGrowth,
   readSnapshotSeries,
@@ -55,10 +55,9 @@ import {
   dailyFollowerDeltas,
   type FollowerDelta,
 } from "@/modules/analytics/attribution";
-import { RESERVED_TAGS } from "@/core/lib/content-type";
+import { contentHref, RESERVED_TAGS } from "@/core/lib/content-type";
 import { monthKey } from "@/core/lib/datetime";
 import { formatCount, formatDate, formatPercent } from "@/core/lib/format";
-import { cn } from "@/lib/utils";
 
 /** Mínimo de videos para que un mes sea elegible como "mejor engagement". */
 const ENGAGEMENT_MIN_VIDEOS = 5;
@@ -75,33 +74,6 @@ const PLATFORM_COLORS: Record<Platform, string> = {
   tiktok: "var(--color-platform-tiktok)",
   instagram: "var(--color-platform-instagram)",
 };
-
-const FILTERS: { label: string; value?: Platform }[] = [
-  { label: "Todas" },
-  { label: "TikTok", value: "tiktok" },
-  { label: "Instagram", value: "instagram" },
-];
-
-function PlatformFilter({ active }: { active?: Platform }) {
-  return (
-    <div className="flex gap-1">
-      {FILTERS.map((f) => {
-        const isActive = active === f.value;
-        return (
-          <Link
-            key={f.label}
-            href={f.value ? `/growth?platform=${f.value}` : "/growth"}
-            className={cn(
-              buttonVariants({ variant: isActive ? "default" : "outline", size: "sm" }),
-            )}
-          >
-            {f.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -291,7 +263,11 @@ export default async function GrowthPage({
             Historia acumulada desde los snapshots guardados.
           </p>
         </div>
-        <PlatformFilter active={platform} />
+        <PlatformFilter
+          active={platform}
+          basePath="/growth"
+          extraQuery={{ month: monthParam, metric: metricParam }}
+        />
       </header>
 
       {empty ? (
@@ -408,7 +384,14 @@ export default async function GrowthPage({
                 <TableBody>
                   {byType.map((t) => (
                     <TableRow key={t.label}>
-                      <TableCell className="font-medium">{t.label}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={contentHref(t.key, platform)}
+                          className="hover:text-primary hover:underline"
+                        >
+                          {t.label}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{t.count}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatCount(Math.round(t.avgViews))}
