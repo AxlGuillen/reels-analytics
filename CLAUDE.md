@@ -180,7 +180,10 @@ Migrado desde el índigo "Precisión editorial". Importado desde un diseño de C
 - **Tema** vía `next-themes` (`src/components/theme-provider.tsx`, `attribute="class"`,
   `defaultTheme="system"` solo para la primera visita); `<html>` lleva `suppressHydrationWarning`.
   El toggle vive en el footer del sidebar (`src/components/dashboard/theme-toggle.tsx`) y
-  **alterna solo claro ↔ oscuro** (usa `resolvedTheme`; no ofrece opción "sistema").
+  **alterna solo claro ↔ oscuro** (usa `resolvedTheme`; no ofrece opción "sistema"). El cambio
+  anima un **circular reveal** (View Transitions API + `flushSync`, 300 ms, clip-path desde el
+  botón; reglas `::view-transition` en globals.css) y degrada a cambio instantáneo sin soporte
+  del navegador o con `prefers-reduced-motion`.
 - **Tipografía** (`layout.tsx`, next/font): **Spectral** (`--font-display`, serif — titulares y
   números hero), **IBM Plex Sans** (`--font-sans` — UI y texto), **IBM Plex Mono** (`--font-mono`
   — tabulares). `--font-heading` apunta a Spectral.
