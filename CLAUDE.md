@@ -92,12 +92,26 @@ seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo,
 publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
 `?platform=`.
 
+**Overview (`/`, cross-platform por periodo, lee de Supabase):** ya NO lee TikTok en vivo. Usa
+`readOverviewSummary` (`modules/analytics/overview.ts`) sobre ambas plataformas. Selector de periodo
+**Semana/Mes** + navegación ◀▶ (`src/components/dashboard/period-nav.tsx`, solo query params
+`?period=&anchor=`, sin JS de cliente). El modelo de periodo vive en `modules/analytics/period.ts`
+(puro, testeado: `resolvePeriod` semana/mes + sub-buckets día/semana + `sumOverPeriod`, sin navegar
+al futuro). KPIs del periodo — **Videos publicados** (conteo) + **Vistas/Likes/Comentarios ganados**
+(deltas vía `buildTimeline`) — combinados y con split TikTok/Instagram, + seguidores ganados. Barras
+de vistas apiladas por plataforma (por día en semana, por semana en mes) y tipos de contenido
+publicados con link a `/content`.
+
 **Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
-hashtag identificador — **`#audioviral`**, **`#dui`**, **`#duiyhal`** (el `&` no es válido en
-hashtags). Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya guardado con
-`classifyContentType` (`src/core/lib/content-type.ts`, precedencia `duiyhal > dui > audioviral`).
-Cambiar reglas o sumar un tipo = editar ese diccionario, sin migración. Los tags reservados se
-excluyen del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`).
+hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
+**`mundial2026`** y **`cumpleaneros`**. Cada tipo puede matchear **varios hashtags (alias)**:
+`ContentTypeDef.tags[]` (el primero es el canónico) — p. ej. `mundial2026` cuenta tanto `#mundial`
+como `#mundial2026`. Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya
+guardado con `classifyContentType` (`src/core/lib/content-type.ts`, precedencia
+`duiyhal > dui > news > mundial2026 > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
+un alias = editar ese diccionario, sin migración. Los tags reservados (todos los alias) se excluyen
+del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`). `#humor` es el más usado
+(~294 videos) pero se trata como **temático**, no como tipo, por decisión del creador.
 
 **Vista Contenido (`/content`, implementada):** catálogo dividido por tipo. Resumen = una card
 por tipo (iterando `groupByContentType`, dinámico — tipos nuevos aparecen solos) y drill-down vía
