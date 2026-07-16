@@ -3,24 +3,37 @@
  *
  * Decisión de diseño: el tipo NO se persiste en Supabase (solo datos crudos). Se
  * **deriva al leer** revisando si el `hashtags[]` del video (ya guardado) incluye
- * el tag reservado. Cambiar reglas o sumar un tipo = editar este diccionario, sin
- * migración ni re-backfill. Este archivo es la única fuente de verdad.
+ * alguno de los tags reservados del tipo. Cambiar reglas o sumar un tipo = editar
+ * este diccionario, sin migración ni re-backfill. Este archivo es la única fuente
+ * de verdad.
  */
 
-export type ContentTypeKey = "audioviral" | "dui" | "duiyhal" | "news";
+export type ContentTypeKey =
+  | "audioviral"
+  | "dui"
+  | "duiyhal"
+  | "news"
+  | "mundial2026"
+  | "cumpleaneros";
 
 export interface ContentTypeDef {
-  /** hashtag identificador (sin `#`, en minúsculas, como lo devuelve el parser). */
-  tag: string;
+  /**
+   * Hashtags identificadores (sin `#`, en minúsculas, como los devuelve el
+   * parser). El primero es el canónico; los demás son **alias** que cuentan como
+   * el mismo tipo (p. ej. el creador ha usado tanto `mundial` como `mundial2026`).
+   */
+  tags: string[];
   /** etiqueta para la UI. */
   label: string;
 }
 
 export const CONTENT_TYPES: Record<ContentTypeKey, ContentTypeDef> = {
-  audioviral: { tag: "audioviral", label: "Audio viral" },
-  dui: { tag: "dui", label: "Dui (narración)" },
-  duiyhal: { tag: "duiyhal", label: "Dui y Hal" },
-  news: { tag: "news", label: "Noticias" },
+  audioviral: { tags: ["audioviral"], label: "Audio viral" },
+  dui: { tags: ["dui"], label: "Dui (narración)" },
+  duiyhal: { tags: ["duiyhal"], label: "Dui y Hal" },
+  news: { tags: ["news"], label: "Noticias" },
+  mundial2026: { tags: ["mundial2026", "mundial"], label: "Mundial 2026" },
+  cumpleaneros: { tags: ["cumpleañeros"], label: "Cumpleañeros" },
 };
 
 /** Etiqueta para los videos sin ningún tag de tipo. */
@@ -31,22 +44,29 @@ export const UNCLASSIFIED_LABEL = "Sin clasificar";
  * de tipo, gana el primero de esta lista. `duiyhal` va antes que `dui` por si
  * ambos aparecieran juntos.
  */
-const PRECEDENCE: ContentTypeKey[] = ["duiyhal", "dui", "news", "audioviral"];
+const PRECEDENCE: ContentTypeKey[] = [
+  "duiyhal",
+  "dui",
+  "news",
+  "mundial2026",
+  "cumpleaneros",
+  "audioviral",
+];
 
 /** Conjunto de tags reservados (para excluirlos del análisis de hashtags temáticos). */
 export const RESERVED_TAGS: ReadonlySet<string> = new Set(
-  Object.values(CONTENT_TYPES).map((t) => t.tag),
+  Object.values(CONTENT_TYPES).flatMap((t) => t.tags),
 );
 
 /**
  * Clasifica un video por sus hashtags. Devuelve la clave del tipo o `null` si no
- * lleva ninguno de los identificadores. Espera los tags como los da
- * `extractHashtags` (minúsculas, sin `#`).
+ * lleva ninguno de los identificadores (ni sus alias). Espera los tags como los
+ * da `extractHashtags` (minúsculas, sin `#`).
  */
 export function classifyContentType(hashtags: string[]): ContentTypeKey | null {
   const set = new Set(hashtags);
   for (const key of PRECEDENCE) {
-    if (set.has(CONTENT_TYPES[key].tag)) return key;
+    if (CONTENT_TYPES[key].tags.some((tag) => set.has(tag))) return key;
   }
   return null;
 }
@@ -54,6 +74,11 @@ export function classifyContentType(hashtags: string[]): ContentTypeKey | null {
 /** Etiqueta legible de un tipo (o "Sin clasificar" para `null`). */
 export function contentTypeLabel(key: ContentTypeKey | null): string {
   return key ? CONTENT_TYPES[key].label : UNCLASSIFIED_LABEL;
+}
+
+/** Hashtag canónico (primer alias) de un tipo — para textos tipo "etiqueta con #x". */
+export function contentTypeTag(key: ContentTypeKey): string {
+  return CONTENT_TYPES[key].tags[0];
 }
 
 /** Valor del query param `?type=` para el grupo sin tag (la clave real es `null`). */
