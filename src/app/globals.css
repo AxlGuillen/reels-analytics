@@ -235,3 +235,15 @@
     transform: none;
   }
 }
+
+/*
+ * Cambio de tema con "circular reveal" (theme-toggle.tsx). Se apaga el
+ * cross-fade default de la View Transition para que el snapshot viejo quede
+ * estático debajo y el nuevo se destape con el clip-path circular animado
+ * desde el botón (Web Animations API sobre ::view-transition-new(root)).
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

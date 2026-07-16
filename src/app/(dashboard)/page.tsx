@@ -1,38 +1,30 @@
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { RangeSelect } from "@/components/dashboard/range-select";
+import { PeriodNav } from "@/components/dashboard/period-nav";
+import { formatCount } from "@/core/lib/format";
+import { contentHref, type ContentTypeKey } from "@/core/lib/content-type";
 import {
-  InsightBarChart,
-  type InsightDatum,
-} from "@/components/charts/insight-bar-chart";
-import { getSession } from "@/modules/tiktok/session";
-import { readTikTokOverview } from "@/modules/tiktok/read";
-import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
-import {
-  bestBucket,
-  engagementRate,
-  summarize,
-  topHashtags,
-  viewsByHour,
-  viewsByWeekday,
-} from "@/modules/analytics/insights";
-import { formatCount, formatPercent } from "@/core/lib/format";
-import type { VideoWithMetrics } from "@/modules/analytics/insights";
+  readOverviewSummary,
+  type OverviewSummary,
+  type SubBucketMetrics,
+} from "@/modules/analytics/overview";
 
+/** KPI del periodo: número combinado (Spectral) + split por plataforma (mono). */
 function Kpi({
   label,
-  value,
-  hint,
+  combined,
+  tiktok,
+  instagram,
 }: {
   label: string;
-  value: string;
-  hint?: string;
+  combined: number;
+  tiktok: number;
+  instagram: number;
 }) {
   return (
     <div className="bg-card shadow-card rounded-lg border p-4">
@@ -40,42 +32,81 @@ function Kpi({
         {label}
       </div>
       <div className="font-display mt-1.5 text-2xl font-semibold tabular-nums">
-        {value}
+        {formatCount(combined)}
       </div>
       <div className="bg-primary mt-2 h-0.5 w-7 rounded-full" />
-      {hint && <div className="text-muted-foreground mt-1.5 text-xs">{hint}</div>}
+      <div className="mt-2 flex gap-3 font-mono text-[11px] tabular-nums">
+        <span className="text-platform-tiktok">TT {formatCount(tiktok)}</span>
+        <span className="text-platform-instagram">IG {formatCount(instagram)}</span>
+      </div>
     </div>
   );
 }
 
-function RecentVideos({ videos }: { videos: VideoWithMetrics[] }) {
+const CHART_H = 140;
+
+/** Barras de vistas ganadas por sub-bucket (día o semana), apiladas por plataforma. */
+function ViewsBars({ buckets }: { buckets: SubBucketMetrics[] }) {
+  const max = Math.max(1, ...buckets.map((b) => Math.max(0, b.combined.views)));
   return (
-    <div className="divide-y">
-      {videos.slice(0, 6).map(({ video, metrics }) => (
+    <div className="space-y-3">
+      <div className="flex items-end gap-2">
+        {buckets.map((b) => {
+          const tk = Math.max(0, b.tiktok.views);
+          const ig = Math.max(0, b.instagram.views);
+          const total = tk + ig;
+          return (
+            <div key={b.key} className="flex flex-1 flex-col items-center gap-1.5">
+              <div className="text-muted-foreground h-3 font-mono text-[9px] tabular-nums">
+                {total > 0 ? formatCount(total) : ""}
+              </div>
+              <div
+                className="flex w-full flex-col justify-end"
+                style={{ height: CHART_H }}
+              >
+                <div
+                  className="bg-platform-tiktok w-full rounded-t-sm"
+                  style={{ height: (tk / max) * CHART_H }}
+                />
+                <div
+                  className="bg-platform-instagram w-full"
+                  style={{ height: (ig / max) * CHART_H }}
+                />
+              </div>
+              <span className="text-muted-foreground text-[10px]">{b.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="text-muted-foreground flex gap-4 text-[11px]">
+        <span className="flex items-center gap-1.5">
+          <span className="bg-platform-tiktok size-2 rounded-full" /> TikTok
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="bg-platform-instagram size-2 rounded-full" /> Instagram
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Tipos de contenido publicados en el periodo (link al drill-down de /content). */
+function TypeList({ types }: { types: OverviewSummary["contentTypes"] }) {
+  const sorted = [...types].sort((a, b) => b.totalViews - a.totalViews);
+  return (
+    <div className="flex flex-col">
+      {sorted.map((t) => (
         <Link
-          key={`${video.platform}-${video.externalId}`}
-          href={`/video/${video.platform}/${video.externalId}`}
-          className="hover:bg-muted/40 flex items-center gap-3 px-1 py-2 transition-colors"
+          key={String(t.key)}
+          href={contentHref(t.key as ContentTypeKey | null)}
+          className="hover:bg-muted/40 flex items-center justify-between rounded px-1 py-2 not-last:border-b transition-colors"
         >
-          {video.thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- CDN de TikTok con URL firmada
-            <img
-              src={video.thumbnailUrl}
-              alt=""
-              width={32}
-              height={42}
-              referrerPolicy="no-referrer"
-              className="h-11 w-8 rounded object-cover"
-            />
-          ) : (
-            <div className="bg-muted h-11 w-8 rounded" />
-          )}
-          <p className="min-w-0 flex-1 truncate text-sm">{video.caption ?? "—"}</p>
-          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-            {formatCount(metrics.views)} vistas
-          </span>
-          <span className="shrink-0 text-xs tabular-nums">
-            {formatPercent(engagementRate(metrics))}
+          <span className="text-sm">{t.label}</span>
+          <span className="flex items-center gap-3 font-mono text-xs">
+            <span className="text-muted-foreground">
+              {t.count} video{t.count !== 1 ? "s" : ""}
+            </span>
+            <span className="tabular-nums">{formatCount(t.totalViews)} vistas</span>
           </span>
         </Link>
       ))}
@@ -83,161 +114,126 @@ function RecentVideos({ videos }: { videos: VideoWithMetrics[] }) {
   );
 }
 
+function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
+      {children}
+    </div>
+  );
+}
+
 export default async function OverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ period?: string; anchor?: string }>;
 }) {
-  const { range: rangeParam } = await searchParams;
-  const range = resolveRange(rangeParam);
-  const session = await getSession();
-  const result = await readTikTokOverview(session, {
-    since: sinceForRange(range),
-  });
+  const sp = await searchParams;
+  const granularity = sp.period === "month" ? "month" : "week";
+
+  let summary: OverviewSummary;
+  try {
+    summary = await readOverviewSummary({ granularity, anchor: sp.anchor });
+  } catch (err) {
+    return (
+      <PageShell>
+        <h1 className="font-display text-2xl tracking-wide">Overview</h1>
+        <Card>
+          <CardContent className="py-6">
+            <p className="text-destructive text-sm">
+              No se pudo leer el resumen:{" "}
+              {err instanceof Error ? err.message : "error desconocido"}
+            </p>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  const { period, combined, byPlatform, subBuckets, contentTypes } = summary;
+  const currentAnchor =
+    period.granularity === "month" ? `${period.key}-01` : period.key;
+  const unit = period.subGranularity === "day" ? "día" : "semana";
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
+    <PageShell>
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl tracking-wide">Overview</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Rendimiento y crecimiento de tus videos.
+            Resumen de {period.granularity === "week" ? "la semana" : "el mes"} ·{" "}
+            {period.label}
+            {combined.followersGained !== null && (
+              <>
+                {" · "}
+                <span className="text-primary font-medium">
+                  {combined.followersGained >= 0 ? "+" : ""}
+                  {formatCount(combined.followersGained)}
+                </span>{" "}
+                seguidores
+              </>
+            )}
           </p>
         </div>
-        <RangeSelect active={range} />
+        <PeriodNav
+          granularity={period.granularity}
+          label={period.label}
+          currentAnchor={currentAnchor}
+          prevAnchor={period.prevAnchor}
+          nextAnchor={period.nextAnchor}
+        />
       </header>
 
-      {result.status !== "ok" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Conecta una cuenta para ver métricas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground text-sm">
-              {result.status === "expired"
-                ? "La sesión de TikTok expiró. Vuelve a conectarla."
-                : result.status === "error"
-                  ? `No se pudieron leer los datos: ${result.message}`
-                  : "Aún no hay ninguna cuenta conectada."}
-            </p>
-            <Link href="/api/auth/tiktok/login" className={buttonVariants()}>
-              {result.status === "disconnected" ? "Conectar TikTok" : "Reconectar TikTok"}
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <OverviewContent overview={result.overview} />
-      )}
-    </div>
-  );
-}
-
-function OverviewContent({
-  overview,
-}: {
-  overview: { account: import("@/core/domain").AccountStats; videos: VideoWithMetrics[] };
-}) {
-  const { account, videos } = overview;
-  const summary = summarize(videos);
-  const bestDay = bestBucket(viewsByWeekday(videos));
-  const bestHour = bestBucket(viewsByHour(videos));
-
-  const weekdayData: InsightDatum[] = viewsByWeekday(videos).map((b) => ({
-    label: b.label.slice(0, 3),
-    value: Math.round(b.avgViews),
-    highlight: b.label === bestDay?.label,
-  }));
-  const hashtagData: InsightDatum[] = topHashtags(videos, 8).map((h) => ({
-    label: `#${h.tag}`,
-    value: h.totalViews,
-  }));
-
-  return (
-    <div className="space-y-6">
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Vistas totales" value={formatCount(summary.totalViews)} />
-        <Kpi label="Seguidores" value={formatCount(account.followers)} />
-        <Kpi
-          label="Engagement prom."
-          value={formatPercent(summary.avgEngagement)}
-        />
         <Kpi
           label="Videos"
-          value={formatCount(summary.totalVideos)}
-          hint={bestDay ? `Mejor día: ${capitalize(bestDay.label)}` : undefined}
+          combined={combined.videosPublished}
+          tiktok={byPlatform.tiktok.videosPublished}
+          instagram={byPlatform.instagram.videosPublished}
+        />
+        <Kpi
+          label="Vistas"
+          combined={combined.views}
+          tiktok={byPlatform.tiktok.views}
+          instagram={byPlatform.instagram.views}
+        />
+        <Kpi
+          label="Likes"
+          combined={combined.likes}
+          tiktok={byPlatform.tiktok.likes}
+          instagram={byPlatform.instagram.likes}
+        />
+        <Kpi
+          label="Comentarios"
+          combined={combined.comments}
+          tiktok={byPlatform.tiktok.comments}
+          instagram={byPlatform.instagram.comments}
         />
       </section>
 
-      {videos.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No hay videos en este periodo. Prueba con un rango más amplio.
-        </p>
-      ) : (
-        <>
-          <section className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">
-                  Vistas promedio por día
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InsightBarChart data={weekdayData} valueLabel="vistas prom." />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">
-                  Top hashtags por vistas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InsightBarChart
-                  data={hashtagData}
-                  valueLabel="vistas"
-                  orientation="vertical"
-                />
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="grid gap-3 sm:grid-cols-3">
-            <Kpi
-              label="Mejor día"
-              value={bestDay ? capitalize(bestDay.label) : "—"}
-              hint={bestDay ? `${formatCount(Math.round(bestDay.avgViews))} vistas prom.` : undefined}
-            />
-            <Kpi
-              label="Mejor hora"
-              value={bestHour ? bestHour.label : "—"}
-              hint={bestHour ? `${formatCount(Math.round(bestHour.avgViews))} vistas prom.` : undefined}
-            />
-            <Kpi
-              label="Vistas promedio"
-              value={formatCount(Math.round(summary.avgViews))}
-            />
-          </section>
-
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <CardTitle className="text-sm">Videos recientes</CardTitle>
-              <Link
-                href="/tiktok"
-                className="text-primary text-xs hover:underline"
-              >
-                Ver todos
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <RecentVideos videos={videos} />
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Vistas por {unit}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ViewsBars buckets={subBuckets} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Tipos de contenido publicados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {contentTypes.length > 0 ? (
+              <TypeList types={contentTypes} />
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No publicaste videos en este periodo.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </PageShell>
   );
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

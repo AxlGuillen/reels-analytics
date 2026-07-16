@@ -152,7 +152,7 @@ export default async function ContentPage({
           <CardContent>
             <p className="text-muted-foreground text-sm">
               {type
-                ? `Etiqueta tus videos con #${CONTENT_TYPES[type].tag} para que aparezcan aquí.`
+                ? `Etiqueta tus videos con #${CONTENT_TYPES[type].tags[0]} para que aparezcan aquí.`
                 : "Todos los videos del catálogo ya tienen tag de tipo."}
             </p>
           </CardContent>
