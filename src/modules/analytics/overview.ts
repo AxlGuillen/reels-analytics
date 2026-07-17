@@ -42,6 +42,14 @@ export interface SubBucketMetrics {
   instagram: PeriodMetrics;
 }
 
+/** Video más visto publicado en el periodo (para el digest / destacados). */
+export interface BestVideo {
+  externalId: string;
+  platform: Platform;
+  caption: string | null;
+  views: number;
+}
+
 export interface OverviewSummary {
   period: {
     granularity: PeriodGranularity;
@@ -53,9 +61,13 @@ export interface OverviewSummary {
   };
   combined: PeriodMetrics & { followersGained: number | null };
   byPlatform: Record<Platform, PeriodMetrics>;
+  /** seguidores ganados por plataforma (null = sin observación en el periodo). */
+  followersByPlatform: Record<Platform, number | null>;
   subBuckets: SubBucketMetrics[];
   /** tipos de contenido de los videos PUBLICADOS en el periodo (ambas plataformas). */
   contentTypes: ContentTypeStat[];
+  /** video más visto publicado en el periodo (o null si no se publicó nada). */
+  bestVideo: BestVideo | null;
 }
 
 const PLATFORMS: Platform[] = ["tiktok", "instagram"];
@@ -195,6 +207,12 @@ export async function readOverviewSummary(opts: {
     .flatMap((d) => d.videos)
     .filter((r) => periodDays.has(dayKey(r.video.publishedAt, CREATOR_TIMEZONE)));
 
+  const bestRow = publishedInPeriod.length
+    ? publishedInPeriod.reduce((a, b) =>
+        b.metrics.views > a.metrics.views ? b : a,
+      )
+    : null;
+
   return {
     period: {
       granularity: period.granularity,
@@ -206,7 +224,16 @@ export async function readOverviewSummary(opts: {
     },
     combined: { ...addMetrics(tk.total, ig.total), followersGained },
     byPlatform: { tiktok: tk.total, instagram: ig.total },
+    followersByPlatform: { tiktok: tkFollowers, instagram: igFollowers },
     subBuckets,
     contentTypes: groupByContentType(publishedInPeriod),
+    bestVideo: bestRow
+      ? {
+          externalId: bestRow.video.externalId,
+          platform: bestRow.video.platform,
+          caption: bestRow.video.caption,
+          views: bestRow.metrics.views,
+        }
+      : null,
   };
 }
