@@ -34,7 +34,12 @@ const signed = (value: number): string =>
 
 const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** Etiqueta de día a partir de su clave YYYY-MM-DD (p. ej. "Jueves 17"). */
+/**
+ * Etiqueta de día a partir de su clave `YYYY-MM-DD` (p. ej. "Jueves 17").
+ * PRECONDICIÓN: la clave es de un sub-bucket DIARIO. El digest siempre usa
+ * `granularity: "week"` (sub = day), así que se cumple; no reusar con periodo
+ * mensual (sub = week, clave = lunes) sin ajustar el formato.
+ */
 function dayLabel(key: string): string {
   const name = weekday(new Date(`${key}T12:00:00Z`), "UTC");
   return `${capitalize(name)} ${Number(key.slice(8, 10))}`;
@@ -53,8 +58,12 @@ function splitSection(
 ): string[] {
   const fmt = signedFmt ? signed : formatCount;
   const total = tiktok + instagram;
+  // El % solo tiene sentido si ambos sumandos son ≥0 (comparten signo con el
+  // total). Los seguidores ganados pueden ser negativos por plataforma → ahí se
+  // omite, que si no daría cosas como "TikTok +100 (167%) · Instagram -40 (-67%)".
+  const showPct = total > 0 && tiktok >= 0 && instagram >= 0;
   const pct = (n: number) =>
-    total > 0 ? ` (${Math.round((n / total) * 100)}%)` : "";
+    showPct ? ` (${Math.round((n / total) * 100)}%)` : "";
   return [
     `${emoji} <b>${title}</b>`,
     `• Total: ${fmt(total)}`,

@@ -47,6 +47,7 @@ export interface BestVideo {
   externalId: string;
   platform: Platform;
   caption: string | null;
+  /** vistas totales de por vida (≈ ganadas en el periodo si se publicó en él). */
   views: number;
 }
 
