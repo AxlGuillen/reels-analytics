@@ -96,7 +96,10 @@ Independientes entre sí; se pueden intercalar.
 vistas a 7d vs 4,322 de `dui` (narración), y **techo duro** — en 16 intentos ninguno
 pasó de 3,232 vistas, mientras `dui` llegó a 267k. Se descartó por eso.
 
-**Por qué se retoma.** (a) 16 es muestra chica; (b) la audiencia creció fuerte desde
+**Por qué se retoma.** La razón principal que dio el creador es **variedad y
+sostenibilidad de contenido**, no una expectativa de mejor rendimiento — un catálogo
+monoformato desgasta a la audiencia y al creador. Además: (a) 16 es muestra chica;
+(b) la audiencia creció fuerte desde
 entonces (TikTok 2.2k → 3.5k en julio), así que el dato viejo puede no aplicar;
 (c) **el costo de producción es muy distinto**: `audioviral` toma poco tiempo,
 `dui` bastante más — y el creador está entrando en desgaste creativo. Un formato
