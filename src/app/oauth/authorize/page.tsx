@@ -5,7 +5,29 @@ import { createServerSupabase } from "@/core/supabase/server";
 import { SCOPE } from "@/modules/oauth/config";
 import { getClient } from "@/modules/oauth/store";
 import { redirectUriMatches } from "@/modules/oauth/tokens";
-import { decideAction } from "./actions";
+import { approveAction, denyAction } from "./actions";
+
+/** Datos de la petición OAuth que ambos formularios reenvían a su acción. */
+function RequestFields({
+  clientId,
+  redirectUri,
+  codeChallenge,
+  state,
+}: {
+  clientId: string;
+  redirectUri: string;
+  codeChallenge: string;
+  state?: string;
+}) {
+  return (
+    <>
+      <input type="hidden" name="client_id" value={clientId} />
+      <input type="hidden" name="redirect_uri" value={redirectUri} />
+      <input type="hidden" name="code_challenge" value={codeChallenge} />
+      <input type="hidden" name="state" value={state ?? ""} />
+    </>
+  );
+}
 
 export const runtime = "nodejs";
 
@@ -136,33 +158,32 @@ export default async function AuthorizePage({
             modificar nada. Verifica que reconoces el destino antes de continuar.
           </p>
 
-          <form className="mt-5 flex gap-2">
-            <input type="hidden" name="client_id" value={clientId} />
-            <input type="hidden" name="redirect_uri" value={redirectUri} />
-            <input type="hidden" name="code_challenge" value={codeChallenge} />
-            <input type="hidden" name="state" value={state ?? ""} />
-            <Button
-              type="submit"
-              name="decision"
-              value="deny"
-              variant="outline"
-              size="lg"
-              formAction={decideAction}
-              className="flex-1"
-            >
-              Denegar
-            </Button>
-            <Button
-              type="submit"
-              name="decision"
-              value="allow"
-              size="lg"
-              formAction={decideAction}
-              className="flex-1"
-            >
-              Autorizar
-            </Button>
-          </form>
+          {/* Un form por decisión: la intención va en QUÉ acción se ejecuta, no
+              en un campo del submitter (que el Button de Base UI no propaga). */}
+          <div className="mt-5 flex gap-2">
+            <form action={denyAction} className="flex-1">
+              <RequestFields
+                clientId={clientId}
+                redirectUri={redirectUri}
+                codeChallenge={codeChallenge}
+                state={state}
+              />
+              <Button type="submit" variant="outline" size="lg" className="w-full">
+                Denegar
+              </Button>
+            </form>
+            <form action={approveAction} className="flex-1">
+              <RequestFields
+                clientId={clientId}
+                redirectUri={redirectUri}
+                codeChallenge={codeChallenge}
+                state={state}
+              />
+              <Button type="submit" size="lg" className="w-full">
+                Autorizar
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
     </main>
