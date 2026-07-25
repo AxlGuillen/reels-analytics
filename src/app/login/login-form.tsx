@@ -9,12 +9,14 @@ import { signInAction, type SignInState } from "./actions";
 const initialState: SignInState = {};
 
 /** Form de email+password. El estado de error viene del server action. */
-export function LoginForm() {
+export function LoginForm({ next = "/" }: { next?: string }) {
   const [state, formAction, pending] = useActionState(signInAction, initialState);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {/* A dónde volver tras entrar (p. ej. el /oauth/authorize interrumpido). */}
+      <input type="hidden" name="next" value={next} />
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="email"

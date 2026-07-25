@@ -17,12 +17,20 @@ const BARS = [38, 60, 48, 88, 68, 96, 74];
  * sesión, salta directo al dashboard. La verificación real de acceso vive en el
  * middleware; esto evita mostrar el form a quien ya entró.
  */
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  // Solo rutas internas (el `next` viene de la URL: no es confiable).
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/");
+  if (user) redirect(safeNext);
 
   return (
     <main className="grid min-h-dvh grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
@@ -86,7 +94,7 @@ export default async function LoginPage() {
             Accede a tu panel de analíticas.
           </p>
 
-          <LoginForm />
+          <LoginForm next={safeNext} />
 
           <p className="text-muted-foreground/70 mt-7 text-center text-[11px] tracking-[0.04em] uppercase">
             TikTok · Instagram — métricas y crecimiento en un solo lugar

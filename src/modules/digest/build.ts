@@ -3,15 +3,15 @@ import type { Platform } from "@/core/domain";
 import { formatCount } from "@/core/lib/format";
 import { dayKey, weekday } from "@/core/lib/datetime";
 import { escapeHtml } from "@/core/lib/telegram";
-import { readBreakoutIds } from "@/modules/analytics/breakouts";
 import { readGrowth } from "@/modules/analytics/history";
 import {
   bestBucket,
   CREATOR_TIMEZONE,
-  viewsByHour,
+  engagementRate,
   viewsByWeekday,
 } from "@/modules/analytics/insights";
 import { readOverviewSummary } from "@/modules/analytics/overview";
+import { resolvePeriod } from "@/modules/analytics/period";
 import { getCaptureStatus } from "@/modules/ingestion/status";
 
 /**
@@ -163,33 +163,50 @@ export async function buildWeeklyDigest(): Promise<string> {
     );
   }
 
-  // Breakouts vigentes (≥2× la mediana de su plataforma a su edad).
-  const [ttBreakouts, igBreakouts] = await Promise.all([
-    readBreakoutIds("tiktok").catch(() => new Set<string>()),
-    readBreakoutIds("instagram").catch(() => new Set<string>()),
-  ]);
-  const breakoutRows = videos
-    .filter(
-      (r) =>
-        (r.video.platform === "tiktok" && ttBreakouts.has(r.video.externalId)) ||
-        (r.video.platform === "instagram" && igBreakouts.has(r.video.externalId)),
-    )
-    .sort((a, b) => b.metrics.views - a.metrics.views)
-    .slice(0, 2);
-  for (const row of breakoutRows) {
-    const cap = escapeHtml(
-      truncate(row.video.caption?.trim() || row.video.externalId),
-    );
-    lines.push(
-      `🔥 <b>Breakout</b> (${PLATFORM_LABEL[row.video.platform]}): “${cap}”`,
-    );
+  // Duración por formato. Solo TikTok expone duración en la API, pero como los
+  // videos se cross-postean (mismo contenido en ambas plataformas), es
+  // representativo del formato. Conteo de la semana + vistas/engagement PROMEDIO
+  // históricos (una semana suelta de ~14 videos partida en 3 buckets es ruido).
+  const today = dayKey(new Date(now), CREATOR_TIMEZONE);
+  const weekDays = new Set(resolvePeriod("week", anchor, today).dayKeys);
+  const tkDurable = videos.filter(
+    (r) => r.video.platform === "tiktok" && r.video.durationSeconds != null,
+  );
+  const durationBuckets = [
+    { label: "&lt;1 min", lo: 0, hi: 60 },
+    { label: "1–2 min", lo: 60, hi: 120 },
+    { label: "2+ min", lo: 120, hi: Infinity },
+  ];
+  const durationLines = durationBuckets
+    .map(({ label, lo, hi }) => {
+      const rows = tkDurable.filter((r) => {
+        const s = r.video.durationSeconds as number;
+        return s >= lo && s < hi;
+      });
+      if (rows.length === 0) return null;
+      const weekN = rows.filter((r) =>
+        weekDays.has(dayKey(r.video.publishedAt, CREATOR_TIMEZONE)),
+      ).length;
+      const avgViews = Math.round(
+        rows.reduce((s, r) => s + r.metrics.views, 0) / rows.length,
+      );
+      const eng =
+        (rows.reduce((s, r) => s + engagementRate(r.metrics), 0) / rows.length) *
+        100;
+      return `• ${label}: ${weekN} esta sem · ${formatCount(avgViews)} vistas · ${eng.toFixed(1)}% eng`;
+    })
+    .filter((l): l is string => l !== null);
+  if (durationLines.length > 0) {
+    lines.push("", "🎞 <b>Duración</b> (esta semana · prom. histórico, TikTok)");
+    lines.push(...durationLines);
   }
 
-  // Recordatorio de la mejor franja (sobre todo el catálogo).
+  // Mejor día histórico (por vistas promedio de lo publicado ese día). La hora
+  // se omite a propósito: el timestamp es de publicación, no de visualización,
+  // así que no dice cuándo la gente realmente vio el video.
   const bestDay = bestBucket(viewsByWeekday(videos));
-  const bestHour = bestBucket(viewsByHour(videos));
-  if (bestDay && bestHour) {
-    lines.push(`🗓 <b>Mejor franja</b>: ${bestDay.label} ~${bestHour.label}`);
+  if (bestDay) {
+    lines.push(`🗓 <b>Mejor día (histórico)</b>: ${capitalize(bestDay.label)}`);
   }
 
   // Salud de la ingesta (watchdog): avisar si alguna plataforma dejó de capturar.
