@@ -32,6 +32,10 @@ const SPEC = {
   TELEGRAM_CHAT_ID: { required: false },
   // Protege el servidor MCP (/api/mcp): el cliente manda Bearer con este valor.
   MCP_SECRET: { required: false },
+  // Origen público de la app (p. ej. https://reels-analytics.vercel.app). Es el
+  // issuer y la base del `resource` de OAuth: debe ser fijo, no derivado del
+  // header Host (spoofable). Sin barra final.
+  APP_URL: { required: false },
 } satisfies Record<string, EnvSpec>;
 
 export type EnvKey = keyof typeof SPEC;

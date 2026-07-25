@@ -1,6 +1,9 @@
-import { createMcpHandler } from "mcp-handler";
+import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import { env } from "@/core/config/env";
+import { PROTECTED_RESOURCE_PATH, SCOPE, appUrl } from "@/modules/oauth/config";
+import { lookupAccessToken } from "@/modules/oauth/store";
+import { safeEqual } from "@/modules/oauth/tokens";
 import {
   comparePlatforms,
   getActivityTimeline,
@@ -176,25 +179,49 @@ const mcpHandler = createMcpHandler(
   { basePath: "/api", maxDuration: 60 },
 );
 
-/** Compuerta: Bearer MCP_SECRET, fail-closed si no está configurado. */
-function withAuth(handler: (req: Request) => Promise<Response>) {
-  return async (req: Request) => {
-    const secret = env("MCP_SECRET");
-    if (!secret) {
-      return new Response(
-        JSON.stringify({ error: "MCP_SECRET no configurado" }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    return handler(req);
+/**
+ * Compuerta del resource server. Acepta dos credenciales:
+ *  1. Un access token OAuth 2.1 emitido por nosotros (ver `modules/oauth`), con
+ *     audience ligada a este MCP — es el camino de los conectores remotos.
+ *  2. El `MCP_SECRET` estático (legacy) que ya usa el cliente de Claude Code.
+ *
+ * Devolver `undefined` hace que `withMcpAuth` responda 401 **con el header
+ * `WWW-Authenticate`** apuntando al Protected Resource Metadata: sin eso, un
+ * cliente MCP no puede descubrir el authorization server.
+ */
+async function verifyToken(_req: Request, bearerToken?: string) {
+  if (!bearerToken) return undefined;
+
+  const secret = env("MCP_SECRET");
+  if (secret && safeEqual(bearerToken, secret)) {
+    return {
+      token: bearerToken,
+      clientId: "claude-code-legacy",
+      scopes: [SCOPE],
+    };
+  }
+
+  const context = await lookupAccessToken(bearerToken);
+  if (!context) return undefined;
+
+  return {
+    token: bearerToken,
+    clientId: context.clientId,
+    scopes: context.scope.split(" ").filter(Boolean),
+    expiresAt: Math.floor(context.expiresAt.getTime() / 1000),
+    resource: new URL(context.resource),
+    extra: { userId: context.userId },
   };
 }
 
-const handler = withAuth(mcpHandler);
+const handler = withMcpAuth(mcpHandler, verifyToken, {
+  required: true,
+  requiredScopes: [SCOPE],
+  resourceMetadataPath: PROTECTED_RESOURCE_PATH,
+  // `resourceUrl` aquí es solo el ORIGEN con el que se arma la URL del metadata
+  // (no el identificador del recurso): con la URI canónica saldría
+  // `/api/mcp/.well-known/...`, que no existe. La audiencia se valida abajo.
+  resourceUrl: appUrl(),
+});
+
 export { handler as GET, handler as POST, handler as DELETE };
