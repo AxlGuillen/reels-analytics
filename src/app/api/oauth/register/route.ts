@@ -1,15 +1,10 @@
-import { SCOPE } from "@/modules/oauth/config";
+import { SCOPE, oauthHeaders } from "@/modules/oauth/config";
 import { registerClient } from "@/modules/oauth/store";
 import { isValidRedirectUri } from "@/modules/oauth/tokens";
 
 export const runtime = "nodejs";
 
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const CORS = oauthHeaders({ "Access-Control-Allow-Methods": "POST, OPTIONS" });
 
 function error(code: string, description: string, status = 400) {
   return new Response(JSON.stringify({ error: code, error_description: description }), {

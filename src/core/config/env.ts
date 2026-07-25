@@ -12,7 +12,9 @@ type EnvSpec = {
   required: boolean;
 };
 
-// Aún ninguna es obligatoria: el core arranca sin credenciales.
+// Casi ninguna es obligatoria: el core arranca sin credenciales (cada integración
+// falla sola si le falta la suya). La excepción es `APP_URL`, que sostiene la
+// identidad del authorization server.
 const SPEC = {
   NEXT_PUBLIC_SUPABASE_URL: { required: false },
   // Sistema moderno de API keys de Supabase (publishable = cliente, secret = server).
@@ -34,8 +36,9 @@ const SPEC = {
   MCP_SECRET: { required: false },
   // Origen público de la app (p. ej. https://reels-analytics.vercel.app). Es el
   // issuer y la base del `resource` de OAuth: debe ser fijo, no derivado del
-  // header Host (spoofable). Sin barra final.
-  APP_URL: { required: false },
+  // header Host (spoofable). Sin barra final. Obligatoria: sin ella el flujo
+  // OAuth del MCP no puede emitir ni validar tokens (`requireEnv` ya lanzaba).
+  APP_URL: { required: true },
 } satisfies Record<string, EnvSpec>;
 
 export type EnvKey = keyof typeof SPEC;

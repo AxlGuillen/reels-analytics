@@ -1,15 +1,12 @@
-import { authorizationServerMetadata } from "@/modules/oauth/config";
+import { authorizationServerMetadata, oauthHeaders } from "@/modules/oauth/config";
 
 export const runtime = "nodejs";
 
 /** Metadata pública: cacheable y legible desde cualquier origen. */
-const HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
+const HEADERS = oauthHeaders({
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "*",
   "Cache-Control": "public, max-age=300",
-};
+});
 
 /**
  * Authorization Server Metadata (RFC 8414). Ojo con

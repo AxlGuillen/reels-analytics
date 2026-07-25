@@ -186,10 +186,11 @@ export async function rotateRefreshToken(
   clientId: string,
 ): Promise<IssuedTokens | null> {
   const supabase = createAdminClient();
+  const tokenHash = hashToken(refreshToken);
   const { data, error } = await supabase
     .from("ra_oauth_tokens")
     .update({ revoked_at: new Date().toISOString() })
-    .eq("token_hash", hashToken(refreshToken))
+    .eq("token_hash", tokenHash)
     .eq("kind", "refresh")
     .eq("client_id", clientId)
     .is("revoked_at", null)
@@ -197,7 +198,11 @@ export async function rotateRefreshToken(
     .select("client_id, user_id, scope, resource")
     .maybeSingle();
   if (error) throw new Error(`ra_oauth_tokens: ${error.message}`);
-  if (!data) return null;
+
+  if (!data) {
+    await detectRefreshReuse(tokenHash, clientId);
+    return null;
+  }
 
   const issued = await issueTokens({
     clientId: data.client_id,
@@ -206,13 +211,42 @@ export async function rotateRefreshToken(
     resource: data.resource,
   });
 
-  // Deja rastro de la cadena de rotación (auditoría).
+  // Deja rastro de la cadena de rotación (auditoría + detección de reuso).
   await supabase
     .from("ra_oauth_tokens")
     .update({ replaced_by: hashToken(issued.refreshToken) })
-    .eq("token_hash", hashToken(refreshToken));
+    .eq("token_hash", tokenHash);
 
   return issued;
+}
+
+/**
+ * Reuso de refresh token: si el presentado existe pero ya estaba revocado, es
+ * señal de que alguien se hizo con una copia (el dueño legítimo solo tiene el
+ * último). OAuth 2.1 recomienda revocar toda la familia; aquí se revoca todo lo
+ * vivo de ese cliente+usuario, que para una app de un solo usuario es lo más
+ * simple y lo más seguro: obliga a re-autorizar.
+ */
+async function detectRefreshReuse(
+  tokenHash: string,
+  clientId: string,
+): Promise<void> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("ra_oauth_tokens")
+    .select("user_id, revoked_at")
+    .eq("token_hash", tokenHash)
+    .eq("kind", "refresh")
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (!data?.revoked_at) return; // no existe o no es reuso
+
+  await supabase
+    .from("ra_oauth_tokens")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("client_id", clientId)
+    .eq("user_id", data.user_id)
+    .is("revoked_at", null);
 }
 
 /**
@@ -246,3 +280,71 @@ export async function lookupAccessToken(
 
 /** Scope por defecto que se concede al aprobar el consentimiento. */
 export const GRANTED_SCOPE = SCOPE;
+
+/** Margen antes de borrar credenciales muertas (deja rastro para depurar). */
+const PURGE_GRACE_DAYS = 7;
+/** Tope de clientes revisados por corrida (acota el trabajo del cron). */
+const PURGE_CLIENT_BATCH = 200;
+
+export interface PurgeResult {
+  codes: number;
+  tokens: number;
+  clients: number;
+}
+
+/**
+ * Recolección de basura de las tablas OAuth. Las consultas ya filtran por
+ * `expires_at`/`revoked_at`, así que esto no es seguridad sino evitar que las
+ * tablas crezcan sin techo — incluidos los clientes que cualquiera puede crear
+ * vía registro dinámico (RFC 7591 es abierto por diseño): se borran los que
+ * quedaron sin tokens, que es lo que pasa con un registro que nunca se autorizó.
+ *
+ * Lo llama el cron diario; nunca debe tumbar la ingesta.
+ */
+export async function purgeExpiredOAuth(): Promise<PurgeResult> {
+  const supabase = createAdminClient();
+  const cutoff = new Date(
+    Date.now() - PURGE_GRACE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { data: codes } = await supabase
+    .from("ra_oauth_codes")
+    .delete()
+    .lt("expires_at", cutoff)
+    .select("code_hash");
+
+  const { data: tokens } = await supabase
+    .from("ra_oauth_tokens")
+    .delete()
+    .lt("expires_at", cutoff)
+    .select("token_hash");
+
+  // Clientes viejos que ya no tienen ningún token (registro abandonado).
+  // La existencia se comprueba por cliente en vez de traerse todos los tokens:
+  // una lectura masiva se cortaría en el límite de filas de Supabase y un
+  // cliente con tokens vivos podría parecer huérfano (y caer con su CASCADE).
+  const { data: stale } = await supabase
+    .from("ra_oauth_clients")
+    .select("client_id")
+    .lt("created_at", cutoff)
+    .limit(PURGE_CLIENT_BATCH);
+
+  const orphans: string[] = [];
+  for (const client of stale ?? []) {
+    const { count } = await supabase
+      .from("ra_oauth_tokens")
+      .select("token_hash", { count: "exact", head: true })
+      .eq("client_id", client.client_id);
+    if (!count) orphans.push(client.client_id);
+  }
+
+  if (orphans.length > 0) {
+    await supabase.from("ra_oauth_clients").delete().in("client_id", orphans);
+  }
+
+  return {
+    codes: codes?.length ?? 0,
+    tokens: tokens?.length ?? 0,
+    clients: orphans.length,
+  };
+}

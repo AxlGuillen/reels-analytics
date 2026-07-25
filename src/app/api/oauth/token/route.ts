@@ -1,18 +1,16 @@
 import { consumeCode, rotateRefreshToken, issueTokens } from "@/modules/oauth/store";
+import { oauthHeaders } from "@/modules/oauth/config";
 import { redirectUriMatches, verifyPkceS256 } from "@/modules/oauth/tokens";
 import type { IssuedTokens } from "@/modules/oauth/store";
 
 export const runtime = "nodejs";
 
-const CORS = {
-  "Content-Type": "application/json",
+const CORS = oauthHeaders({
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   // OAuth 2.1: las respuestas con tokens nunca se cachean.
   "Cache-Control": "no-store",
   Pragma: "no-cache",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+});
 
 function fail(code: string, description: string, status = 400) {
   return new Response(

@@ -35,6 +35,20 @@ export function resourceUrl(): string {
 /** Ruta del documento de Protected Resource Metadata (RFC 9728). */
 export const PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
 
+/**
+ * Cabeceras de los endpoints públicos de OAuth. Son públicos por diseño
+ * (descubrimiento y máquina-a-máquina), así que van con CORS abierto; cada ruta
+ * añade su `Allow-Methods` y su política de caché.
+ */
+export function oauthHeaders(extra: Record<string, string> = {}) {
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    ...extra,
+  };
+}
+
 /** Documento RFC 8414 que anuncia las capacidades del authorization server. */
 export function authorizationServerMetadata() {
   const base = appUrl();
