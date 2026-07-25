@@ -281,6 +281,47 @@ export async function lookupAccessToken(
 /** Scope por defecto que se concede al aprobar el consentimiento. */
 export const GRANTED_SCOPE = SCOPE;
 
+export interface ConnectedClient {
+  clientId: string;
+  clientName: string | null;
+  createdAt: string;
+  /** Tokens vivos (no revocados ni expirados): si es 0, quedó a medias. */
+  activeTokens: number;
+}
+
+/**
+ * Conectores registrados, para mostrarlos en la página de MCP. Cuenta solo los
+ * tokens vigentes: un cliente con 0 es un registro que nunca llegó a
+ * autorizarse (o al que ya se le revocó todo).
+ */
+export async function listConnectedClients(): Promise<ConnectedClient[]> {
+  const supabase = createAdminClient();
+  const { data: clients, error } = await supabase
+    .from("ra_oauth_clients")
+    .select("client_id, client_name, created_at")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw new Error(`ra_oauth_clients: ${error.message}`);
+
+  const now = new Date().toISOString();
+  return Promise.all(
+    (clients ?? []).map(async (client) => {
+      const { count } = await supabase
+        .from("ra_oauth_tokens")
+        .select("token_hash", { count: "exact", head: true })
+        .eq("client_id", client.client_id)
+        .is("revoked_at", null)
+        .gt("expires_at", now);
+      return {
+        clientId: client.client_id,
+        clientName: client.client_name,
+        createdAt: client.created_at,
+        activeTokens: count ?? 0,
+      };
+    }),
+  );
+}
+
 /** Margen antes de borrar credenciales muertas (deja rastro para depurar). */
 const PURGE_GRACE_DAYS = 7;
 /** Tope de clientes revisados por corrida (acota el trabajo del cron). */

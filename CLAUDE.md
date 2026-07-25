@@ -61,6 +61,16 @@ get_breakouts, get_script_stats_block → YAML para el frontmatter de guiones)
 para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
 rendimiento real.
 
+> Los textos de las tools (nombre/título/descripción) viven en `modules/mcp/catalog.ts`
+> (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
+> `/settings/mcp`, para que no se desincronicen. Los esquemas zod siguen junto a cada tool.
+
+**Página MCP (`/settings/mcp`):** guía dentro de la app — la URL del servidor, cómo agregarlo
+como conector remoto (OAuth, sin pegar tokens), el comando de Claude Code (con el secreto como
+placeholder: nunca se renderiza), el listado de **conectores autorizados** (`listConnectedClients`,
+marca "activo" vs "sin autorizar" según tenga tokens vigentes) y el catálogo de tools. Enlazada
+en el footer del sidebar junto a Conexiones.
+
 **Auth del MCP — OAuth 2.1 + Bearer estático (ambos vigentes):**
 - **OAuth 2.1** (lo que exige el spec MCP para servidores remotos; es lo que usan los conectores
   de Claude/Cowork, cuyo diálogo solo acepta URL). La app es a la vez resource server y
