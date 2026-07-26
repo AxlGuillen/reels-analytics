@@ -78,6 +78,6 @@ export const config = {
    * usuario logueado.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/mcp|api/sse|api/message|api/oauth|.*\\.[\\w]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/health|api/mcp|api/sse|api/message|api/oauth|.*\\.[\\w]+$).*)",
   ],
 };
