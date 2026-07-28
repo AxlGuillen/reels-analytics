@@ -44,11 +44,15 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
 
-  // Sin sesión y fuera del login → mandar al login.
+  // Sin sesión y fuera del login → mandar al login, recordando a dónde iba.
+  // El `next` importa para /oauth/authorize: si se perdiera la query, el flujo
+  // OAuth se rompería al volver del login.
   if (!user && !isLogin) {
     const url = request.nextUrl.clone();
+    const target = `${pathname}${request.nextUrl.search}`;
     url.pathname = "/login";
     url.search = "";
+    if (target !== "/") url.searchParams.set("next", target);
     return NextResponse.redirect(url);
   }
 
@@ -66,10 +70,14 @@ export async function proxy(request: NextRequest) {
 export const config = {
   /**
    * Corre en todo salvo: internals de Next, favicon, archivos con extensión
-   * (imágenes, etc.), `api/cron` (se autentica con `CRON_SECRET`) y `api/mcp`
-   * (se autentica con `MCP_SECRET` en su route handler).
+   * (imágenes, etc.), `api/cron` (se autentica con `CRON_SECRET`), los
+   * transportes del MCP (`api/mcp`, `api/sse`, `api/message` — se autentican en
+   * su route handler), y los endpoints públicos de OAuth: los `.well-known`
+   * (descubrimiento) y `api/oauth` (`/register` y `/token` son máquina-a-máquina
+   * y no llevan sesión). `/oauth/authorize` SÍ pasa por aquí: necesita al
+   * usuario logueado.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/cron|api/mcp|.*\\.[\\w]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/health|api/mcp|api/sse|api/message|api/oauth|.*\\.[\\w]+$).*)",
   ],
 };

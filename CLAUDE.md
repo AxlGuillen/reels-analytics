@@ -59,7 +59,48 @@ search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_su
 get_activity_timeline día/semana/mes, get_hashtag_stats, compare_platforms,
 get_breakouts, get_script_stats_block → YAML para el frontmatter de guiones)
 para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
-rendimiento real. Auth: `Authorization: Bearer MCP_SECRET` (excluido del middleware).
+rendimiento real.
+
+> Los textos de las tools (nombre/título/descripción) viven en `modules/mcp/catalog.ts`
+> (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
+> `/settings/mcp`, para que no se desincronicen. Los esquemas zod siguen junto a cada tool.
+
+**Health check (`/api/health`, para monitoreo externo):** `modules/health/{status,checks}.ts`
+(`status.ts` es la parte pura y testeada: tipos + `rollupStatus`; `checks.ts` toca BD/red).
+Chequea: `database`, `page` (self-fetch a `/login`), `mcp` (self-fetch a `/api/mcp` sin token →
+debe dar **401 con `WWW-Authenticate`**), `ingestion.*` (reusa `getCaptureStatus`), `tokens.*`
+(solo FECHAS de `ra_connections`, nunca el token) y `mcp.connectors`. **Sin credencial** devuelve
+solo `{status, checkedAt}`; con `Authorization: Bearer $HEALTH_SECRET`, el desglose. **503 solo si
+algo está roto** (`down`); los avisos (ingesta >36 h, token a <7 días) son `degraded` con 200.
+`HEALTH_SECRET` es aparte de `CRON_SECRET` a propósito: esa URL se le da a un monitor externo y
+con el del cron podría disparar la ingesta. Excluido del proxy.
+
+**Página MCP (`/settings/mcp`):** guía dentro de la app — la URL del servidor, cómo agregarlo
+como conector remoto (OAuth, sin pegar tokens), el comando de Claude Code (con el secreto como
+placeholder: nunca se renderiza), el listado de **conectores autorizados** (`listConnectedClients`,
+marca "activo" vs "sin autorizar" según tenga tokens vigentes) y el catálogo de tools. Enlazada
+en el footer del sidebar junto a Conexiones.
+
+**Auth del MCP — OAuth 2.1 + Bearer estático (ambos vigentes):**
+- **OAuth 2.1** (lo que exige el spec MCP para servidores remotos; es lo que usan los conectores
+  de Claude/Cowork, cuyo diálogo solo acepta URL). La app es a la vez resource server y
+  authorization server. Lógica en `modules/oauth/{config,tokens,store}.ts`:
+  - Descubrimiento: `/.well-known/oauth-authorization-server` (RFC 8414, incluye
+    `code_challenge_methods_supported:["S256"]` — sin eso los clientes abortan) y
+    `/.well-known/oauth-protected-resource` (RFC 9728, catch-all para servir también la
+    variante `/api/mcp`). El 401 del MCP lleva `WWW-Authenticate` con `resource_metadata`.
+  - Endpoints: `POST /api/oauth/register` (DCR, RFC 7591), `GET /oauth/authorize` (**página**
+    con pantalla de consentimiento; reusa el login de Supabase) y `POST /api/oauth/token`
+    (`authorization_code` con PKCE S256 + `refresh_token` con **rotación**).
+  - Tokens **opacos guardados hasheados** en `ra_oauth_{clients,codes,tokens}` (no JWT: da
+    revocación real y evita firmar a mano). El `resource` de la fila es el *audience*: un token
+    emitido para otro recurso se rechaza. Los codes son de un solo uso (un intento con PKCE
+    incorrecto también los quema).
+- **`Authorization: Bearer MCP_SECRET`** (legacy) sigue funcionando: es el que usa el cliente
+  de Claude Code ya configurado.
+- `APP_URL` define issuer y `resource` (fijo por env, nunca del header Host). El proxy excluye
+  `.well-known`, `api/oauth`, `api/mcp|sse|message`; `/oauth/authorize` sí pasa por el proxy
+  porque necesita sesión (y este redirige a `/login?next=…` preservando la query).
 
 > Nota de UI: shadcn quedó sobre **Base UI** (`@base-ui/react`), no Radix. El `Button` NO
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el

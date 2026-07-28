@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import {
   ActivityIcon,
   AudioLinesIcon,
+  BlocksIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   InstagramIcon,
@@ -194,8 +195,10 @@ function SidebarNav({
 }) {
   const pathname = usePathname();
   const connectionsActive = isActive(pathname, "/settings/connections");
+  const mcpActive = isActive(pathname, "/settings/mcp");
   const [brandRef, brandHover] = useHoverIcon();
   const [connRef, connHover] = useHoverIcon();
+  const [mcpRef, mcpHover] = useHoverIcon();
   const [collapseRef, collapseHover] = useHoverIcon();
 
   return (
@@ -248,6 +251,18 @@ function SidebarNav({
         >
           <LinkIcon ref={connRef} size={18} className="shrink-0" />
           {!collapsed && "Conexiones"}
+        </Link>
+
+        <Link
+          href="/settings/mcp"
+          onClick={onNavigate}
+          aria-current={mcpActive ? "page" : undefined}
+          title={collapsed ? "MCP" : undefined}
+          className={rowClass(mcpActive, collapsed)}
+          {...mcpHover}
+        >
+          <BlocksIcon ref={mcpRef} size={18} className="shrink-0" />
+          {!collapsed && "MCP"}
         </Link>
 
         {collapsed ? (

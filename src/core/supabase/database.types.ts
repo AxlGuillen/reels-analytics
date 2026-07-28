@@ -1,5 +1,10 @@
 // Generado por Supabase (proyecto Axl-Projects). Regenerar tras cada migración:
 //   bunx supabase gen types typescript --project-id impscwgourdxhdejwkhe > src/core/supabase/database.types.ts
+//
+// OJO: `Axl-Projects` es un proyecto paraguas y el generador emite TODAS sus tablas.
+// Este archivo conserva solo las del prefijo `ra_` (las de esta app): el repo es
+// público y no queremos publicar el esquema de los otros proyectos. Tras regenerar,
+// recorta lo que no sea `ra_*`.
 export type Json =
   | string
   | number
@@ -98,6 +103,121 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "ra_social_accounts"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      ra_oauth_clients: {
+        Row: {
+          client_id: string
+          client_name: string | null
+          created_at: string
+          redirect_uris: string[]
+        }
+        Insert: {
+          client_id: string
+          client_name?: string | null
+          created_at?: string
+          redirect_uris: string[]
+        }
+        Update: {
+          client_id?: string
+          client_name?: string | null
+          created_at?: string
+          redirect_uris?: string[]
+        }
+        Relationships: []
+      }
+      ra_oauth_codes: {
+        Row: {
+          client_id: string
+          code_challenge: string
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          redirect_uri: string
+          resource: string
+          scope: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          code_challenge: string
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          redirect_uri: string
+          resource: string
+          scope: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          code_challenge?: string
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          redirect_uri?: string
+          resource?: string
+          scope?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ra_oauth_codes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "ra_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      ra_oauth_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          expires_at: string
+          kind: Database["public"]["Enums"]["ra_oauth_token_kind"]
+          replaced_by: string | null
+          resource: string
+          revoked_at: string | null
+          scope: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expires_at: string
+          kind: Database["public"]["Enums"]["ra_oauth_token_kind"]
+          replaced_by?: string | null
+          resource: string
+          revoked_at?: string | null
+          scope: string
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          kind?: Database["public"]["Enums"]["ra_oauth_token_kind"]
+          replaced_by?: string | null
+          resource?: string
+          revoked_at?: string | null
+          scope?: string
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ra_oauth_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "ra_oauth_clients"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -236,6 +356,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      ra_oauth_token_kind: "access" | "refresh"
       ra_platform: "tiktok" | "instagram"
     }
     CompositeTypes: {
@@ -364,6 +485,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ra_oauth_token_kind: ["access", "refresh"],
       ra_platform: ["tiktok", "instagram"],
     },
   },

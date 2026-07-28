@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/core/config/env";
 import { captureInstagram, captureTikTok } from "@/modules/ingestion/capture";
+import { purgeExpiredOAuth } from "@/modules/oauth/store";
 
 export const runtime = "nodejs";
 // La ingesta de IG hace 1 llamada de insights por Reel; damos margen de tiempo.
@@ -25,9 +26,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [tiktok, instagram] = await Promise.allSettled([
+  // La limpieza de OAuth es mantenimiento: va en el mismo lote y su fallo no
+  // debe afectar a la ingesta (por eso `allSettled`).
+  const [tiktok, instagram, purge] = await Promise.allSettled([
     captureTikTok(),
     captureInstagram(),
+    purgeExpiredOAuth(),
   ]);
 
   const summarize = (r: PromiseSettledResult<{ videos: number; snapshots: number }>) =>
@@ -42,5 +46,6 @@ export async function GET(request: NextRequest) {
     capturedAt: new Date().toISOString(),
     tiktok: summarize(tiktok),
     instagram: summarize(instagram),
+    oauthPurge: purge.status === "fulfilled" ? purge.value : { ok: false },
   });
 }
