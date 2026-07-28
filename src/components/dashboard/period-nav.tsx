@@ -13,7 +13,7 @@ function href(granularity: Granularity, anchor?: string | null): string {
 }
 
 const arrowClass =
-  "border-border bg-card text-muted-foreground hover:text-foreground hover:border-ring/40 flex size-8 items-center justify-center rounded-md border transition-colors";
+  "bg-card text-muted-foreground hover:text-foreground shadow-card flex size-9 items-center justify-center rounded-full transition-colors";
 
 /**
  * Control de periodo del Overview: toggle Semana/Mes + navegación ◀ ▶. Son
@@ -35,17 +35,17 @@ export function PeriodNav({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="border-border bg-card divide-border inline-flex divide-x overflow-hidden rounded-md border">
+      <div className="inline-flex gap-1.5">
         {(["week", "month"] as const).map((g) => (
           <Link
             key={g}
             href={href(g, currentAnchor)}
             aria-current={g === granularity ? "true" : undefined}
             className={cn(
-              "px-3 py-1.5 text-xs transition-colors",
+              "rounded-full px-4 py-2 text-[12.5px] transition-colors",
               g === granularity
                 ? "bg-foreground text-background font-medium"
-                : "text-muted-foreground hover:bg-muted",
+                : "bg-card text-muted-foreground hover:text-foreground shadow-card",
             )}
           >
             {g === "week" ? "Semana" : "Mes"}
