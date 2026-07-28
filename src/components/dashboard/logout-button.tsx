@@ -18,23 +18,33 @@ interface IconHandle {
  * conserva el estilo (y la animación de icono en hover) de las demás filas; la
  * confirmación dispara el server action dentro de un `<form>`.
  */
-export function LogoutButton({ collapsed }: { collapsed: boolean }) {
+export function LogoutButton({
+  collapsed = false,
+  variant = "row",
+}: {
+  collapsed?: boolean;
+  /** `rail`: tile de 38px del rail oscuro (usa los tokens `sidebar-*`). */
+  variant?: "row" | "rail";
+}) {
   const iconRef = useRef<IconHandle>(null);
+  const isRail = variant === "rail";
 
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger
         aria-label="Cerrar sesión"
-        title={collapsed ? "Cerrar sesión" : undefined}
+        title={isRail || collapsed ? "Cerrar sesión" : undefined}
         onMouseEnter={() => iconRef.current?.startAnimation()}
         onMouseLeave={() => iconRef.current?.stopAnimation()}
         className={cn(
-          "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
-          collapsed && "justify-center px-0",
+          isRail
+            ? "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px] transition-colors duration-150"
+            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
+          !isRail && collapsed && "justify-center px-0",
         )}
       >
-        <LogoutIcon ref={iconRef} size={18} className="shrink-0" />
-        {!collapsed && "Cerrar sesión"}
+        <LogoutIcon ref={iconRef} size={isRail ? 17 : 18} className="shrink-0" />
+        {!isRail && !collapsed && "Cerrar sesión"}
       </AlertDialog.Trigger>
 
       <AlertDialog.Portal>

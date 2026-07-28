@@ -14,8 +14,10 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
-  --font-heading: var(--font-display);
+  /* Acid Grid usa UNA grotesca para texto y titulares; `display`/`heading`
+     apuntan a la misma familia (el peso y el tracking hacen la jerarquía). */
+  --font-display: var(--font-sans);
+  --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,111 +63,117 @@
 }
 
 /*
- * Identidad "Ledger" — libro de cuentas editorial: papel cálido, tinta teal,
- * serif Spectral. Ver CLAUDE.md. :root = tema claro (papel); .dark = tema
- * oscuro (papel nocturno). El toggle lo gestiona next-themes con la clase
- * `.dark` en <html>. Teal (#0f6f5c) = tinta/acento (nav activo, links, datos,
- * deltas positivos); tinta oscura (--foreground) = CTAs primarias.
+ * Identidad "Acid Grid" — bento monocromo con un acento ácido. Ver CLAUDE.md.
+ * :root = claro (casi-blanco frío); .dark = oscuro (tinta). El toggle lo
+ * gestiona next-themes con la clase `.dark` en <html>.
+ *
+ * Regla central: el sistema es MONOCROMO (tinta #111211 sobre casi-blanco) y el
+ * **lima ácido #d9f24a** es el único color. El lima es SUPERFICIE, no texto:
+ * se usa como fondo con tinta encima (nunca lima sobre blanco, no cumple AA).
+ * La CTA primaria es tinta; el lima marca lo destacado (KPI hero, dato vivo).
  */
 :root {
-  --background: #f6f3ec;
-  --foreground: #191712;
-  --card: #fdfbf5;
-  --card-foreground: #191712;
-  --popover: #fdfbf5;
-  --popover-foreground: #191712;
-  --primary: #0f6f5c;
-  --primary-foreground: #f6f3ec;
-  --secondary: #ece6d8;
-  --secondary-foreground: #191712;
-  --muted: #ece6d8;
-  --muted-foreground: #6f685a;
-  --accent: #e6efea;
-  --accent-foreground: #0f6f5c;
-  --brand: #0f6f5c;
-  --brand-foreground: #f6f3ec;
-  --destructive: #b4442e;
-  --destructive-foreground: #f6f3ec;
-  --success: #0f6f5c;
-  --success-foreground: #f6f3ec;
-  --border: #ddd6c6;
-  --input: #ddd6c6;
-  --ring: #0f6f5c;
-  --chart-1: #0f6f5c;
-  --chart-2: #6fb0a3;
-  --chart-3: #c9c0ad;
-  --chart-4: #8a8270;
-  --chart-5: #b98a5e;
-  --radius: 0.5rem;
-  --sidebar: #fdfbf5;
-  --sidebar-foreground: #191712;
-  --sidebar-primary: #0f6f5c;
-  --sidebar-primary-foreground: #f6f3ec;
-  --sidebar-accent: #e6efea;
-  --sidebar-accent-foreground: #0f6f5c;
-  --sidebar-border: #ddd6c6;
-  --sidebar-ring: #0f6f5c;
-  /* Acentos por plataforma: SOLO en contextos comparativos (charts, badges).
-     Teal (TikTok) + terracota cálida (Instagram) para que dos series se lean
-     como dos tonos sin salir del mundo "papel". */
-  --platform-tiktok: #0f6f5c;
-  --platform-instagram: #bf6d5a;
-  /* Elevación (claro): sombras cálidas suaves; la profundidad la da la luz. */
-  --elev-card: 0 1px 2px rgb(25 23 18 / 0.05), 0 12px 26px -16px rgb(25 23 18 / 0.26);
+  --background: #f1f1ee;
+  --foreground: #111211;
+  --card: #ffffff;
+  --card-foreground: #111211;
+  --popover: #ffffff;
+  --popover-foreground: #111211;
+  /* Lima: siempre como fondo, con tinta encima. */
+  --primary: #d9f24a;
+  --primary-foreground: #111211;
+  --secondary: #edede9;
+  --secondary-foreground: #111211;
+  --muted: #f1f1ee;
+  --muted-foreground: #54564f;
+  --accent: #edede9;
+  --accent-foreground: #111211;
+  --brand: #d9f24a;
+  --brand-foreground: #111211;
+  --destructive: #c0442c;
+  --destructive-foreground: #f4f4f1;
+  /* Positivo = el acento del sistema (fondo lima o texto tinta, no verde). */
+  --success: #7f9e12;
+  --success-foreground: #111211;
+  --border: #e8e9e3;
+  --input: #dfe0d9;
+  --ring: #111211;
+  --chart-1: #111211;
+  --chart-2: #d9f24a;
+  --chart-3: #8b8d84;
+  --chart-4: #c8c9c1;
+  --chart-5: #54564f;
+  /* Cards de 22px: el radio grande es firma del sistema (bento). */
+  --radius: 1.375rem;
+  --sidebar: #111211;
+  --sidebar-foreground: #f4f4f1;
+  --sidebar-primary: #d9f24a;
+  --sidebar-primary-foreground: #111211;
+  --sidebar-accent: rgb(255 255 255 / 0.1);
+  --sidebar-accent-foreground: #f4f4f1;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #d9f24a;
+  /* El diseño es monocromo: para separar plataformas en charts comparativos se
+     usa el contraste propio del sistema (tinta vs. lima), no colores de marca. */
+  --platform-tiktok: #d9f24a;
+  --platform-instagram: #111211;
+  /* Elevación (claro): sombra larga y difusa; las cards flotan sobre el lienzo. */
+  --elev-card: 0 1px 2px rgb(17 18 17 / 0.06), 0 18px 34px -22px rgb(17 18 17 / 0.4);
   --elev-lift:
-    0 2px 8px -2px rgb(25 23 18 / 0.1), 0 20px 44px -18px rgb(25 23 18 / 0.32);
-  --elev-rail: 4px 0 24px -20px rgb(25 23 18 / 0.35);
+    0 2px 6px rgb(17 18 17 / 0.08), 0 28px 54px -24px rgb(17 18 17 / 0.55);
+  --elev-rail: 0 28px 54px -24px rgb(17 18 17 / 0.7), 0 2px 4px rgb(17 18 17 / 0.2);
 }
 
 .dark {
-  --background: #14120c;
-  --foreground: #ece7da;
-  --card: #1e1a12;
-  --card-foreground: #ece7da;
-  --popover: #1e1a12;
-  --popover-foreground: #ece7da;
-  --primary: #3aa88f;
-  --primary-foreground: #14120c;
-  --secondary: #2a2418;
-  --secondary-foreground: #ece7da;
-  --muted: #2a2418;
-  --muted-foreground: #a8a08e;
-  --accent: #1d3730;
-  --accent-foreground: #7fd0bd;
-  --brand: #3aa88f;
-  --brand-foreground: #14120c;
-  --destructive: #e0714f;
-  --destructive-foreground: #14120c;
-  --success: #3aa88f;
-  --success-foreground: #14120c;
-  --border: #322d20;
-  --input: #322d20;
-  --ring: #3aa88f;
-  --chart-1: #3aa88f;
-  --chart-2: #6fb0a3;
-  --chart-3: #8a8270;
-  --chart-4: #c9a86e;
-  --chart-5: #b98a5e;
-  --sidebar: #1a170f;
-  --sidebar-foreground: #ece7da;
-  --sidebar-primary: #3aa88f;
-  --sidebar-primary-foreground: #14120c;
-  --sidebar-accent: #1d3730;
-  --sidebar-accent-foreground: #7fd0bd;
-  --sidebar-border: #322d20;
-  --sidebar-ring: #3aa88f;
-  /* Acentos por plataforma (variantes claras para fondo oscuro). */
-  --platform-tiktok: #3aa88f;
-  --platform-instagram: #d98a6f;
+  --background: #111211;
+  --foreground: #f4f4f1;
+  --card: #1a1b19;
+  --card-foreground: #f4f4f1;
+  --popover: #1a1b19;
+  --popover-foreground: #f4f4f1;
+  --primary: #d9f24a;
+  --primary-foreground: #111211;
+  --secondary: #26271f;
+  --secondary-foreground: #f4f4f1;
+  --muted: #26271f;
+  --muted-foreground: #a8a99f;
+  --accent: #2b2c29;
+  --accent-foreground: #f4f4f1;
+  --brand: #d9f24a;
+  --brand-foreground: #111211;
+  --destructive: #e0603f;
+  --destructive-foreground: #111211;
+  --success: #d9f24a;
+  --success-foreground: #111211;
+  --border: #2b2c29;
+  --input: #33342f;
+  --ring: #d9f24a;
+  --chart-1: #d9f24a;
+  --chart-2: #f4f4f1;
+  --chart-3: #8b8d84;
+  --chart-4: #54564f;
+  --chart-5: #a8a99f;
+  /* En oscuro el rail se separa del lienzo subiendo un escalón, no bajando. */
+  --sidebar: #1a1b19;
+  --sidebar-foreground: #f4f4f1;
+  --sidebar-primary: #d9f24a;
+  --sidebar-primary-foreground: #111211;
+  --sidebar-accent: rgb(255 255 255 / 0.1);
+  --sidebar-accent-foreground: #f4f4f1;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #d9f24a;
+  /* Sobre fondo oscuro la tinta ya no contrasta: la 2.ª serie pasa a crema. */
+  --platform-tiktok: #d9f24a;
+  --platform-instagram: #f4f4f1;
   /* Elevación (oscuro): la sombra negra apenas se ve → borde luminoso superior
-     (inset) + halo teal hacen el trabajo de separar planos. */
+     (inset) + halo lima hacen el trabajo de separar planos. */
   --elev-card:
-    inset 0 1px 0 rgb(255 255 255 / 0.03), 0 1px 2px rgb(0 0 0 / 0.4),
-    0 6px 20px -8px rgb(0 0 0 / 0.55);
+    inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4),
+    0 18px 34px -22px rgb(0 0 0 / 0.7);
   --elev-lift:
-    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 16px 40px -12px rgb(0 0 0 / 0.6),
-    0 0 32px -10px rgb(58 168 143 / 0.3);
-  --elev-rail: 4px 0 28px -20px rgb(0 0 0 / 0.7);
+    inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 54px -24px rgb(0 0 0 / 0.75),
+    0 0 32px -12px rgb(217 242 74 / 0.22);
+  --elev-rail: 0 28px 54px -24px rgb(0 0 0 / 0.8), 0 2px 4px rgb(0 0 0 / 0.4);
 }
 
 @layer base {
@@ -181,37 +189,43 @@
 }
 
 @layer utilities {
-  /* Textura "papel": retícula de puntos cálida muy tenue. El motivo del ledger;
-     funciona en claro y oscuro porque usa --foreground. */
-  .bg-dots {
-    background-image: radial-gradient(
-      color-mix(in oklab, var(--foreground) 6%, transparent) 1px,
-      transparent 1px
-    );
-    background-size: 22px 22px;
+  /* Grano de papel: ruido fractal en SVG. Se aplica como overlay (::after) para
+     no necesitar un div extra; `pointer-events:none` evita bloquear clics. */
+  .bg-grain {
+    position: relative;
+  }
+  .bg-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)' opacity='0.55'/%3E%3C/svg%3E");
+    opacity: 0.22;
+    mix-blend-mode: multiply;
+  }
+  /* En oscuro el multiply ennegrece de más: se aclara y se baja la intensidad. */
+  .dark .bg-grain::after {
+    opacity: 0.11;
+    mix-blend-mode: overlay;
   }
 
-  /* Fondo de páginas tipo login: retícula de puntos + halo teal ambiental. */
-  .bg-page-glow {
-    background-image:
-      radial-gradient(
-        56rem 32rem at 85% -10%,
-        color-mix(in oklab, var(--primary) 7%, transparent),
-        transparent 65%
-      ),
-      radial-gradient(
-        40rem 26rem at -10% 105%,
-        color-mix(in oklab, var(--primary) 5%, transparent),
-        transparent 65%
-      ),
-      radial-gradient(
-        color-mix(in oklab, var(--foreground) 6%, transparent) 1px,
-        transparent 1px
-      );
-    background-size:
-      auto,
-      auto,
-      22px 22px;
+  /* Semitono: retícula de puntos para las cards de acento (lima) y oscuras. El
+     punto se deriva del color de texto, así sirve en ambos fondos. */
+  .bg-halftone {
+    background-image: radial-gradient(
+      color-mix(in oklab, currentColor 12%, transparent) 1px,
+      transparent 1.1px
+    );
+    background-size: 7px 7px;
+  }
+
+  /* Rayado diagonal: relleno de placeholders (thumbnails 9:16, avatares). */
+  .bg-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--foreground) 12%, transparent) 0 7px,
+      color-mix(in oklab, var(--foreground) 6%, transparent) 7px 14px
+    );
   }
 
   /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */

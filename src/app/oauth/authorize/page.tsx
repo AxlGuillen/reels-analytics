@@ -34,7 +34,7 @@ export const runtime = "nodejs";
 /** Pantalla de error: se usa cuando NO podemos confiar en el `redirect_uri`. */
 function AuthorizeError({ message }: { message: string }) {
   return (
-    <main className="bg-page-glow flex min-h-dvh items-center justify-center px-6">
+    <main className="bg-grain flex min-h-dvh items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-4 py-3 text-sm">
           <CircleAlert className="mt-0.5 size-4 shrink-0" />
@@ -127,7 +127,7 @@ export default async function AuthorizePage({
   const redirectHost = new URL(redirectUri).host;
 
   return (
-    <main className="bg-page-glow flex min-h-dvh items-center justify-center px-6 py-16">
+    <main className="bg-grain flex min-h-dvh items-center justify-center px-6 py-16">
       <div className="animate-fade-up w-full max-w-md">
         <div className="bg-primary mb-5 h-0.5 w-10 rounded-full" />
         <h1 className="font-display text-[1.7rem] font-semibold tracking-tight">

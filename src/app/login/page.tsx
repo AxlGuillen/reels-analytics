@@ -40,7 +40,7 @@ export default async function LoginPage({
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{
             // Derivado de --background (el panel es bg-foreground/invertido), así
-            // el punto contrasta igual en claro y oscuro. Ver .bg-dots en globals.css.
+            // el punto contrasta igual en claro y oscuro. Ver .bg-grain en globals.css.
             backgroundImage:
               "radial-gradient(circle, color-mix(in oklab, var(--background) 6%, transparent) 1px, transparent 1px)",
             backgroundSize: "22px 22px",
@@ -84,7 +84,7 @@ export default async function LoginPage({
       </aside>
 
       {/* Panel del formulario */}
-      <div className="bg-page-glow flex flex-col justify-center px-6 py-16 sm:px-12 lg:px-16">
+      <div className="bg-grain flex flex-col justify-center px-6 py-16 sm:px-12 lg:px-16">
         <div className="animate-fade-up mx-auto w-full max-w-sm">
           <div className="bg-primary mb-5 h-0.5 w-10 rounded-full" />
           <h1 className="font-display text-[1.7rem] font-semibold tracking-tight">
