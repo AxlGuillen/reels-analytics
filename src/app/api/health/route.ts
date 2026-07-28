@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     ...(detailed
       ? {
           durationMs: Date.now() - startedAt,
-          version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
+          version: env("VERCEL_GIT_COMMIT_SHA")?.slice(0, 7) ?? "local",
           checks,
         }
       : {}),

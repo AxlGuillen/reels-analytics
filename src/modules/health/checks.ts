@@ -143,10 +143,15 @@ async function checkPlatformToken(platform: Platform): Promise<Check> {
     return { name, status: "warn", detail: "Sin cuenta conectada." };
   }
 
+  // Hoy es single-user (una conexión por plataforma), pero sin `order` la fila
+  // elegida sería arbitraria y una duplicada vieja reportaría la expiración
+  // equivocada. Se toma la de expiración más lejana = la vigente; `nullsFirst`
+  // en false porque en Postgres un DESC pone los NULL primero.
   const { data } = await supabase
     .from("ra_connections")
     .select("expires_at, refresh_expires_at")
     .in("account_id", ids)
+    .order("expires_at", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
   if (!data) {
