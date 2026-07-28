@@ -12,9 +12,8 @@ import { readInstagramVideo } from "@/modules/instagram/read";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card shadow-card rounded-lg border p-4">
-      <div className="font-display text-2xl font-semibold tabular-nums">{value}</div>
-      <div className="bg-primary my-2 h-0.5 w-7 rounded-full" />
+    <div className="bg-card shadow-card rounded-lg p-4">
+      <div className="text-[2rem] leading-none font-medium tracking-[-0.03em] tabular-nums">{value}</div>
       <div className="text-muted-foreground text-sm">{label}</div>
     </div>
   );
@@ -82,7 +81,7 @@ export default async function InstagramVideoPage({
         )}
         <div className="space-y-4">
           <div>
-            <h1 className="font-display text-2xl tracking-wide">Detalle del Reel</h1>
+            <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Detalle del Reel</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Publicado el {formatDateTime(video.publishedAt, TZ)} (
               <span className="capitalize">{weekday(video.publishedAt, TZ)}</span>) ·

@@ -50,7 +50,7 @@ export function LogoutButton({
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="bg-foreground/40 fixed inset-0 z-50 backdrop-blur-[2px] transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
         <AlertDialog.Popup className="bg-card text-card-foreground shadow-lift fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 transition-all duration-200 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-          <AlertDialog.Title className="font-display text-lg font-semibold tracking-wide">
+          <AlertDialog.Title className="text-xl font-medium tracking-[-0.02em]">
             ¿Cerrar sesión?
           </AlertDialog.Title>
           <AlertDialog.Description className="text-muted-foreground mt-1.5 text-sm">
