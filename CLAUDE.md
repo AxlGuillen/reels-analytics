@@ -65,6 +65,16 @@ rendimiento real.
 > (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
 > `/settings/mcp`, para que no se desincronicen. Los esquemas zod siguen junto a cada tool.
 
+**Health check (`/api/health`, para monitoreo externo):** `modules/health/{status,checks}.ts`
+(`status.ts` es la parte pura y testeada: tipos + `rollupStatus`; `checks.ts` toca BD/red).
+Chequea: `database`, `page` (self-fetch a `/login`), `mcp` (self-fetch a `/api/mcp` sin token →
+debe dar **401 con `WWW-Authenticate`**), `ingestion.*` (reusa `getCaptureStatus`), `tokens.*`
+(solo FECHAS de `ra_connections`, nunca el token) y `mcp.connectors`. **Sin credencial** devuelve
+solo `{status, checkedAt}`; con `Authorization: Bearer $HEALTH_SECRET`, el desglose. **503 solo si
+algo está roto** (`down`); los avisos (ingesta >36 h, token a <7 días) son `degraded` con 200.
+`HEALTH_SECRET` es aparte de `CRON_SECRET` a propósito: esa URL se le da a un monitor externo y
+con el del cron podría disparar la ingesta. Excluido del proxy.
+
 **Página MCP (`/settings/mcp`):** guía dentro de la app — la URL del servidor, cómo agregarlo
 como conector remoto (OAuth, sin pegar tokens), el comando de Claude Code (con el secreto como
 placeholder: nunca se renderiza), el listado de **conectores autorizados** (`listConnectedClients`,

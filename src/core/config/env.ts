@@ -34,6 +34,12 @@ const SPEC = {
   TELEGRAM_CHAT_ID: { required: false },
   // Protege el servidor MCP (/api/mcp): el cliente manda Bearer con este valor.
   MCP_SECRET: { required: false },
+  // Detalle de /api/health. Secreto PROPIO (no se reusa CRON_SECRET): esta URL
+  // se le da a un monitor externo y con el del cron podría disparar la ingesta.
+  HEALTH_SECRET: { required: false },
+  // La inyecta Vercel en el build; en local no existe (de ahí el fallback).
+  // Solo se expone en la rama autenticada de /api/health, como `version`.
+  VERCEL_GIT_COMMIT_SHA: { required: false },
   // Origen público de la app (p. ej. https://reels-analytics.vercel.app). Es el
   // issuer y la base del `resource` de OAuth: debe ser fijo, no derivado del
   // header Host (spoofable). Sin barra final. Obligatoria: sin ella el flujo
