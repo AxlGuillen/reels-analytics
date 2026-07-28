@@ -193,62 +193,64 @@ bunx supabase gen types typescript --project-id <id> > src/core/supabase/databas
 > Regla: **siempre usar `bun` / `bunx`**. No introducir `package-lock.json` ni
 > `pnpm-lock.yaml`; el lockfile del proyecto es `bun.lock`.
 
-## Identidad visual — "Ledger" (libro de cuentas editorial)
+## Identidad visual — "Acid Grid" (bento monocromo con acento ácido)
 
-Estilo dashboard cálido y editorial: **papel** (cremas), **tinta teal** y **serif Spectral**.
-Migrado desde el índigo "Precisión editorial". Importado desde un diseño de Claude Design
-(`Reels Analytics · Ledger`). Soporta **tema claro (papel) y oscuro (papel nocturno)** con toggle.
+Dashboard bento: casi-blanco frío, tinta casi-negra y **un solo color**, el lima ácido.
+Importado de un diseño de Claude Design (`Dashboard Rediseño`). Sustituye por completo a
+la identidad anterior "Ledger" (papel cálido + teal + serif Spectral). Soporta **tema claro
+y oscuro** con toggle.
 
 ### Contrato de estilo (la constitución; los PRs se revisan contra esto)
 
-- **Dirección**: minimalismo editorial con profundidad suave (escuela Linear/Stripe pero en
-  papel cálido). La profundidad viene de la LUZ (sombras `shadow-card/lift/rail`), nunca de
-  ornamento. La calidez viene del papel y la serif, no del color saturado.
-- **Dualidad tinta/acento (regla central)**: la **tinta oscura** (`--foreground`) es la CTA
-  primaria — el `Button` variante `default` es `bg-foreground text-background` (en oscuro se
-  invierte a crema). El **teal** (`--primary`, `#0f6f5c` claro / `#3aa88f` oscuro) es el
-  ACENTO: nav activo, links, líneas de chart, deltas positivos, el ícono del brand, la
-  barra de acento de KPIs. No pintar botones primarios de teal ni CTAs de teal.
-- **Semántica de superficies**: 3 planos — fondo papel → sidebar (`--sidebar` + `shadow-rail`) →
-  cards (`bg-card` + `shadow-card`). `shadow-lift` SOLO para lo que flota (modales, hover
-  clicable). KPIs a nivel de página = mini-card elevada con **label uppercase + número Spectral
-  + subrayado teal** (`h-0.5 w-7 bg-primary`); stats dentro de card = tile hundido (`bg-muted/30`).
-- **Números**: los **protagonistas** (KPIs hero, stats de detalle) usan **`font-display`
-  (Spectral serif) `tabular-nums`** — el número editorial del ledger. Los **tabulares** de
-  tablas, deltas y tokens usan **`font-mono` (IBM Plex Mono)**. El texto/UI va en IBM Plex Sans.
-- **Textura**: retícula de puntos cálida al ~6% (`.bg-dots` en el contenido del dashboard;
-  `.bg-page-glow` = puntos + halo teal en login), tamaño 22px. Prohibido ruido pesado.
-- **Glass**: solo acento en superficies flotantes (header móvil sticky, drawer) vía
-  `backdrop-blur`; nunca como sistema.
-- **Acentos por plataforma** (`--platform-tiktok` teal / `--platform-instagram` terracota
-  `#bf6d5a`): SOLO donde se comparan plataformas (charts, badges comparativos). `prefers-
-  reduced-motion` siempre; movimiento 150–300ms con significado.
-- **Restricción**: 1 CTA primaria por vista; contraste AA en ambos temas; sin emojis como
-  iconos (Lucide/AnimateIcons outline).
+- **Dirección**: bento monocromo. Cards blancas de esquinas muy redondeadas flotando sobre
+  un lienzo casi-blanco con grano de papel. La jerarquía la hacen el TAMAÑO y el PESO, no
+  el color.
+- **El lima es superficie, no texto (regla central)**: `--primary` (`#d9f24a`) se usa como
+  **fondo** con tinta encima (`text-primary-foreground`). **Nunca** lima sobre blanco:
+  no cumple AA. Marca lo destacado — el KPI hero, el segmento vivo de una gráfica, el tile
+  del brand, el borde del avatar.
+- **La CTA primaria es tinta**: el `Button` variante `default` es `bg-foreground
+  text-background` (se invierte en oscuro). Pintar un CTA de lima es un error de sistema.
+- **Forma**: cards con `rounded-lg` (= `--radius`, 22px) y **solo sombra, sin borde**.
+  Todo control (botón, chip, filtro, barra de gráfica) es **píldora** (`rounded-full`).
+  Los tiles de icono son cuadrados de 26px con `rounded-[9px]`; los del rail, 38px con
+  `rounded-[14px]`.
+- **Tipografía**: **Space Grotesk** para todo — UI y titulares (`--font-sans`, y
+  `--font-display`/`--font-heading` apuntan a la misma familia). **JetBrains Mono**
+  (`--font-mono`) para unidades, porcentajes, ejes y cifras tabulares. Los números
+  protagonistas van en grotesca con `font-medium` y `tracking-[-0.03em]`; los titulares con
+  `tracking-[-0.025em]`. **Nada de serif.**
+- **Texturas**: `.bg-grain` (ruido fractal, el lienzo de la app), `.bg-halftone` (retícula
+  de puntos para cards de acento y oscuras) y `.bg-hatch` (rayado diagonal para
+  placeholders 9:16 y avatares). Se aplican por clase, nunca inline.
+- **Navegación**: **rail flotante** de 62px, oscuro y redondeado (`rounded-[26px]`), fijo y
+  siempre icon-only — el diseño no contempla estado expandido, así que **no hay toggle de
+  colapso**. En móvil se degrada a barra + drawer con etiquetas.
+- **Plataformas**: el sistema es monocromo, así que TikTok/Instagram se distinguen por el
+  contraste propio (tinta vs. lima), no por colores de marca. `--platform-tiktok` /
+  `--platform-instagram` existen para eso y SOLO se usan en contextos comparativos.
+- **Restricción**: 1 CTA primaria por vista; contraste AA en ambos temas; movimiento
+  150–300 ms con significado y `prefers-reduced-motion` siempre; sin emojis como iconos
+  (Lucide/AnimateIcons outline).
 
-- **Tokens** en `src/app/globals.css`: `:root` = **papel** (fondo `#f6f3ec`, card `#fdfbf5`,
-  texto `#191712`), `.dark` = **papel nocturno** (fondo `#14120c`, card `#1e1a12`, texto
-  `#ece7da`). **Primario teal** `#0f6f5c` (claro) / `#3aa88f` (oscuro); tenue `#6f685a` /
-  `#a8a08e`; borde `#ddd6c6` / `#322d20`. `--success` = teal (los deltas positivos son teal,
-  como en el diseño); `--destructive` = ladrillo cálido. Charts `--chart-1..5`
-  (teal/verde-salvia/tan/topo/arena). `--brand` = teal.
+- **Tokens** en `src/app/globals.css`: `:root` = **claro** (fondo `#f1f1ee`, card `#ffffff`,
+  tinta `#111211`), `.dark` = **oscuro** (fondo `#111211`, card `#1a1b19`, texto `#f4f4f1`).
+  **Lima** `#d9f24a` en ambos temas. Tenue `#54564f` / `#a8a99f`; borde `#e8e9e3` /
+  `#2b2c29`. `--success` es el propio acento (los positivos no son verdes);
+  `--destructive` = rojo ladrillo. Charts `--chart-1..5` = escala tinta→lima→grises.
+  El `--sidebar` es **oscuro también en tema claro** (el rail siempre contrasta).
 - **Tema** vía `next-themes` (`src/components/theme-provider.tsx`, `attribute="class"`,
-  `defaultTheme="system"` solo para la primera visita); `<html>` lleva `suppressHydrationWarning`.
-  El toggle vive en el footer del sidebar (`src/components/dashboard/theme-toggle.tsx`) y
-  **alterna solo claro ↔ oscuro** (usa `resolvedTheme`; no ofrece opción "sistema"). El cambio
-  anima un **circular reveal** (View Transitions API + `flushSync`, 300 ms, clip-path desde el
-  botón; reglas `::view-transition` en globals.css) y degrada a cambio instantáneo sin soporte
-  del navegador o con `prefers-reduced-motion`.
-- **Tipografía** (`layout.tsx`, next/font): **Spectral** (`--font-display`, serif — titulares y
-  números hero), **IBM Plex Sans** (`--font-sans` — UI y texto), **IBM Plex Mono** (`--font-mono`
-  — tabulares). `--font-heading` apunta a Spectral.
-- **Login** (`src/app/login/page.tsx`): split-screen editorial — panel `bg-foreground` con
-  eyebrow, titular Spectral, features numeradas (01/02/03 en mono teal) y mini bar-chart; panel
-  de form con `.bg-page-glow`, barra de acento teal y labels uppercase. Se invierte en oscuro.
+  `defaultTheme="system"` solo para la primera visita); `<html>` lleva
+  `suppressHydrationWarning`. El toggle vive en el rail
+  (`src/components/dashboard/theme-toggle.tsx`, variantes `row` / `icon` / `rail`) y
+  **alterna solo claro ↔ oscuro** (usa `resolvedTheme`). Anima un **circular reveal**
+  (View Transitions API + `flushSync`, 300 ms) y degrada a cambio instantáneo sin soporte
+  o con `prefers-reduced-motion`.
+- **Nota**: `lucide-react` v1 **ya no trae iconos de marca**; el de Instagram se importa de
+  `@animateicons/react/lucide`.
 - Usar siempre **tokens semánticos** (`bg-primary`, `bg-card`, `text-muted-foreground`,
-  `text-success`, `text-destructive`, `border`, `bg-foreground`...) nunca hex crudo ni colores
-  de Tailwind con número (`green-500`); así el componente se adapta a claro/oscuro solo.
-- Reglas: 1 CTA primaria por vista, contraste WCAG AA, hover 150–300ms, sin emojis como iconos.
+  `text-destructive`, `border`, `bg-foreground`...) nunca hex crudo ni colores de Tailwind
+  con número (`green-500`); así el componente se adapta a claro/oscuro solo.
 
 ## Arquitectura
 
