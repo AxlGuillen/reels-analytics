@@ -211,6 +211,12 @@ y oscuro** con toggle.
   del brand, el borde del avatar.
 - **La CTA primaria es tinta**: el `Button` variante `default` es `bg-foreground
   text-background` (se invierte en oscuro). Pintar un CTA de lima es un error de sistema.
+- **Jerarquía por tono (regla de rejilla)**: una rejilla de KPIs **nunca** va toda del
+  mismo tono. La métrica principal se destaca en `accent` (lima) o `dark`; el resto queda
+  en `plain`. Se implementa con `StatCard` (`src/components/dashboard/stat-card.tsx`,
+  prop `tone: "plain" | "accent" | "dark"`), que ya resuelve el semitono y los colores de
+  texto sobre fondo de color. **No dupliques cards de métrica a mano**: si necesitas una,
+  usa `StatCard`.
 - **Forma**: cards con `rounded-lg` (= `--radius`, 22px) y **solo sombra, sin borde**.
   Todo control (botón, chip, filtro, barra de gráfica) es **píldora** (`rounded-full`).
   Los tiles de icono son cuadrados de 26px con `rounded-[9px]`; los del rail, 38px con

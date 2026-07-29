@@ -29,6 +29,7 @@ import {
   type MetricMode,
 } from "@/components/dashboard/metric-toggle";
 import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { StatCard } from "@/components/dashboard/stat-card";
 import {
   readGrowth,
   readSnapshotSeries,
@@ -75,19 +76,8 @@ const PLATFORM_COLORS: Record<Platform, string> = {
   instagram: "var(--color-platform-instagram)",
 };
 
-function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="bg-card shadow-card rounded-lg p-4">
-      <div className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-        {label}
-      </div>
-      <div className="mt-1.5 text-[2rem] leading-none font-medium tracking-[-0.03em] tabular-nums">
-        {value}
-      </div>
-      {hint && <div className="text-muted-foreground mt-1.5 text-xs">{hint}</div>}
-    </div>
-  );
-}
+/** Alias local del KPI compartido (mantiene las llamadas existentes cortas). */
+const Kpi = StatCard;
 
 /** Delta de seguidores de los últimos `days` días (o null si no hay historia). */
 function followerDelta(series: AccountSeries, days: number): number | null {
@@ -288,6 +278,7 @@ export default async function GrowthPage({
             {accountSeries.map((s) => (
               <Kpi
                 key={s.platform}
+                tone={s.platform === "tiktok" ? "accent" : "plain"}
                 label={`Seguidores @${s.handle ?? s.platform}`}
                 value={formatCount(
                   s.points.filter((p) => p.followers !== null).at(-1)?.followers ?? null,
@@ -411,6 +402,7 @@ export default async function GrowthPage({
           {/* Destacados por mes */}
           <section className="grid gap-3 sm:grid-cols-3">
             <Kpi
+              tone="accent"
               label="Mes con más vistas"
               value={monthMostViews ? monthMostViews.label : "—"}
               hint={
@@ -523,7 +515,7 @@ export default async function GrowthPage({
             </Card>
 
             <div className="grid grid-cols-2 gap-3 content-start">
-              <Kpi label="Videos" value={formatCount(summary.totalVideos)} />
+              <Kpi tone="dark" label="Videos" value={formatCount(summary.totalVideos)} />
               <Kpi label="Vistas totales" value={formatCount(summary.totalViews)} />
               <Kpi
                 label="Mejor día"

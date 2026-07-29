@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AccountStats } from "@/core/domain";
+import { StatCard } from "@/components/dashboard/stat-card";
 import {
   formatCount,
   formatDate,
@@ -38,14 +39,8 @@ function ConnectButton({ label }: { label: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card shadow-card rounded-lg p-4">
-      <div className="font-mono text-2xl font-semibold tabular-nums">{value}</div>
-      <div className="text-muted-foreground text-sm">{label}</div>
-    </div>
-  );
-}
+/** Alias local del KPI compartido. */
+const Stat = StatCard;
 
 function AccountHeader({ account }: { account: AccountStats }) {
   return (
@@ -74,7 +69,7 @@ function AccountHeader({ account }: { account: AccountStats }) {
       </div>
       {account.bio && <p className="text-muted-foreground text-sm">{account.bio}</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Seguidores" value={formatCount(account.followers)} />
+        <Stat tone="accent" label="Seguidores" value={formatCount(account.followers)} />
         <Stat label="Siguiendo" value={formatCount(account.following ?? null)} />
         <Stat label="Likes totales" value={formatCount(account.totalLikes)} />
         <Stat label="Videos" value={formatCount(account.videoCount ?? null)} />
@@ -93,7 +88,7 @@ function InsightsSection({ videos }: { videos: VideoWithMetrics[] }) {
     <div className="space-y-4">
       <h3 className="text-sm font-semibold">Analítica del periodo</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Mejor día" value={bestDay ? capitalize(bestDay.label) : "—"} />
+        <Stat tone="dark" label="Mejor día" value={bestDay ? capitalize(bestDay.label) : "—"} />
         <Stat label="Mejor hora" value={bestHour ? bestHour.label : "—"} />
         <Stat label="Vistas promedio" value={formatCount(Math.round(summary.avgViews))} />
         <Stat label="Engagement prom." value={formatPercent(summary.avgEngagement)} />

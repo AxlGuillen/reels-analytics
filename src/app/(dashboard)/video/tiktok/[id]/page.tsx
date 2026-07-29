@@ -12,19 +12,14 @@ import { weekday } from "@/core/lib/datetime";
 import { CREATOR_TIMEZONE as TZ, engagementRate } from "@/modules/analytics/insights";
 import { readVideoHistory } from "@/modules/analytics/history";
 import { readVideoBenchmark } from "@/modules/analytics/breakouts";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { VideoGrowth } from "@/components/video-growth";
 import { queryVideos } from "@/modules/tiktok/api";
 import { toVideo, toVideoMetrics } from "@/modules/tiktok/mappers";
 import { getSession, isExpired } from "@/modules/tiktok/session";
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card shadow-card rounded-lg p-4">
-      <div className="text-[2rem] leading-none font-medium tracking-[-0.03em] tabular-nums">{value}</div>
-      <div className="text-muted-foreground text-sm">{label}</div>
-    </div>
-  );
-}
+/** Alias local del KPI compartido. */
+const Stat = StatCard;
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
@@ -139,7 +134,7 @@ export default async function VideoDetailPage({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label="Vistas" value={formatCount(metrics.views)} />
+        <Stat tone="accent" label="Vistas" value={formatCount(metrics.views)} />
         <Stat label="Likes" value={formatCount(metrics.likes)} />
         <Stat label="Comentarios" value={formatCount(metrics.comments)} />
         <Stat label="Compartidos" value={formatCount(metrics.shares)} />

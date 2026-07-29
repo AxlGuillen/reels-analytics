@@ -189,10 +189,36 @@
 }
 
 @layer utilities {
-  /* Grano de papel: ruido fractal en SVG. Se aplica como overlay (::after) para
-     no necesitar un div extra; `pointer-events:none` evita bloquear clics. */
+  /* Grano de papel + lavado ambiental: dos radiales muy tenues (uno lima, uno
+     de tinta) que dan profundidad al lienzo sin salirse del monocromo. El grano
+     va como overlay (::after) para no necesitar un div extra; `pointer-events:
+     none` evita bloquear clics. */
   .bg-grain {
     position: relative;
+    background-image:
+      radial-gradient(
+        60rem 40rem at 88% -8%,
+        color-mix(in oklab, var(--primary) 16%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        48rem 34rem at -8% 108%,
+        color-mix(in oklab, var(--foreground) 7%, transparent),
+        transparent 62%
+      );
+  }
+  .dark .bg-grain {
+    background-image:
+      radial-gradient(
+        60rem 40rem at 88% -8%,
+        color-mix(in oklab, var(--primary) 9%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        48rem 34rem at -8% 108%,
+        color-mix(in oklab, var(--foreground) 5%, transparent),
+        transparent 62%
+      );
   }
   .bg-grain::after {
     content: "";
