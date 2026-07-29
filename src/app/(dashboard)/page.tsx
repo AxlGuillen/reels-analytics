@@ -331,13 +331,14 @@ export default async function OverviewPage({
             {/* Mejor video — card oscura */}
             <div className="bg-foreground text-background shadow-lift relative overflow-hidden rounded-lg p-[18px] sm:col-span-2 lg:col-span-1">
               <div className="bg-halftone pointer-events-none absolute inset-0" />
-              <div className="bg-hatch pointer-events-none absolute inset-y-0 right-0 w-[118px] opacity-60" />
+              {/* Franja decorativa estrecha: el titular manda, no el adorno. */}
+              <div className="bg-hatch pointer-events-none absolute inset-y-0 right-0 w-[56px] opacity-40" />
               <div className="text-primary relative font-mono text-[9.5px] tracking-[0.14em] uppercase">
                 Mejor video
               </div>
               {bestVideo ? (
                 <>
-                  <div className="relative mt-2.5 max-w-[150px] text-[19px] leading-[1.15] font-medium tracking-[-0.015em]">
+                  <div className="relative mt-2.5 pr-12 text-[19px] leading-[1.2] font-medium tracking-[-0.015em]">
                     <span className="line-clamp-3">
                       {bestVideo.caption?.trim() || bestVideo.externalId}
                     </span>
@@ -353,7 +354,7 @@ export default async function OverviewPage({
                   </Link>
                 </>
               ) : (
-                <p className="text-background/60 relative mt-2.5 max-w-[150px] text-[13px]">
+                <p className="text-background/60 relative mt-2.5 pr-12 text-[13px]">
                   No publicaste videos en este periodo.
                 </p>
               )}

@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { VideoListTable } from "@/components/dashboard/video-list-table";
 import { readGrowth } from "@/modules/analytics/history";
 import {
@@ -34,16 +35,8 @@ function parseTypeParam(
   return raw in CONTENT_TYPES ? (raw as ContentTypeKey) : undefined;
 }
 
-/** KPI del sistema: cifra grande en grotesca + label tenue. */
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="bg-card shadow-card rounded-lg p-4">
-      <div className="text-[2rem] leading-none font-medium tracking-[-0.03em] tabular-nums">{value}</div>
-      <div className="text-muted-foreground text-sm">{label}</div>
-      {hint && <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>}
-    </div>
-  );
-}
+/** Alias local del KPI compartido. */
+const Stat = StatCard;
 
 export default async function ContentPage({
   searchParams,
@@ -107,38 +100,62 @@ export default async function ContentPage({
       ) : !inDrilldown ? (
         /* ── Resumen: una card por tipo (solo grupos con videos) ── */
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {byType.map((t) => (
-            <Link
-              key={t.label}
-              href={contentHref(t.key, platform)}
-              className="bg-card shadow-card hover:shadow-lift block rounded-lg p-5 transition-shadow duration-200"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <h2 className="font-semibold">{t.label}</h2>
-                <span className="text-muted-foreground font-mono text-xs tabular-nums">
-                  {t.count} {t.count === 1 ? "video" : "videos"}
-                </span>
-              </div>
-              <div className="mt-3 text-[2.4rem] leading-none font-medium tracking-[-0.03em] tabular-nums">
-                {formatCount(Math.round(t.avgViews))}
-              </div>
-              <div className="text-muted-foreground text-sm">vistas promedio</div>
-              <dl className="text-muted-foreground mt-4 grid grid-cols-2 gap-2 border-t pt-3 text-xs">
-                <div>
-                  <dt>Vistas totales</dt>
-                  <dd className="text-foreground font-mono tabular-nums">
-                    {formatCount(t.totalViews)}
-                  </dd>
+          {/* `byType` viene ordenado por vistas promedio desc: el primero es el
+              formato que mejor rinde, así que se destaca en lima. */}
+          {byType.map((t, i) => {
+            const lead = i === 0;
+            return (
+              <Link
+                key={t.label}
+                href={contentHref(t.key, platform)}
+                className={
+                  lead
+                    ? "bg-primary text-primary-foreground shadow-card hover:shadow-lift relative block overflow-hidden rounded-lg p-5 transition-shadow duration-200"
+                    : "bg-card shadow-card hover:shadow-lift block rounded-lg p-5 transition-shadow duration-200"
+                }
+              >
+                {lead && (
+                  <div className="bg-halftone pointer-events-none absolute inset-0" />
+                )}
+                <div className="relative flex items-baseline justify-between gap-2">
+                  <h2 className="font-medium">{t.label}</h2>
+                  <span
+                    className={`font-mono text-xs tabular-nums ${lead ? "text-foreground/60" : "text-muted-foreground"}`}
+                  >
+                    {t.count} {t.count === 1 ? "video" : "videos"}
+                  </span>
                 </div>
-                <div>
-                  <dt>Engagement prom.</dt>
-                  <dd className="text-foreground font-mono tabular-nums">
-                    {formatPercent(t.avgEngagement)}
-                  </dd>
+                <div className="relative mt-3 text-[2.4rem] leading-none font-medium tracking-[-0.03em] tabular-nums">
+                  {formatCount(Math.round(t.avgViews))}
                 </div>
-              </dl>
-            </Link>
-          ))}
+                <div
+                  className={`relative text-sm ${lead ? "text-foreground/60" : "text-muted-foreground"}`}
+                >
+                  vistas promedio
+                </div>
+                <dl
+                  className={`relative mt-4 grid grid-cols-2 gap-2 border-t pt-3 text-xs ${lead ? "border-foreground/15 text-foreground/60" : "text-muted-foreground"}`}
+                >
+                  <div>
+                    <dt>Vistas totales</dt>
+                    <dd
+                      className={`font-mono tabular-nums ${lead ? "text-primary-foreground" : "text-foreground"}`}
+                    >
+                      {formatCount(t.totalViews)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Engagement prom.</dt>
+                    <dd
+                      className={`font-mono tabular-nums ${lead ? "text-primary-foreground" : "text-foreground"}`}
+                    >
+                      {formatPercent(t.avgEngagement)}
+                    </dd>
+                  </div>
+                </dl>
+              </Link>
+            );
+          })}
         </section>
       ) : drillRows.length === 0 ? (
         <Card>
@@ -169,7 +186,7 @@ function DrilldownContent({ rows }: { rows: VideoWithMetrics[] }) {
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Videos" value={formatCount(s.totalVideos)} />
+        <Stat tone="accent" label="Videos" value={formatCount(s.totalVideos)} />
         <Stat label="Vistas totales" value={formatCount(s.totalViews)} />
         <Stat
           label="Vistas promedio"
