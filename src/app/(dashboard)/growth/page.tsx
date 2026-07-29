@@ -77,14 +77,13 @@ const PLATFORM_COLORS: Record<Platform, string> = {
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-card shadow-card rounded-lg border p-4">
+    <div className="bg-card shadow-card rounded-lg p-4">
       <div className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
         {label}
       </div>
-      <div className="font-display mt-1.5 text-2xl font-semibold tabular-nums">
+      <div className="mt-1.5 text-[2rem] leading-none font-medium tracking-[-0.03em] tabular-nums">
         {value}
       </div>
-      <div className="bg-primary mt-2 h-0.5 w-7 rounded-full" />
       {hint && <div className="text-muted-foreground mt-1.5 text-xs">{hint}</div>}
     </div>
   );
@@ -258,7 +257,7 @@ export default async function GrowthPage({
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl tracking-wide">Crecimiento</h1>
+          <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Crecimiento</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Historia acumulada desde los snapshots guardados.
           </p>

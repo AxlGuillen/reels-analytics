@@ -34,12 +34,11 @@ function parseTypeParam(
   return raw in CONTENT_TYPES ? (raw as ContentTypeKey) : undefined;
 }
 
-/** KPI editorial del ledger: número Spectral + subrayado teal + label. */
+/** KPI del sistema: cifra grande en grotesca + label tenue. */
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-card shadow-card rounded-lg border p-4">
-      <div className="font-display text-2xl font-semibold tabular-nums">{value}</div>
-      <div className="bg-primary my-2 h-0.5 w-7 rounded-full" />
+    <div className="bg-card shadow-card rounded-lg p-4">
+      <div className="text-[2rem] leading-none font-medium tracking-[-0.03em] tabular-nums">{value}</div>
       <div className="text-muted-foreground text-sm">{label}</div>
       {hint && <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>}
     </div>
@@ -78,7 +77,7 @@ export default async function ContentPage({
               <MoveLeftIcon size={16} /> Contenido
             </Link>
           )}
-          <h1 className="font-display text-2xl tracking-wide">
+          <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">
             {inDrilldown ? contentTypeLabel(type) : "Contenido"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -112,7 +111,7 @@ export default async function ContentPage({
             <Link
               key={t.label}
               href={contentHref(t.key, platform)}
-              className="bg-card shadow-card hover:shadow-lift block rounded-lg border p-5 transition-shadow duration-200"
+              className="bg-card shadow-card hover:shadow-lift block rounded-lg p-5 transition-shadow duration-200"
             >
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="font-semibold">{t.label}</h2>
@@ -120,10 +119,9 @@ export default async function ContentPage({
                   {t.count} {t.count === 1 ? "video" : "videos"}
                 </span>
               </div>
-              <div className="font-display mt-3 text-3xl font-semibold tabular-nums">
+              <div className="mt-3 text-[2.4rem] leading-none font-medium tracking-[-0.03em] tabular-nums">
                 {formatCount(Math.round(t.avgViews))}
               </div>
-              <div className="bg-primary my-2 h-0.5 w-7 rounded-full" />
               <div className="text-muted-foreground text-sm">vistas promedio</div>
               <dl className="text-muted-foreground mt-4 grid grid-cols-2 gap-2 border-t pt-3 text-xs">
                 <div>

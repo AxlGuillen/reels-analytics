@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CircleAlert } from "lucide-react";
+import { Blocks, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createServerSupabase } from "@/core/supabase/server";
 import { SCOPE } from "@/modules/oauth/config";
@@ -34,15 +34,15 @@ export const runtime = "nodejs";
 /** Pantalla de error: se usa cuando NO podemos confiar en el `redirect_uri`. */
 function AuthorizeError({ message }: { message: string }) {
   return (
-    <main className="bg-page-glow flex min-h-dvh items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-4 py-3 text-sm">
-          <CircleAlert className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium">No se pudo autorizar la conexión</p>
-            <p className="mt-1">{message}</p>
-          </div>
-        </div>
+    <main className="bg-grain flex min-h-dvh items-center justify-center px-6">
+      <div className="bg-card shadow-lift w-full max-w-md rounded-lg p-6">
+        <span className="bg-destructive/10 text-destructive flex size-[26px] items-center justify-center rounded-[9px]">
+          <CircleAlert className="size-3.5" />
+        </span>
+        <p className="mt-3 text-lg font-medium tracking-[-0.02em]">
+          No se pudo autorizar la conexión
+        </p>
+        <p className="text-muted-foreground mt-1.5 text-sm">{message}</p>
       </div>
     </main>
   );
@@ -127,33 +127,35 @@ export default async function AuthorizePage({
   const redirectHost = new URL(redirectUri).host;
 
   return (
-    <main className="bg-page-glow flex min-h-dvh items-center justify-center px-6 py-16">
+    <main className="bg-grain flex min-h-dvh items-center justify-center px-6 py-16">
       <div className="animate-fade-up w-full max-w-md">
-        <div className="bg-primary mb-5 h-0.5 w-10 rounded-full" />
-        <h1 className="font-display text-[1.7rem] font-semibold tracking-tight">
-          Autorizar conexión
-        </h1>
-        <p className="text-muted-foreground mt-1.5 mb-8 text-sm">
-          Una aplicación quiere leer tus métricas desde el servidor MCP.
-        </p>
+        <div className="bg-card shadow-lift rounded-lg p-6">
+          <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-[14px]">
+            <Blocks className="size-[18px]" />
+          </span>
+          <h1 className="mt-4 text-[1.6rem] leading-tight font-medium tracking-[-0.025em]">
+            Autorizar conexión
+          </h1>
+          <p className="text-muted-foreground mt-1.5 mb-6 text-sm">
+            Una aplicación quiere leer tus métricas desde el servidor MCP.
+          </p>
 
-        <div className="bg-card shadow-card rounded-lg border p-5">
-          <dl className="flex flex-col gap-3 text-sm">
+          <dl className="bg-muted flex flex-col gap-3 rounded-[18px] p-4 text-sm">
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">Aplicación</dt>
               <dd className="font-medium">{clientLabel}</dd>
             </div>
-            <div className="flex items-baseline justify-between gap-4 border-t pt-3">
+            <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">Te enviará a</dt>
               <dd className="font-mono text-xs break-all">{redirectHost}</dd>
             </div>
-            <div className="flex items-baseline justify-between gap-4 border-t pt-3">
+            <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">Permiso</dt>
               <dd className="font-mono text-xs">{SCOPE}</dd>
             </div>
           </dl>
 
-          <p className="text-muted-foreground mt-4 border-t pt-3 text-xs">
+          <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
             Solo lectura: podrá consultar tus métricas ya guardadas, no publicar ni
             modificar nada. Verifica que reconoces el destino antes de continuar.
           </p>
@@ -168,7 +170,7 @@ export default async function AuthorizePage({
                 codeChallenge={codeChallenge}
                 state={state}
               />
-              <Button type="submit" variant="outline" size="lg" className="w-full">
+              <Button type="submit" variant="outline" className="h-11 w-full">
                 Denegar
               </Button>
             </form>
@@ -179,7 +181,7 @@ export default async function AuthorizePage({
                 codeChallenge={codeChallenge}
                 state={state}
               />
-              <Button type="submit" size="lg" className="w-full">
+              <Button type="submit" className="h-11 w-full">
                 Autorizar
               </Button>
             </form>

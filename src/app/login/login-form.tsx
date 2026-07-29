@@ -20,7 +20,7 @@ export function LoginForm({ next = "/" }: { next?: string }) {
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="email"
-          className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.14em] uppercase"
+          className="text-[12.5px] font-medium"
         >
           Email
         </label>
@@ -30,14 +30,14 @@ export function LoginForm({ next = "/" }: { next?: string }) {
           type="email"
           autoComplete="email"
           required
-          className="border-border bg-background focus-visible:border-ring focus-visible:ring-ring/40 hover:border-ring/40 h-10 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3"
+          className="bg-muted focus-visible:ring-ring/30 h-11 rounded-full px-4 text-sm transition-shadow outline-none focus-visible:ring-2"
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="password"
-          className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.14em] uppercase"
+          className="text-[12.5px] font-medium"
         >
           Contraseña
         </label>
@@ -48,7 +48,7 @@ export function LoginForm({ next = "/" }: { next?: string }) {
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             required
-            className="border-border bg-background focus-visible:border-ring focus-visible:ring-ring/40 hover:border-ring/40 h-10 w-full rounded-lg border pr-10 pl-3 text-sm transition-colors outline-none focus-visible:ring-3"
+            className="bg-muted focus-visible:ring-ring/30 h-11 w-full rounded-full pr-11 pl-4 text-sm transition-shadow outline-none focus-visible:ring-2"
           />
           <button
             type="button"
@@ -68,7 +68,7 @@ export function LoginForm({ next = "/" }: { next?: string }) {
 
       {state.error && (
         <div
-          className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm"
+          className="bg-destructive/10 text-destructive flex items-start gap-2 rounded-[18px] px-4 py-3 text-sm"
           role="alert"
         >
           <CircleAlert className="mt-0.5 size-4 shrink-0" />
@@ -76,7 +76,7 @@ export function LoginForm({ next = "/" }: { next?: string }) {
         </div>
       )}
 
-      <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">
+      <Button type="submit" disabled={pending} className="mt-2 h-11 w-full">
         {pending && <Loader2 className="animate-spin" />}
         {pending ? "Entrando…" : "Entrar"}
       </Button>

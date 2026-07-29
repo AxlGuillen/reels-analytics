@@ -1,21 +1,22 @@
 import { redirect } from "next/navigation";
+import { Activity, Sparkle } from "lucide-react";
 import { createServerSupabase } from "@/core/supabase/server";
 import { LoginForm } from "./login-form";
 
-/** Argumentos de venta del panel izquierdo (numerados, estilo "libro de cuentas"). */
+/** Argumentos de venta del panel oscuro (numerados, en mono lima). */
 const FEATURES = [
   "Snapshots históricos: crecimiento medido en el tiempo.",
-  "Mejor día y hora, engagement y top hashtags.",
+  "Mejor día, engagement y tipos de contenido.",
   "Detalle por video con su curva de crecimiento.",
 ];
 
-/** Alturas de las barras del mini-chart decorativo del panel izquierdo. */
+/** Alturas (%) del mini-chart decorativo; el índice 3 va en lima. */
 const BARS = [38, 60, 48, 88, 68, 96, 74];
 
 /**
- * Pantalla de login (fuera del grupo `(dashboard)`, sin sidebar). Si ya hay
+ * Pantalla de login (fuera del grupo `(dashboard)`, sin rail). Si ya hay
  * sesión, salta directo al dashboard. La verificación real de acceso vive en el
- * middleware; esto evita mostrar el form a quien ya entró.
+ * proxy; esto evita mostrar el form a quien ya entró.
  */
 export default async function LoginPage({
   searchParams,
@@ -33,72 +34,76 @@ export default async function LoginPage({
   if (user) redirect(safeNext);
 
   return (
-    <main className="grid min-h-dvh grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
-      {/* Panel editorial (oculto en móvil) */}
-      <aside className="bg-foreground text-background relative hidden flex-col justify-between overflow-hidden p-12 lg:flex xl:p-14">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-60"
-          style={{
-            // Derivado de --background (el panel es bg-foreground/invertido), así
-            // el punto contrasta igual en claro y oscuro. Ver .bg-dots en globals.css.
-            backgroundImage:
-              "radial-gradient(circle, color-mix(in oklab, var(--background) 6%, transparent) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-          }}
-          aria-hidden
-        />
-        <div className="border-background/15 text-background/50 relative border-b pb-4 text-[11px] font-semibold tracking-[0.22em] uppercase">
-          Reels Analytics
-        </div>
+    <main className="bg-grain flex min-h-dvh items-center justify-center p-4 md:p-8">
+      {/* Panel bento flotante: oscuro (relato) + claro (formulario). */}
+      <div className="animate-fade-up shadow-lift grid w-full max-w-4xl overflow-hidden rounded-[26px] lg:grid-cols-[0.95fr_1.05fr]">
+        <aside className="bg-foreground text-background relative hidden flex-col justify-between p-10 lg:flex">
+          <div className="bg-halftone pointer-events-none absolute inset-0" />
 
-        <div className="relative">
-          <h2 className="font-display max-w-[16ch] text-[2.4rem] leading-[1.14] font-semibold tracking-tight text-balance">
-            Mide lo que publicas. Entiende lo que crece.
-          </h2>
-          <ol className="mt-8 flex flex-col">
-            {FEATURES.map((feature, i) => (
-              <li
-                key={feature}
-                className="border-background/15 flex gap-4 border-t py-3.5 last:border-b"
-              >
-                <span className="text-primary font-mono text-xs">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="text-background/80 text-sm leading-snug">
-                  {feature}
-                </span>
-              </li>
+          <div className="relative flex items-center gap-2.5">
+            <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-[14px]">
+              <Activity className="size-[18px]" />
+            </span>
+            <span className="text-[13px] font-medium tracking-[-0.01em]">
+              Reels Analytics
+            </span>
+          </div>
+
+          <div className="relative">
+            <h2 className="max-w-[15ch] text-[2.1rem] leading-[1.12] font-medium tracking-[-0.025em]">
+              Mide lo que publicas.{" "}
+              <span className="bg-primary text-primary-foreground inline-flex items-center gap-1.5 rounded-full px-3 pt-0.5 pb-1">
+                <Sparkle className="size-4" />
+                Entiende
+              </span>{" "}
+              lo que crece.
+            </h2>
+
+            <ol className="mt-8 flex flex-col gap-3.5">
+              {FEATURES.map((feature, i) => (
+                <li key={feature} className="flex gap-3.5">
+                  <span className="text-primary font-mono text-[11px] leading-5">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-background/70 text-[13px] leading-5">
+                    {feature}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Mini-chart: cápsulas, como las del dashboard. */}
+          <div className="relative flex h-11 items-end gap-1.5" aria-hidden>
+            {BARS.map((h, i) => (
+              <div
+                key={i}
+                className={
+                  i === 3
+                    ? "bg-primary w-3.5 rounded-full"
+                    : "bg-background/15 w-3.5 rounded-full"
+                }
+                style={{ height: `${h}%` }}
+              />
             ))}
-          </ol>
-        </div>
+          </div>
+        </aside>
 
-        <div className="relative flex h-11 items-end gap-1.5" aria-hidden>
-          {BARS.map((h, i) => (
-            <div
-              key={i}
-              className={i === 3 ? "bg-primary w-3.5" : "bg-background/15 w-3.5"}
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
-      </aside>
+        <div className="bg-card flex flex-col justify-center p-8 sm:p-12">
+          <div className="mx-auto w-full max-w-sm">
+            <h1 className="text-[1.6rem] font-medium tracking-[-0.025em]">
+              Inicia sesión
+            </h1>
+            <p className="text-muted-foreground mt-1.5 mb-7 text-sm">
+              Accede a tu panel de analíticas.
+            </p>
 
-      {/* Panel del formulario */}
-      <div className="bg-page-glow flex flex-col justify-center px-6 py-16 sm:px-12 lg:px-16">
-        <div className="animate-fade-up mx-auto w-full max-w-sm">
-          <div className="bg-primary mb-5 h-0.5 w-10 rounded-full" />
-          <h1 className="font-display text-[1.7rem] font-semibold tracking-tight">
-            Inicia sesión
-          </h1>
-          <p className="text-muted-foreground mt-1.5 mb-8 text-sm">
-            Accede a tu panel de analíticas.
-          </p>
+            <LoginForm next={safeNext} />
 
-          <LoginForm next={safeNext} />
-
-          <p className="text-muted-foreground/70 mt-7 text-center text-[11px] tracking-[0.04em] uppercase">
-            TikTok · Instagram — métricas y crecimiento en un solo lugar
-          </p>
+            <p className="text-muted-foreground/70 mt-7 text-center font-mono text-[10.5px] tracking-[0.04em]">
+              TIKTOK · INSTAGRAM
+            </p>
+          </div>
         </div>
       </div>
     </main>

@@ -22,16 +22,17 @@ const REVEAL_MS = 300;
  * Botón de tema. Alterna claro ↔ oscuro (sin opción "sistema"; un `theme=system`
  * heredado se resuelve vía `resolvedTheme` y el primer clic fija uno explícito).
  * Espera al montaje para leer el tema (evita desajuste de hidratación con SSR).
- * Dos presentaciones:
- * - `row`: fila completa del nav (rail colapsado).
- * - `icon`: botón cuadrado bordeado, para incrustar en la tarjeta de usuario.
+ * Tres presentaciones:
+ * - `row`: fila completa del nav.
+ * - `icon`: botón cuadrado bordeado, para incrustar sobre fondo claro.
+ * - `rail`: tile de 38px del rail oscuro (usa los tokens `sidebar-*`).
  */
 export function ThemeToggle({
   collapsed = false,
   variant = "row",
 }: {
   collapsed?: boolean;
-  variant?: "row" | "icon";
+  variant?: "row" | "icon" | "rail";
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
@@ -86,11 +87,26 @@ export function ThemeToggle({
     });
   };
 
+  const iconSize = variant === "icon" ? 15 : variant === "rail" ? 17 : 18;
   const icon = isDark ? (
-    <MoonIcon size={variant === "icon" ? 15 : 18} className="shrink-0" />
+    <MoonIcon size={iconSize} className="shrink-0" />
   ) : (
-    <SunIcon size={variant === "icon" ? 15 : 18} className="shrink-0" />
+    <SunIcon size={iconSize} className="shrink-0" />
   );
+
+  if (variant === "rail") {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={label}
+        title={label}
+        className="text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px] transition-colors duration-150"
+      >
+        {icon}
+      </button>
+    );
+  }
 
   if (variant === "icon") {
     return (

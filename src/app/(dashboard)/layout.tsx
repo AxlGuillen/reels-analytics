@@ -43,11 +43,12 @@ export default async function DashboardLayout({
   const userInfo = { name, email, initials };
 
   return (
-    <div className="flex min-h-dvh w-full">
+    // El rail flota sobre el lienzo: el padding/gap vive aquí, no en el aside.
+    <div className="bg-grain flex min-h-dvh w-full gap-4 md:p-5">
       <DesktopSidebar status={status} user={userInfo} />
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileNav status={status} user={userInfo} />
-        <main className="bg-dots flex-1">{children}</main>
+        <main className="flex-1">{children}</main>
       </div>
     </div>
   );

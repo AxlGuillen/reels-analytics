@@ -18,29 +18,39 @@ interface IconHandle {
  * conserva el estilo (y la animación de icono en hover) de las demás filas; la
  * confirmación dispara el server action dentro de un `<form>`.
  */
-export function LogoutButton({ collapsed }: { collapsed: boolean }) {
+export function LogoutButton({
+  collapsed = false,
+  variant = "row",
+}: {
+  collapsed?: boolean;
+  /** `rail`: tile de 38px del rail oscuro (usa los tokens `sidebar-*`). */
+  variant?: "row" | "rail";
+}) {
   const iconRef = useRef<IconHandle>(null);
+  const isRail = variant === "rail";
 
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger
         aria-label="Cerrar sesión"
-        title={collapsed ? "Cerrar sesión" : undefined}
+        title={isRail || collapsed ? "Cerrar sesión" : undefined}
         onMouseEnter={() => iconRef.current?.startAnimation()}
         onMouseLeave={() => iconRef.current?.stopAnimation()}
         className={cn(
-          "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
-          collapsed && "justify-center px-0",
+          isRail
+            ? "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px] transition-colors duration-150"
+            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
+          !isRail && collapsed && "justify-center px-0",
         )}
       >
-        <LogoutIcon ref={iconRef} size={18} className="shrink-0" />
-        {!collapsed && "Cerrar sesión"}
+        <LogoutIcon ref={iconRef} size={isRail ? 17 : 18} className="shrink-0" />
+        {!isRail && !collapsed && "Cerrar sesión"}
       </AlertDialog.Trigger>
 
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="bg-foreground/40 fixed inset-0 z-50 backdrop-blur-[2px] transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
         <AlertDialog.Popup className="bg-card text-card-foreground shadow-lift fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border p-6 transition-all duration-200 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-          <AlertDialog.Title className="font-display text-lg font-semibold tracking-wide">
+          <AlertDialog.Title className="text-xl font-medium tracking-[-0.02em]">
             ¿Cerrar sesión?
           </AlertDialog.Title>
           <AlertDialog.Description className="text-muted-foreground mt-1.5 text-sm">
