@@ -235,6 +235,15 @@ y oscuro** con toggle.
 - **Plataformas**: el sistema es monocromo, así que TikTok/Instagram se distinguen por el
   contraste propio (tinta vs. lima), no por colores de marca. `--platform-tiktok` /
   `--platform-instagram` existen para eso y SOLO se usan en contextos comparativos.
+- **Oscuro — separación por luz, no por sombra**: en oscuro card vs fondo ronda 1.2:1 y
+  la sombra negra no separa; el límite lo dibuja un **anillo luminoso** de 1px (~7% de
+  blanco, primera capa de `--elev-card/lift/rail`). Las superficies `bg-foreground` se
+  **invierten a crema** en oscuro: sobre ellas el lima como TEXTO deja de leerse — usa un
+  chip lima (`bg-primary text-primary-foreground`) o el swap `dark:text-primary-foreground`
+  / `dark:bg-background` (ver login y la gráfica del Overview).
+- **Contraste como test**: `src/app/theme-contrast.test.ts` parsea los tokens y falla si
+  un par texto/fondo baja de AA (4.5:1) en cualquiera de los dos temas, o si el anillo
+  luminoso desaparece de las elevaciones oscuras. Cambiar la paleta = pasar ese test.
 - **Restricción**: 1 CTA primaria por vista; contraste AA en ambos temas; movimiento
   150–300 ms con significado y `prefers-reduced-motion` siempre; sin emojis como iconos
   (Lucide/AnimateIcons outline).
@@ -246,8 +255,8 @@ y oscuro** con toggle.
   `--destructive` = rojo ladrillo. Charts `--chart-1..5` = escala tinta→lima→grises.
   El `--sidebar` es **oscuro también en tema claro** (el rail siempre contrasta).
 - **Tema** vía `next-themes` (`src/components/theme-provider.tsx`, `attribute="class"`,
-  `defaultTheme="system"` solo para la primera visita); `<html>` lleva
-  `suppressHydrationWarning`. El toggle vive en el rail
+  **solo claro/oscuro**: `defaultTheme="light"` + `enableSystem={false}`, sin opción
+  "system"); `<html>` lleva `suppressHydrationWarning`. El toggle vive en el rail
   (`src/components/dashboard/theme-toggle.tsx`, variantes `row` / `icon` / `rail`) y
   **alterna solo claro ↔ oscuro** (usa `resolvedTheme`). Anima un **circular reveal**
   (View Transitions API + `flushSync`, 300 ms) y degrada a cambio instantáneo sin soporte
