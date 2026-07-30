@@ -21,10 +21,13 @@ interface IconHandle {
 export function LogoutButton({
   collapsed = false,
   variant = "row",
+  expanded = false,
 }: {
   collapsed?: boolean;
   /** `rail`: tile de 38px del rail oscuro (usa los tokens `sidebar-*`). */
   variant?: "row" | "rail";
+  /** Solo para `rail`: fila completa con etiqueta (rail expandido). */
+  expanded?: boolean;
 }) {
   const iconRef = useRef<IconHandle>(null);
   const isRail = variant === "rail";
@@ -33,17 +36,23 @@ export function LogoutButton({
     <AlertDialog.Root>
       <AlertDialog.Trigger
         aria-label="Cerrar sesión"
-        title={isRail || collapsed ? "Cerrar sesión" : undefined}
+        title={(isRail && !expanded) || collapsed ? "Cerrar sesión" : undefined}
         onMouseEnter={() => iconRef.current?.startAnimation()}
         onMouseLeave={() => iconRef.current?.stopAnimation()}
         className={cn(
           isRail
-            ? "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px] transition-colors duration-150"
+            ? cn(
+                "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex h-[38px] shrink-0 items-center rounded-[14px] transition-colors duration-150",
+                expanded ? "w-full gap-3 px-2.5" : "w-[38px] justify-center",
+              )
             : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
           !isRail && collapsed && "justify-center px-0",
         )}
       >
         <LogoutIcon ref={iconRef} size={isRail ? 17 : 18} className="shrink-0" />
+        {isRail && expanded && (
+          <span className="truncate text-[13px]">Cerrar sesión</span>
+        )}
         {!isRail && !collapsed && "Cerrar sesión"}
       </AlertDialog.Trigger>
 

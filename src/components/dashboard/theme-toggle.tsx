@@ -25,14 +25,17 @@ const REVEAL_MS = 300;
  * Tres presentaciones:
  * - `row`: fila completa del nav.
  * - `icon`: botón cuadrado bordeado, para incrustar sobre fondo claro.
- * - `rail`: tile de 38px del rail oscuro (usa los tokens `sidebar-*`).
+ * - `rail`: tile de 38px del rail oscuro (usa los tokens `sidebar-*`). Con
+ *   `expanded` se vuelve fila completa con etiqueta (rail expandido).
  */
 export function ThemeToggle({
   collapsed = false,
   variant = "row",
+  expanded = false,
 }: {
   collapsed?: boolean;
   variant?: "row" | "icon" | "rail";
+  expanded?: boolean;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
@@ -100,10 +103,16 @@ export function ThemeToggle({
         type="button"
         onClick={toggle}
         aria-label={label}
-        title={label}
-        className="text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px] transition-colors duration-150"
+        title={expanded ? undefined : label}
+        className={cn(
+          "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex h-[38px] shrink-0 items-center rounded-[14px] transition-colors duration-150",
+          expanded ? "w-full gap-3 px-2.5" : "w-[38px] justify-center",
+        )}
       >
         {icon}
+        {expanded && (
+          <span className="truncate text-[13px]">{mounted ? label : "Tema"}</span>
+        )}
       </button>
     );
   }

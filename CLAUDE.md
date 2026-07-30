@@ -229,9 +229,11 @@ y oscuro** con toggle.
 - **Texturas**: `.bg-grain` (ruido fractal, el lienzo de la app), `.bg-halftone` (retícula
   de puntos para cards de acento y oscuras) y `.bg-hatch` (rayado diagonal para
   placeholders 9:16 y avatares). Se aplican por clase, nunca inline.
-- **Navegación**: **rail flotante** de 62px, oscuro y redondeado (`rounded-[26px]`), fijo y
-  siempre icon-only — el diseño no contempla estado expandido, así que **no hay toggle de
-  colapso**. En móvil se degrada a barra + drawer con etiquetas.
+- **Navegación**: **rail flotante** oscuro y redondeado (`rounded-[26px]`) con dos estados —
+  **colapsado** (62px, icon-only, el canon del canvas y el default) y **expandido** (218px,
+  filas con etiqueta). El toggle vive al pie del rail (chevron, decisión del creador) y la
+  preferencia persiste en localStorage (`rail-collapsed`, external store sin flash de
+  hidratación). En móvil se degrada a barra + drawer con etiquetas.
 - **Plataformas**: el sistema es monocromo, así que TikTok/Instagram se distinguen por el
   contraste propio (tinta vs. lima), no por colores de marca. `--platform-tiktok` /
   `--platform-instagram` existen para eso y SOLO se usan en contextos comparativos.
