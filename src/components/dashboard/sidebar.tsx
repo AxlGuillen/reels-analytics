@@ -3,6 +3,7 @@
 import {
   useRef,
   useState,
+  useSyncExternalStore,
   type ForwardRefExoticComponent,
   type RefAttributes,
 } from "react";
@@ -12,6 +13,8 @@ import {
   ActivityIcon,
   AudioLinesIcon,
   BlocksIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   InstagramIcon,
   LayersIcon,
   LayoutGridIcon,
@@ -94,25 +97,34 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /**
- * Tile del rail: cuadrado de 38px con radio 14. El activo se marca solo con
- * fondo translúcido + icono a plena opacidad (el rail ya es oscuro; meterle
+ * Fila/tile del rail. Colapsado: cuadrado de 38px solo-icono con radio 14.
+ * Expandido: fila completa con etiqueta. El activo se marca solo con fondo
+ * translúcido + contenido a plena opacidad (el rail ya es oscuro; meterle
  * color rompería el monocromo del sistema).
  */
-function railTile(active: boolean): string {
+function railRow(active: boolean, collapsed: boolean): string {
   return cn(
-    "relative flex size-[38px] shrink-0 items-center justify-center rounded-[14px] transition-colors duration-150",
+    "relative flex h-[38px] shrink-0 items-center rounded-[14px] transition-colors duration-150",
+    collapsed ? "w-[38px] justify-center" : "w-full gap-3 px-2.5",
     active
       ? "bg-sidebar-accent text-sidebar-foreground"
       : "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
   );
 }
 
-/** Punto de conexión en la esquina del tile (el rail no tiene sitio para texto). */
-function StatusDot({ connected }: { connected: boolean }) {
+/** Punto de conexión: en la esquina del tile (colapsado) o al final de la fila. */
+function StatusDot({
+  connected,
+  collapsed,
+}: {
+  connected: boolean;
+  collapsed: boolean;
+}) {
   return (
     <span
       className={cn(
-        "absolute top-1.5 right-1.5 size-1.5 rounded-full",
+        "rounded-full",
+        collapsed ? "absolute top-1.5 right-1.5 size-1.5" : "ml-auto size-1.5",
         connected ? "bg-primary" : "bg-sidebar-foreground/25",
       )}
       aria-label={connected ? "conectada" : "sin conectar"}
@@ -123,9 +135,11 @@ function StatusDot({ connected }: { connected: boolean }) {
 function RailLink({
   item,
   status,
+  collapsed,
 }: {
   item: NavItem;
   status: ConnectionStatus;
+  collapsed: boolean;
 }) {
   const pathname = usePathname();
   const [iconRef, hover] = useHoverIcon();
@@ -135,22 +149,55 @@ function RailLink({
   return (
     <Link
       href={item.href}
-      title={item.label}
-      aria-label={item.label}
+      title={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}
-      className={railTile(active)}
+      className={railRow(active, collapsed)}
       {...hover}
     >
-      <Icon ref={iconRef} size={17} />
-      {item.status && <StatusDot connected={status[item.status]} />}
+      <Icon ref={iconRef} size={17} className="shrink-0" />
+      {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
+      {item.status && (
+        <StatusDot connected={status[item.status]} collapsed={collapsed} />
+      )}
     </Link>
   );
 }
 
+const COLLAPSE_KEY = "rail-collapsed";
+const COLLAPSE_EVENT = "rail-collapsed-change";
+
+function subscribeCollapsed(callback: () => void) {
+  window.addEventListener(COLLAPSE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(COLLAPSE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
 /**
- * Rail flotante de iconos (desktop). Columna oscura redondeada que flota sobre
- * el lienzo — la firma estructural de Acid Grid. Siempre es icon-only: el
- * diseño no contempla estado expandido, así que no hay toggle de colapso.
+ * Preferencia de rail colapsado, leída de localStorage (external store, sin
+ * flash de hidratación). Default: COLAPSADO — el icon-rail es el canon del
+ * diseño; expandirlo es la preferencia que se recuerda.
+ */
+function useCollapsed(): [boolean, () => void] {
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    () => localStorage.getItem(COLLAPSE_KEY) !== "0",
+    () => true,
+  );
+  const toggle = () => {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? "0" : "1");
+    window.dispatchEvent(new Event(COLLAPSE_EVENT));
+  };
+  return [collapsed, toggle];
+}
+
+/**
+ * Rail flotante (desktop). Columna oscura redondeada que flota sobre el lienzo
+ * — la firma estructural de Acid Grid. Dos estados: colapsado (62px, icon-only,
+ * el canon del canvas) y expandido (218px, con etiquetas). El toggle vive al
+ * pie, en el sitio estándar, y la preferencia persiste en localStorage.
  */
 export function DesktopSidebar({
   status,
@@ -159,40 +206,102 @@ export function DesktopSidebar({
   status: ConnectionStatus;
   user: UserInfo;
 }) {
+  const [collapsed, toggle] = useCollapsed();
   const [brandRef, brandHover] = useHoverIcon();
+  const [collapseRef, collapseHover] = useHoverIcon();
 
   return (
     <aside className="hidden shrink-0 md:block">
-      <div className="sticky top-5 flex h-[calc(100dvh-2.5rem)] w-[62px] flex-col items-center gap-1 rounded-[26px] bg-sidebar py-3 text-sidebar-foreground shadow-rail">
+      <div
+        className={cn(
+          "sticky top-5 flex h-[calc(100dvh-2.5rem)] flex-col gap-1 rounded-[26px] bg-sidebar py-3 text-sidebar-foreground shadow-rail transition-[width] duration-200 motion-reduce:transition-none",
+          collapsed ? "w-[62px] items-center" : "w-[218px] px-3",
+        )}
+      >
         <Link
           href="/"
-          title="Reels Analytics"
+          title={collapsed ? "Reels Analytics" : undefined}
           aria-label="Reels Analytics"
-          className="mb-3 flex size-[38px] shrink-0 items-center justify-center rounded-[14px] bg-primary text-primary-foreground"
+          className={cn(
+            "mb-3 flex shrink-0 items-center",
+            !collapsed && "w-full gap-2.5 px-0.5",
+          )}
           {...brandHover}
         >
-          <ActivityIcon ref={brandRef} size={18} />
+          <span className="bg-primary text-primary-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px]">
+            <ActivityIcon ref={brandRef} size={18} />
+          </span>
+          {!collapsed && (
+            <span className="truncate text-[13px] font-medium tracking-[-0.01em]">
+              Reels Analytics
+            </span>
+          )}
         </Link>
 
         {NAV.map((item) => (
-          <RailLink key={item.href} item={item} status={status} />
+          <RailLink
+            key={item.href}
+            item={item}
+            status={status}
+            collapsed={collapsed}
+          />
         ))}
 
         <div className="flex-1" />
 
         {SETTINGS.map((item) => (
-          <RailLink key={item.href} item={item} status={status} />
+          <RailLink
+            key={item.href}
+            item={item}
+            status={status}
+            collapsed={collapsed}
+          />
         ))}
 
-        <ThemeToggle variant="rail" />
-        <LogoutButton variant="rail" />
+        <ThemeToggle variant="rail" expanded={!collapsed} />
+        <LogoutButton variant="rail" expanded={!collapsed} />
 
-        <span
-          title={`${user.name} · ${user.email}`}
-          className="mt-2 flex size-[34px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-sidebar-accent font-mono text-[11px] font-medium text-sidebar-foreground"
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+          title={collapsed ? "Expandir menú" : undefined}
+          className={railRow(false, collapsed)}
+          {...collapseHover}
         >
-          {user.initials}
-        </span>
+          {collapsed ? (
+            <ChevronRightIcon ref={collapseRef} size={17} className="shrink-0" />
+          ) : (
+            <>
+              <ChevronLeftIcon ref={collapseRef} size={17} className="shrink-0" />
+              <span className="truncate text-[13px]">Colapsar</span>
+            </>
+          )}
+        </button>
+
+        {collapsed ? (
+          <span
+            title={`${user.name} · ${user.email}`}
+            className="border-primary bg-sidebar-accent mt-2 flex size-[34px] shrink-0 items-center justify-center rounded-full border-2 font-mono text-[11px] font-medium"
+          >
+            {user.initials}
+          </span>
+        ) : (
+          <div className="mt-2 flex w-full shrink-0 items-center gap-2.5 px-0.5">
+            <span className="border-primary bg-sidebar-accent flex size-[34px] shrink-0 items-center justify-center rounded-full border-2 font-mono text-[11px] font-medium">
+              {user.initials}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12.5px] leading-tight font-medium">
+                {user.name}
+              </div>
+              <div className="text-sidebar-foreground/50 truncate font-mono text-[10.5px] leading-tight">
+                {user.email}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );
