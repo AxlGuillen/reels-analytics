@@ -135,8 +135,10 @@ function StatsChart({ buckets }: { buckets: SubBucketMetrics[] }) {
                 title={`${b.label}: ${formatCount(total)} vistas`}
               >
                 {igH > 0 && (
+                  // En oscuro la cápsula se invierte a crema: el segmento IG
+                  // pasa a tinta para conservar el contraste interno.
                   <div
-                    className="bg-primary w-full rounded-full"
+                    className="bg-primary dark:bg-background w-full rounded-full"
                     style={{ height: igH }}
                   />
                 )}
@@ -333,7 +335,9 @@ export default async function OverviewPage({
               <div className="bg-halftone pointer-events-none absolute inset-0" />
               {/* Franja decorativa estrecha: el titular manda, no el adorno. */}
               <div className="bg-hatch pointer-events-none absolute inset-y-0 right-0 w-[56px] opacity-40" />
-              <div className="text-primary relative font-mono text-[9.5px] tracking-[0.14em] uppercase">
+              {/* Chip lima (no texto lima): sobrevive la inversión de la card
+                  en oscuro — regla "el lima es superficie". */}
+              <div className="bg-primary text-primary-foreground relative inline-block rounded-full px-2.5 py-1 font-mono text-[9.5px] tracking-[0.14em] uppercase">
                 Mejor video
               </div>
               {bestVideo ? (
@@ -377,7 +381,7 @@ export default async function OverviewPage({
                     TikTok
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="bg-primary ring-foreground/15 size-[7px] rounded-full ring-1" />
+                    <span className="bg-primary ring-foreground/15 dark:bg-background dark:ring-foreground/40 size-[7px] rounded-full ring-1" />
                     Instagram
                   </span>
                 </span>

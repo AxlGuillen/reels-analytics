@@ -62,7 +62,9 @@ export default async function LoginPage({
             <ol className="mt-8 flex flex-col gap-3.5">
               {FEATURES.map((feature, i) => (
                 <li key={feature} className="flex gap-3.5">
-                  <span className="text-primary font-mono text-[11px] leading-5">
+                  {/* El panel se invierte a crema en oscuro: el lima como texto
+                      dejaría de leerse, así que ahí el número pasa a tinta. */}
+                  <span className="text-primary dark:text-primary-foreground font-mono text-[11px] leading-5">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="text-background/70 text-[13px] leading-5">
@@ -80,7 +82,7 @@ export default async function LoginPage({
                 key={i}
                 className={
                   i === 3
-                    ? "bg-primary w-3.5 rounded-full"
+                    ? "bg-primary dark:bg-background w-3.5 rounded-full"
                     : "bg-background/15 w-3.5 rounded-full"
                 }
                 style={{ height: `${h}%` }}
