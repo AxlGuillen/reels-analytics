@@ -14,7 +14,8 @@ export type ContentTypeKey =
   | "duiyhal"
   | "news"
   | "mundial2026"
-  | "cumpleaneros";
+  | "cumpleaneros"
+  | "soloqchallenge2026";
 
 export interface ContentTypeDef {
   /**
@@ -34,6 +35,13 @@ export const CONTENT_TYPES: Record<ContentTypeKey, ContentTypeDef> = {
   news: { tags: ["news"], label: "Noticias" },
   mundial2026: { tags: ["mundial2026", "mundial"], label: "Mundial 2026" },
   cumpleaneros: { tags: ["cumpleañeros"], label: "Cumpleañeros" },
+  // Cobertura del SoloQ Challenge 2026: tipo ligado a un EVENTO con fecha de
+  // fin (~mediados de agosto 2026). Cuando termine, deja de recibir videos
+  // nuevos pero se conserva para poder mirar hacia atrás cómo rindió.
+  soloqchallenge2026: {
+    tags: ["soloqchallenge2026"],
+    label: "SoloQ Challenge",
+  },
 };
 
 /** Etiqueta para los videos sin ningún tag de tipo. */
@@ -46,6 +54,9 @@ export const UNCLASSIFIED_LABEL = "Sin clasificar";
  */
 const PRECEDENCE: ContentTypeKey[] = [
   "duiyhal",
+  // Los tipos de EVENTO van antes que los de formato: si un video cubre el
+  // SoloQ Challenge, esa es su identidad aunque además sea narración o audio.
+  "soloqchallenge2026",
   "dui",
   "news",
   "mundial2026",

@@ -145,11 +145,13 @@ publicados con link a `/content`.
 
 **Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
-**`mundial2026`** y **`cumpleaneros`**. Cada tipo puede matchear **varios hashtags (alias)**:
+**`mundial2026`**, **`cumpleaneros`** y **`soloqchallenge2026`** (tipo de EVENTO, con fecha de
+fin ~mediados de ago 2026). Los tipos de evento van ANTES que los de formato en la
+precedencia: si un video cubre el evento, esa es su identidad aunque además sea narración. Cada tipo puede matchear **varios hashtags (alias)**:
 `ContentTypeDef.tags[]` (el primero es el canónico) — p. ej. `mundial2026` cuenta tanto `#mundial`
 como `#mundial2026`. Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya
 guardado con `classifyContentType` (`src/core/lib/content-type.ts`, precedencia
-`duiyhal > dui > news > mundial2026 > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
+`duiyhal > soloqchallenge2026 > dui > news > mundial2026 > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
 un alias = editar ese diccionario, sin migración. Los tags reservados (todos los alias) se excluyen
 del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`). `#humor` es el más usado
 (~294 videos) pero se trata como **temático**, no como tipo, por decisión del creador.

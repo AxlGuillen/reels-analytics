@@ -21,6 +21,21 @@ describe("classifyContentType", () => {
     expect(classifyContentType(["dui", "duiyhal"])).toBe("duiyhal");
   });
 
+  test("clasifica la cobertura del SoloQ Challenge", () => {
+    expect(classifyContentType(["soloqchallenge2026", "leagueoflegends"])).toBe(
+      "soloqchallenge2026",
+    );
+  });
+
+  test("el evento gana sobre el formato (dui/audioviral)", () => {
+    expect(classifyContentType(["dui", "soloqchallenge2026"])).toBe(
+      "soloqchallenge2026",
+    );
+    expect(classifyContentType(["audioviral", "soloqchallenge2026"])).toBe(
+      "soloqchallenge2026",
+    );
+  });
+
   test("devuelve null sin ningún tag de tipo (temáticos no clasifican)", () => {
     expect(classifyContentType(["humor", "leagueoflegends", "axelsine"])).toBeNull();
     expect(classifyContentType([])).toBeNull();
@@ -29,7 +44,14 @@ describe("classifyContentType", () => {
 
 describe("RESERVED_TAGS", () => {
   test("incluye canónicos y alias, no los temáticos", () => {
-    for (const t of ["dui", "news", "mundial", "mundial2026", "cumpleañeros"]) {
+    for (const t of [
+      "dui",
+      "news",
+      "mundial",
+      "mundial2026",
+      "cumpleañeros",
+      "soloqchallenge2026",
+    ]) {
       expect(RESERVED_TAGS.has(t)).toBe(true);
     }
     expect(RESERVED_TAGS.has("humor")).toBe(false);
