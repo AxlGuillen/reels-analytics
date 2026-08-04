@@ -126,6 +126,36 @@ canibaliza (mediana por video incluso sube de 1 a 3 videos/día; cae en 4+). Un
 formato de bajo costo tiene valor de portafolio si evita que la producción se
 detenga por desgaste.
 
+## Seguimiento abierto: ¿la audiencia de `audioviral` es de calidad? (desde 4 ago 2026)
+
+**Contexto.** El retest de `audioviral` se resolvió a favor y por goleada: con audiencia
+más grande el formato despegó (era vieja de 16 videos: 0 pasaron de 3.6k vistas; era nueva
+de 18: **27.8% pasa de 20k**, máximo 149k). El mecanismo son los **compartidos** — dos
+Reels acumularon ~11k cada uno — y los días con `audioviral` ganan **3.25× más seguidores**
+(312/día vs 96/día). La tesis del creador (portafolio de apuestas baratas donde una paga
+por todas) quedó confirmada, e incluso era conservadora.
+
+**Lo que NO sabemos y hay que vigilar.** Que traiga seguidores no significa que traiga
+seguidores *útiles*: alguien que llegó por un meme de audio puede no consumir las
+narraciones (`dui`), que son el contenido caro y de marca. Hoy medimos **cantidad** de
+audiencia, no **encaje**.
+
+**Cómo medirlo (en ~3–4 semanas, cuando haya cohorte).** Cruzar el crecimiento de
+seguidores contra el rendimiento de `dui`:
+
+- **Señal buena**: suben los seguidores y las vistas/mediana de `dui` suben con ellos →
+  la audiencia nueva sí consume el contenido de marca.
+- **Señal de alarma**: los seguidores suben pero la **mediana de `dui` se estanca o cae**
+  → estás inflando el número de seguidores con gente que no te ve; el alcance orgánico por
+  seguidor se diluye.
+
+Métricas concretas: mediana de vistas a 7d de `dui` por semana, y ratio
+`vistas_dui / seguidores` a lo largo del tiempo (si cae de forma sostenida, es dilución).
+
+**Riesgo colateral ya identificado.** Rendimientos decrecientes por selección: `audioviral`
+pega porque el audio tiene tracción. Subir a 3/día obligaría a usar audios mediocres y la
+tasa de pegue caería. Recomendación vigente: **1–2/día**, no más.
+
 ## Reglas transversales
 
 - Cada fase termina con `build` + `lint` + tests verdes y commit por bloque.
