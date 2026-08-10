@@ -28,13 +28,15 @@ describe("buildTimeline", () => {
       new Date("2026-07-06T20:00:00Z"),
       new Date("2026-07-07T15:00:00Z"),
     ],
+    // Los deltas se atribuyen al día donde INICIA la ventana (la captura
+    // anterior): lo observado en la captura del día 7 es actividad del día 6.
     snapshotSeries: [
       [
         snap("2026-07-06T08:00:00Z", 100, 10),
-        snap("2026-07-07T08:00:00Z", 300, 25, 2, 1), // +200v +15l +2c +1s → día 7
-        snap("2026-07-08T08:00:00Z", 350, 30), // +50v +5l -2c -1s → día 8
+        snap("2026-07-07T08:00:00Z", 300, 25, 2, 1), // +200v +15l +2c +1s → día 6
+        snap("2026-07-08T08:00:00Z", 350, 30), // +50v +5l -2c -1s → día 7
       ],
-      [snap("2026-07-07T08:00:00Z", 40), snap("2026-07-08T08:00:00Z", 90)], // +50 → día 8
+      [snap("2026-07-07T08:00:00Z", 40), snap("2026-07-08T08:00:00Z", 90)], // +50 → día 7
     ],
     followerDeltas: [
       { day: "2026-07-07", delta: 12 },
@@ -47,22 +49,28 @@ describe("buildTimeline", () => {
     expect(t.map((b) => b.bucket)).toEqual(["2026-07-06", "2026-07-07", "2026-07-08"]);
 
     const day6 = t[0];
-    expect(day6.videosPublished).toBe(2);
-    expect(day6.viewsGained).toBe(0); // primer snapshot no aporta delta
+    expect(day6).toMatchObject({
+      videosPublished: 2,
+      // La ventana que ABRE el día 6 (captura del 6 → captura del 7).
+      viewsGained: 200,
+      likesGained: 15,
+      commentsGained: 2,
+      sharesGained: 1,
+    });
     expect(day6.followersGained).toBeNull(); // sin observación ese día
 
     const day7 = t[1];
     expect(day7).toMatchObject({
       videosPublished: 1,
-      viewsGained: 200,
-      likesGained: 15,
-      commentsGained: 2,
-      sharesGained: 1,
+      viewsGained: 100, // 50 + 50 de ambos videos (ventana 7→8)
+      likesGained: 5,
+      commentsGained: -2,
+      sharesGained: -1,
       followersGained: 12,
     });
 
     const day8 = t[2];
-    expect(day8.viewsGained).toBe(100); // 50 + 50 de ambos videos
+    expect(day8.viewsGained).toBe(0); // ninguna ventana inicia el día 8
     expect(day8.followersGained).toBe(-2);
   });
 
