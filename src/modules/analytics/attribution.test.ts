@@ -47,9 +47,10 @@ describe("dailyFollowerDeltas", () => {
       ],
       "UTC",
     );
+    // Atribuidos al día donde INICIA la ventana (la observación anterior).
     expect(deltas).toEqual([
-      { day: "2026-07-02", delta: 40, spanDays: 1 },
-      { day: "2026-07-04", delta: 60, spanDays: 2 },
+      { day: "2026-07-01", delta: 40, spanDays: 1 },
+      { day: "2026-07-02", delta: 60, spanDays: 2 },
     ]);
   });
 

@@ -26,6 +26,10 @@ export interface FollowerDelta {
  * Deltas de seguidores entre días observados. Toma la última captura de cada
  * día (puede haber varias: cron + botón) y resta contra el día observado
  * anterior; si hubo hueco, `spanDays` lo delata en vez de repartir a ciegas.
+ *
+ * Atribución: al día donde INICIA la ventana (la observación anterior), igual
+ * que los deltas de vistas en `timeline.ts` — el cron corre ~08:35, así que lo
+ * observado el lunes es casi todo actividad del domingo.
  */
 export function dailyFollowerDeltas(
   points: { capturedAt: Date; followers: number | null }[],
@@ -47,7 +51,7 @@ export function dailyFollowerDeltas(
     const [day, current] = days[i];
     const [prevDay, previous] = days[i - 1];
     deltas.push({
-      day,
+      day: prevDay,
       delta: current.followers - previous.followers,
       // Las claves YYYY-MM-DD se parsean como UTC: la resta da días calendario.
       spanDays: Math.round((Date.parse(day) - Date.parse(prevDay)) / DAY_MS),

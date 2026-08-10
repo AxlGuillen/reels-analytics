@@ -3,9 +3,16 @@ import { CREATOR_TIMEZONE } from "./insights";
 
 /**
  * Línea de tiempo de actividad: agrupa por día/semana/mes lo publicado, las
- * métricas GANADAS (deltas entre snapshots consecutivos, atribuidas al periodo
- * de la captura posterior) y los seguidores ganados. Pura y testeable; los
- * datos existen desde que arrancó la ingesta — no se inventa historia previa.
+ * métricas GANADAS (deltas entre snapshots consecutivos) y los seguidores
+ * ganados. Pura y testeable; los datos existen desde que arrancó la ingesta —
+ * no se inventa historia previa.
+ *
+ * Atribución de los deltas: al periodo donde INICIA la ventana (la captura
+ * anterior), no al de la captura que los observó. El cron corre ~08:35, así
+ * que el delta observado el lunes es casi todo actividad del domingo — sobre
+ * todo la noche, que es hora pico. Atribuirlo al día de captura corría todos
+ * los días uno hacia adelante y hacía que la semana Lun–Dom incluyera el
+ * domingo de la semana ANTERIOR y excluyera el propio.
  */
 
 export type Granularity = "day" | "week" | "month";
@@ -76,7 +83,9 @@ export function buildTimeline(
       (a, b) => a.capturedAt.getTime() - b.capturedAt.getTime(),
     );
     for (let i = 1; i < sorted.length; i++) {
-      const key = keyFor(sorted[i].capturedAt);
+      // Ventana sorted[i-1] → sorted[i]: las vistas ocurrieron a partir de la
+      // captura ANTERIOR (ver nota de atribución en la cabecera del módulo).
+      const key = keyFor(sorted[i - 1].capturedAt);
       const g = gains.get(key) ?? { views: 0, likes: 0, comments: 0, shares: 0 };
       g.views += sorted[i].views - sorted[i - 1].views;
       g.likes += sorted[i].likes - sorted[i - 1].likes;
