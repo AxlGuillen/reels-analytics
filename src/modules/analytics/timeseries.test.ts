@@ -4,6 +4,7 @@ import {
   initialVelocity,
   isBreakout,
   median,
+  weeklyCohort,
   medianCurve,
   medianViewsAt,
   toAgePoints,
@@ -158,5 +159,53 @@ describe("benchmarkAgainstCohort / isBreakout", () => {
     const result = benchmarkAgainstCohort([{ ageDays: 6, views: 5000 }], COHORT);
     expect(result?.atAgeDays).toBe(6);
     expect(result?.medianViews).toBe(1500);
+  });
+});
+
+describe("weeklyCohort", () => {
+  const pts = (views: number) => [{ ageDays: 7, views }];
+  const member = (key: string, weekKey: string, views: number) => ({
+    key,
+    weekKey,
+    points: pts(views),
+  });
+
+  const all = [
+    member("a", "2026-08-03", 100),
+    member("b", "2026-08-03", 200),
+    member("c", "2026-08-03", 300),
+    member("d", "2026-08-03", 400),
+    member("e", "2026-08-03", 500),
+    member("vieja1", "2026-07-06", 10),
+    member("vieja2", "2026-07-06", 20),
+  ];
+
+  test("usa solo la misma semana y excluye al propio video", () => {
+    const { cohort, scope } = weeklyCohort({ key: "a", weekKey: "2026-08-03" }, all);
+    expect(scope).toBe("week");
+    // 5 de esa semana menos él mismo = 4; ninguno de julio.
+    expect(cohort).toHaveLength(4);
+    expect(cohort.flat().map((p) => p.views).sort((x, y) => x - y)).toEqual([
+      200, 300, 400, 500,
+    ]);
+  });
+
+  test("cae al catálogo completo si su semana no junta minCohort", () => {
+    const { cohort, scope } = weeklyCohort(
+      { key: "vieja1", weekKey: "2026-07-06" },
+      all,
+    );
+    // Su semana solo tiene 1 compañero (<4) → respaldo con todo menos él mismo.
+    expect(scope).toBe("all");
+    expect(cohort).toHaveLength(all.length - 1);
+  });
+
+  test("un video de semana desconocida no arrastra a nadie de otra semana", () => {
+    const { cohort, scope } = weeklyCohort(
+      { key: "nuevo", weekKey: "2026-09-07" },
+      all,
+    );
+    expect(scope).toBe("all"); // su semana está vacía
+    expect(cohort).toHaveLength(all.length);
   });
 });

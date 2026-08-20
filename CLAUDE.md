@@ -65,6 +65,16 @@ rendimiento real.
 > (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
 > `/settings/mcp`, para que no se desincronicen. Los esquemas zod siguen junto a cada tool.
 
+**Benchmark por cohorte semanal (neutraliza el crecimiento de audiencia):** el múltiplo
+"vs. lo típico" de un video (`modules/analytics/breakouts.ts`) NO se calcula contra todo el
+catálogo sino contra **los videos publicados su misma semana** (`weeklyCohort` en
+`timeseries.ts`, puro y testeado). Motivo: la audiencia creció ~3.5× en seis semanas, así
+que comparar un video de julio contra uno de agosto mezcla "mejor contenido" con "más
+seguidores" — un múltiplo contra cohorte semanal sí es comparable entre meses. Si una
+semana no junta `MIN_COHORT` (4) miembros, cae al catálogo completo y lo reporta en
+`scope: "week" | "all"`; la UI (`video-growth.tsx`) y el MCP (`cohortScope`) lo muestran en
+vez de fingir precisión.
+
 **Health check (`/api/health`, para monitoreo externo):** `modules/health/{status,checks}.ts`
 (`status.ts` es la parte pura y testeada: tipos + `rollupStatus`; `checks.ts` toca BD/red).
 Chequea: `database`, `page` (self-fetch a `/login`), `mcp` (self-fetch a `/api/mcp` sin token →

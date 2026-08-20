@@ -177,3 +177,50 @@ export function initialVelocity(points: AgePoint[]): number | null {
   const last = within[within.length - 1];
   return Math.round(last.views / last.ageDays);
 }
+
+// ------------------------------------------------- Cohorte por semana
+
+/**
+ * Miembro de un cohorte: su serie por edad + la semana en que se publicó.
+ * `weekKey` viene ya calculado (lunes `YYYY-MM-DD` en zona del creador) para
+ * que este módulo siga siendo puro y sin dependencias de fechas.
+ */
+export interface CohortMember {
+  key: string;
+  weekKey: string;
+  points: AgePoint[];
+}
+
+/** Alcance con el que se construyó un cohorte (para reportarlo con honestidad). */
+export type CohortScope = "week" | "all";
+
+export interface ScopedCohort {
+  cohort: AgePoint[][];
+  scope: CohortScope;
+}
+
+/**
+ * Cohorte de comparación de un video, **acotado a su misma semana** y sin
+ * incluirse a sí mismo.
+ *
+ * Por qué la semana y no todo el catálogo: la audiencia crece con el tiempo
+ * (esta cuenta pasó de ~2.2k a ~7.7k seguidores en seis semanas), así que
+ * comparar un video de julio contra uno de agosto mezcla "mejor contenido" con
+ * "más seguidores". Dentro de una misma semana esa variable queda fija y el
+ * múltiplo mide contenido, no tamaño de audiencia.
+ *
+ * Si la semana no junta `minCohort` miembros, cae al catálogo completo: una
+ * comparación imperfecta es más útil que ninguna, pero `scope` lo delata para
+ * que la UI pueda decirlo en vez de fingir precisión.
+ */
+export function weeklyCohort(
+  member: Pick<CohortMember, "key" | "weekKey">,
+  all: CohortMember[],
+  minCohort = MIN_COHORT,
+): ScopedCohort {
+  const others = all.filter((m) => m.key !== member.key);
+  const sameWeek = others.filter((m) => m.weekKey === member.weekKey);
+  return sameWeek.length >= minCohort
+    ? { cohort: sameWeek.map((m) => m.points), scope: "week" }
+    : { cohort: others.map((m) => m.points), scope: "all" };
+}

@@ -124,7 +124,14 @@ export function VideoGrowth({
                 />
                 {benchmark && (
                   <Stat
-                    label={`vs. típico (día ${benchmark.result.atAgeDays})`}
+                    // El alcance importa: "vs. su semana" es comparable en el
+                    // tiempo (neutraliza el crecimiento de audiencia); "vs. todo"
+                    // es el respaldo cuando esa semana no juntó cohorte.
+                    label={
+                      benchmark.scope === "week"
+                        ? `vs. su semana (día ${benchmark.result.atAgeDays})`
+                        : `vs. todo el catálogo (día ${benchmark.result.atAgeDays})`
+                    }
                     value={`${benchmark.result.multiple.toFixed(1)}×`}
                   />
                 )}
