@@ -294,3 +294,92 @@
   animation: none;
   mix-blend-mode: normal;
 }
+
+/*
+ * ── Tour guiado (Driver.js) — skin Acid Grid ─────────────────────────────
+ * Único bloque de CSS "de pelea" contra una librería externa: driver.css trae
+ * colores propios (blanco/gris) y aquí se re-visten con tokens semánticos para
+ * que el popover siga el tema (claro/oscuro) solo. Especificidad doblada a
+ * propósito: gana el cascade sin depender del orden de import ni de !important.
+ * Contrato: CTA "Siguiente" en tinta (nunca lima); el lima va en el contador,
+ * que es superficie.
+ */
+.driver-popover.driver-popover {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border-radius: 18px;
+  box-shadow: var(--elev-lift);
+  font-family: var(--font-sans);
+  padding: 16px;
+  max-width: 320px;
+}
+.driver-popover.driver-popover .driver-popover-title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  font-family: var(--font-sans);
+}
+.driver-popover.driver-popover .driver-popover-description {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.driver-popover.driver-popover .driver-popover-close-btn {
+  color: var(--muted-foreground);
+}
+.driver-popover.driver-popover .driver-popover-close-btn:hover,
+.driver-popover.driver-popover .driver-popover-close-btn:focus {
+  color: var(--foreground);
+}
+/* Contador "2 de 5": chip lima (el lima es superficie, no texto). */
+.driver-popover.driver-popover .driver-popover-progress-text {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+/* Botones en píldora; el default hereda el tono "secondary". */
+.driver-popover.driver-popover .driver-popover-footer-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-shadow: none;
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+.driver-popover.driver-popover .driver-popover-footer-btn:hover,
+.driver-popover.driver-popover .driver-popover-footer-btn:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+/* CTA primaria = tinta (se invierte a crema en oscuro), como todo el sistema. */
+.driver-popover.driver-popover .driver-popover-next-btn {
+  background-color: var(--foreground);
+  color: var(--background);
+}
+.driver-popover.driver-popover .driver-popover-next-btn:hover,
+.driver-popover.driver-popover .driver-popover-next-btn:focus {
+  background-color: var(--foreground);
+  color: var(--background);
+  opacity: 0.9;
+}
+/* La flecha es un triángulo de bordes: solo se pinta el lado visible. */
+.driver-popover-arrow-side-left.driver-popover-arrow-side-left {
+  border-left-color: var(--card);
+}
+.driver-popover-arrow-side-right.driver-popover-arrow-side-right {
+  border-right-color: var(--card);
+}
+.driver-popover-arrow-side-top.driver-popover-arrow-side-top {
+  border-top-color: var(--card);
+}
+.driver-popover-arrow-side-bottom.driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--card);
+}
