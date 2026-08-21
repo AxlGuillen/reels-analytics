@@ -29,6 +29,7 @@ import {
   type MetricMode,
 } from "@/components/dashboard/metric-toggle";
 import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { PageTour } from "@/components/tour/page-tour";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
   readGrowth,
@@ -245,7 +246,10 @@ export default async function GrowthPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header
+        data-tour="growth-filtros"
+        className="flex flex-wrap items-end justify-between gap-4"
+      >
         <div>
           <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Crecimiento</h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -288,7 +292,7 @@ export default async function GrowthPage({
             ))}
           </section>
 
-          <Card>
+          <Card data-tour="growth-seguidores">
             <CardHeader>
               <CardTitle className="text-sm">Seguidores en el tiempo</CardTitle>
             </CardHeader>
@@ -356,7 +360,7 @@ export default async function GrowthPage({
           )}
 
           {/* Rendimiento por tipo */}
-          <Card>
+          <Card data-tour="growth-tipos">
             <CardHeader>
               <CardTitle className="text-sm">Rendimiento por tipo de video</CardTitle>
             </CardHeader>
@@ -428,7 +432,7 @@ export default async function GrowthPage({
           </section>
 
           {/* Bloque mensual: gráfica + tabla */}
-          <Card>
+          <Card data-tour="growth-meses">
             <CardHeader>
               <CardTitle className="text-sm">Por mes de publicación</CardTitle>
             </CardHeader>
@@ -537,7 +541,7 @@ export default async function GrowthPage({
 
           {/* Formato y caption */}
           <section className="grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card data-tour="growth-duracion">
               <CardHeader>
                 <CardTitle className="text-sm">Duración → vistas prom.</CardTitle>
               </CardHeader>
@@ -646,6 +650,7 @@ export default async function GrowthPage({
           </section>
         </>
       )}
+      <PageTour route="/growth" />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { readVideoHistory } from "@/modules/analytics/history";
 import { readVideoBenchmark } from "@/modules/analytics/breakouts";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { VideoGrowth } from "@/components/video-growth";
+import { PageTour } from "@/components/tour/page-tour";
 import { readInstagramVideo } from "@/modules/instagram/read";
 
 /** Alias local del KPI compartido. */
@@ -62,7 +63,7 @@ export default async function InstagramVideoPage({
 
   return (
     <PageShell>
-      <div className="flex flex-col gap-6 sm:flex-row">
+      <div data-tour="video-info" className="flex flex-col gap-6 sm:flex-row">
         {video.thumbnailUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- CDN de Instagram con URL firmada
           <img
@@ -109,7 +110,7 @@ export default async function InstagramVideoPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div data-tour="video-stats" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat tone="accent" label="Vistas" value={formatCount(metrics.views)} />
         <Stat label="Likes" value={formatCount(metrics.likes)} />
         <Stat label="Comentarios" value={formatCount(metrics.comments)} />
@@ -118,11 +119,14 @@ export default async function InstagramVideoPage({
         <Stat label="Engagement" value={formatPercent(engagementRate(metrics))} />
       </div>
 
-      <VideoGrowth
-        points={history}
-        publishedAt={video.publishedAt}
-        benchmark={benchmark}
-      />
+      <div data-tour="video-curva">
+        <VideoGrowth
+          points={history}
+          publishedAt={video.publishedAt}
+          benchmark={benchmark}
+        />
+      </div>
+      <PageTour route="/video" />
     </PageShell>
   );
 }

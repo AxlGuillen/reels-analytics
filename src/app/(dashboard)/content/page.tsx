@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { PageTour } from "@/components/tour/page-tour";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { VideoListTable } from "@/components/dashboard/video-list-table";
 import { readGrowth } from "@/modules/analytics/history";
@@ -60,7 +61,10 @@ export default async function ContentPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header
+        data-tour="content-header"
+        className="flex flex-wrap items-end justify-between gap-4"
+      >
         <div>
           {inDrilldown && (
             <Link
@@ -99,7 +103,10 @@ export default async function ContentPage({
         </Card>
       ) : !inDrilldown ? (
         /* ── Resumen: una card por tipo (solo grupos con videos) ── */
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section
+          data-tour="content-catalogo"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {/* `byType` viene ordenado por vistas promedio desc: el primero es el
               formato que mejor rinde, así que se destaca en lima. */}
           {byType.map((t, i) => {
@@ -176,6 +183,7 @@ export default async function ContentPage({
         /* ── Drill-down: overview del grupo + listado ── */
         <DrilldownContent rows={drillRows} />
       )}
+      <PageTour route="/content" />
     </div>
   );
 }
@@ -185,7 +193,7 @@ function DrilldownContent({ rows }: { rows: VideoWithMetrics[] }) {
   const best = s.bestVideo;
   return (
     <div className="space-y-6">
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section data-tour="content-drilldown" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat tone="accent" label="Videos" value={formatCount(s.totalVideos)} />
         <Stat label="Vistas totales" value={formatCount(s.totalViews)} />
         <Stat

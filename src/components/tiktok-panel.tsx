@@ -44,7 +44,7 @@ const Stat = StatCard;
 
 function AccountHeader({ account }: { account: AccountStats }) {
   return (
-    <div className="space-y-4">
+    <div data-tour="panel-perfil" className="space-y-4">
       <div className="flex items-center gap-4">
         {account.avatarUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- CDN de TikTok con URL firmada; next/image la optimizaría y expiraría
@@ -85,7 +85,7 @@ function InsightsSection({ videos }: { videos: VideoWithMetrics[] }) {
   const hashtags = topHashtags(videos, 8);
 
   return (
-    <div className="space-y-4">
+    <div data-tour="panel-insights" className="space-y-4">
       <h3 className="text-sm font-semibold">Analítica del periodo</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat tone="dark" label="Mejor día" value={bestDay ? capitalize(bestDay.label) : "—"} />
@@ -208,7 +208,7 @@ function Overview({
       ) : (
         <>
           <InsightsSection videos={videos} />
-          <div>
+          <div data-tour="panel-videos">
             <h3 className="mb-3 text-sm font-semibold">Videos ({videos.length})</h3>
             <Table>
               <TableHeader>

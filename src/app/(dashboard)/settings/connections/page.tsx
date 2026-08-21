@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTour } from "@/components/tour/page-tour";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -62,14 +63,14 @@ export default async function ConnectionsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-8">
-      <header>
+      <header data-tour="conexiones-header">
         <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Conexiones</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Vincula tus cuentas para leer y guardar métricas.
         </p>
       </header>
 
-      <Card>
+      <Card data-tour="conexiones-cuentas">
         <CardHeader className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -111,6 +112,7 @@ export default async function ConnectionsPage() {
           <LastCapture status={instagramCapture} />
         </CardContent>
       </Card>
+      <PageTour route="/settings/connections" />
     </div>
   );
 }
