@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TOURS } from "./steps";
+import { TOURS, tourRouteFor } from "./steps";
 
 /**
  * Guardián del registro de tours. La validación fuerte (que cada target tenga
@@ -35,5 +35,24 @@ describe("registro de tours", () => {
   test.each(entries)("%s: versión entera positiva", (_route, tour) => {
     expect(Number.isInteger(tour.version)).toBe(true);
     expect(tour.version).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("tourRouteFor", () => {
+  test("mapea rutas exactas y con sufijo", () => {
+    expect(tourRouteFor("/")).toBe("/");
+    expect(tourRouteFor("/growth")).toBe("/growth");
+    expect(tourRouteFor("/settings/mcp")).toBe("/settings/mcp");
+    expect(tourRouteFor("/settings/connections")).toBe("/settings/connections");
+  });
+
+  test("los detalles de video de ambas plataformas comparten /video", () => {
+    expect(tourRouteFor("/video/tiktok/123")).toBe("/video");
+    expect(tourRouteFor("/video/instagram/17912832153245313")).toBe("/video");
+  });
+
+  test("rutas sin tour devuelven null (el botón se oculta)", () => {
+    expect(tourRouteFor("/login")).toBeNull();
+    expect(tourRouteFor("/no-existe")).toBeNull();
   });
 });

@@ -22,8 +22,10 @@ import {
   MenuIcon,
   TrendingUpIcon,
 } from "@animateicons/react/lucide";
-import { X } from "lucide-react";
+import { CircleHelp, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { runTour } from "@/components/tour/run-tour";
+import { tourRouteFor } from "@/components/tour/steps";
 import { LogoutButton } from "./logout-button";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -163,6 +165,33 @@ function RailLink({
   );
 }
 
+/**
+ * Botón de ayuda: relanza el tour guiado de la ruta actual (el auto-start solo
+ * corre la primera visita; esto es el "volver a ver"). Se oculta en rutas sin
+ * tour registrado.
+ */
+function TourButton({ expanded }: { expanded: boolean }) {
+  const pathname = usePathname();
+  const route = tourRouteFor(pathname);
+  if (!route) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => void runTour(route)}
+      aria-label="Guía de esta pantalla"
+      title={expanded ? undefined : "Guía de esta pantalla"}
+      className={cn(
+        "text-sidebar-foreground/40 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground flex h-[38px] shrink-0 items-center rounded-[14px] transition-colors duration-150",
+        expanded ? "w-full gap-3 px-2.5" : "w-[38px] justify-center",
+      )}
+    >
+      <CircleHelp className="size-[17px] shrink-0" />
+      {expanded && <span className="truncate text-[13px]">Guía</span>}
+    </button>
+  );
+}
+
 const COLLAPSE_KEY = "rail-collapsed";
 const COLLAPSE_EVENT = "rail-collapsed-change";
 
@@ -258,6 +287,7 @@ export function DesktopSidebar({
           />
         ))}
 
+        <TourButton expanded={!collapsed} />
         <ThemeToggle variant="rail" expanded={!collapsed} />
         <LogoutButton variant="rail" expanded={!collapsed} />
 
@@ -406,6 +436,7 @@ export function MobileNav({
                   {user.email}
                 </div>
               </div>
+              <TourButton expanded={false} />
               <ThemeToggle variant="rail" />
               <LogoutButton variant="rail" />
             </div>

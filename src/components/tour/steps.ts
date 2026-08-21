@@ -241,3 +241,17 @@ export const TOURS: Record<string, Tour> = {
     ],
   },
 };
+
+/**
+ * Resuelve el pathname real a la clave del registro (o null si la ruta no
+ * tiene tour). Puro: lo usa el botón de ayuda del rail para saber qué tour
+ * relanzar. Los detalles de video de ambas plataformas comparten "/video".
+ */
+export function tourRouteFor(pathname: string): keyof typeof TOURS | null {
+  if (pathname === "/") return "/";
+  if (pathname.startsWith("/video/")) return "/video";
+  const base = Object.keys(TOURS)
+    .filter((r) => r !== "/" && r !== "/video")
+    .find((r) => pathname === r || pathname.startsWith(`${r}/`));
+  return (base as keyof typeof TOURS) ?? null;
+}
