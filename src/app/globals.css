@@ -136,11 +136,16 @@
   --popover-foreground: #f4f4f1;
   --primary: #d9f24a;
   --primary-foreground: #111211;
-  --secondary: #26271f;
+  /* Superficies hundidas (inputs, tiles, tracks): en claro las separa el
+     contexto de sombras; en oscuro no hay sombra, así que suben de valor hasta
+     ~1.3:1 vs card (con #26271f quedaban a 1.10 y se perdían). El test de
+     contraste fija este piso. */
+  --secondary: #33342f;
   --secondary-foreground: #f4f4f1;
-  --muted: #26271f;
+  --muted: #33342f;
   --muted-foreground: #a8a99f;
-  --accent: #2b2c29;
+  /* Hover: un paso MÁS claro que el resting, para que el cambio se note. */
+  --accent: #3a3b38;
   --accent-foreground: #f4f4f1;
   --brand: #d9f24a;
   --brand-foreground: #111211;

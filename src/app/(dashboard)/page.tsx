@@ -69,7 +69,7 @@ function ProgressCapsules({
                   : "bg-foreground h-9 flex-1 rounded-[9px]"
                 : tone === "onAccent"
                   ? "border-foreground/30 h-9 flex-1 rounded-[9px] border border-dashed"
-                  : "border-border h-9 flex-1 rounded-[9px] border border-dashed"
+                  : "border-muted-foreground/40 h-9 flex-1 rounded-[9px] border border-dashed"
             }
           />
         );
@@ -129,7 +129,7 @@ function StatsChart({ buckets }: { buckets: SubBucketMetrics[] }) {
               <div
                 className={
                   isTop
-                    ? "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px] outline-1 outline-dashed outline-border outline-offset-[5px]"
+                    ? "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px] outline-1 outline-dashed outline-muted-foreground/40 outline-offset-[5px]"
                     : "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px]"
                 }
                 style={{ height: h }}
@@ -166,7 +166,8 @@ function TypeBars({ types }: { types: OverviewSummary["contentTypes"] }) {
   const sorted = [...types].sort((a, b) => b.totalViews - a.totalViews);
   const max = Math.max(1, ...sorted.map((t) => t.totalViews));
   // Escala monocroma + lima: el 2.º puesto es el acento, el resto se apaga.
-  const fill = ["bg-foreground", "bg-primary", "bg-muted-foreground", "bg-border"];
+  // El 4.º tono era bg-border: invisible sobre el track en ambos temas (1.08/1.3).
+  const fill = ["bg-foreground", "bg-primary", "bg-muted-foreground", "bg-muted-foreground/50"];
 
   return (
     <div className="flex flex-col">

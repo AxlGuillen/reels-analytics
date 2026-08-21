@@ -86,3 +86,17 @@ describe("separación de planos en oscuro", () => {
     },
   );
 });
+
+describe("superficies hundidas en oscuro", () => {
+  // En claro lo hundido se lee por el contexto de sombras; en oscuro la sombra
+  // no existe y con 1.10:1 los inputs/tiles/tracks desaparecían. Este piso
+  // (1.3:1 vs card) evita la regresión. Solo aplica a oscuro a propósito.
+  const t = tokensOf(".dark");
+
+  test.each([["muted"], ["secondary"], ["accent"]])(
+    "%s vs card ≥ 1.3:1",
+    (token) => {
+      expect(ratio(t[token], t["card"])).toBeGreaterThanOrEqual(1.3);
+    },
+  );
+});
