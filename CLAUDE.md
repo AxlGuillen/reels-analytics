@@ -116,6 +116,25 @@ en el footer del sidebar junto a Conexiones.
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
 > `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
 
+**Tours guiados (`src/components/tour/`, Driver.js):** onboarding por pantalla — spotlight
+paso a paso sobre los elementos reales para que alguien nuevo entienda cada página.
+- `steps.ts`: registro **puro** de pasos por ruta (`target` = `[data-tour="..."]`, título,
+  descripción, `version`). Regla editorial: **máx. 6 pasos** y el copy dice *para qué sirve*,
+  no *qué es*. Subir `version` re-muestra el tour a quien ya lo vio. `tourRouteFor` (puro)
+  mapea pathname → clave (los detalles de video comparten `/video`).
+- `page-tour.tsx` (client, montado al final de cada página): **auto-start solo la primera
+  visita** (`tour-seen:<ruta>:vN` en localStorage); cerrar a medias también marca visto.
+  `run-tour.ts` es el arranque compartido (singleton: un tour a la vez; navegar destruye el
+  activo). El JS de driver.js se importa dinámico al arrancar. El **botón ?** del rail
+  relanza el tour de la ruta actual.
+- Anclas `data-tour` en las páginas (mismo idioma que `data-slot`). Las ausentes se filtran
+  en runtime (estados vacíos degradan en silencio). **Dos tests guardianes**: `steps.test.ts`
+  (forma y reglas editoriales) y `anchors.test.ts` (escanea `src/` y falla si un target
+  pierde su ancla en un refactor, o si hay anclas muertas sin paso).
+- Skin del popover en `globals.css` (bloque "Tour guiado"): tokens semánticos, CTA
+  "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
+  con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
+
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
 namespacean con prefijo **`ra_`**). Esquema de 5 tablas + enum `ra_platform` (migraciones
