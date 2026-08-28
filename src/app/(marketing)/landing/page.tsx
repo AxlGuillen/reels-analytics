@@ -102,7 +102,8 @@ const GHOST_ROWS = Array.from({ length: 9 }, (_, i) => {
 
 export default function LandingPage() {
   return (
-    <main className="mx-auto flex max-w-[1180px] flex-col gap-16 px-5 pt-7 pb-24 md:gap-[88px]">
+    <LandingMotion>
+      <main className="mx-auto flex max-w-[1180px] flex-col gap-16 px-5 pt-7 pb-24 md:gap-[88px]">
       {/* Nav */}
       <nav className="bg-card shadow-card flex items-center justify-between rounded-full py-2.5 pr-2.5 pl-3">
         <div className="flex items-center gap-2.5">
@@ -147,12 +148,18 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="flex items-center gap-14" data-reveal>
+      <section className="flex items-center gap-14">
         <div className="flex max-w-[760px] flex-1 flex-col gap-6">
-          <p className="text-muted-foreground font-mono text-[11px] tracking-[0.16em]">
+          <p
+            className="text-muted-foreground font-mono text-[11px] tracking-[0.16em]"
+            data-hero-item
+          >
             TIKTOK · INSTAGRAM — SNAPSHOTS DIARIOS DESDE EL DÍA CERO
           </p>
-          <h1 className="text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]">
+          <h1
+            className="text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
+            data-hero-item
+          >
             Mide lo que publicas.{" "}
             <span className="bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-full px-4 pt-0.5 pb-1.5 md:px-5">
               <Sparkles className="size-[0.55em]" strokeWidth={1.9} />
@@ -160,13 +167,16 @@ export default function LandingPage() {
             </span>{" "}
             lo que crece.
           </h1>
-          <p className="text-muted-foreground max-w-[620px] text-lg leading-[1.55]">
+          <p
+            className="text-muted-foreground max-w-[620px] text-lg leading-[1.55]"
+            data-hero-item
+          >
             Las APIs de TikTok e Instagram solo devuelven el presente. Reels
             Analytics guarda un snapshot diario de cada video y convierte esa
             historia en decisiones: qué formato rinde, qué día despegó y contra
             qué compararte.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3" data-hero-item>
             <Link
               href="/login"
               className={`${CTA_PRIMARY} shadow-lift px-[26px] py-3.5 text-[15px]`}
@@ -187,12 +197,18 @@ export default function LandingPage() {
 
         {/* Collage texturizado */}
         <div className="relative hidden h-[360px] w-[300px] shrink-0 lg:block">
-          <div className="bg-muted bg-hatch shadow-card absolute top-0 left-5 flex h-[284px] w-[200px] -rotate-3 items-end rounded-lg p-3">
+          <div
+            className="bg-muted bg-hatch shadow-card absolute top-0 left-5 flex h-[284px] w-[200px] -rotate-3 items-end rounded-lg p-3"
+            data-hero-piece
+          >
             <span className="bg-foreground text-background rotate-3 rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.1em]">
               9:16 · 0:47
             </span>
           </div>
-          <div className="bg-primary text-primary-foreground bg-halftone shadow-lift absolute right-0 bottom-6 flex w-[176px] rotate-3 flex-col gap-1.5 rounded-[18px] p-4">
+          <div
+            className="bg-primary text-primary-foreground bg-halftone shadow-lift absolute right-0 bottom-6 flex w-[176px] rotate-3 flex-col gap-1.5 rounded-[18px] p-4"
+            data-hero-piece
+          >
             <span className="text-primary-foreground/60 font-mono text-[9.5px] tracking-[0.14em]">
               SNAPSHOT DIARIO
             </span>
@@ -203,7 +219,10 @@ export default function LandingPage() {
               captura #417 · 2 plataformas
             </span>
           </div>
-          <div className="bg-foreground absolute -top-4 right-6 flex size-16 rotate-6 items-center justify-center rounded-full">
+          <div
+            className="bg-foreground absolute -top-4 right-6 flex size-16 rotate-6 items-center justify-center rounded-full"
+            data-hero-piece
+          >
             <Activity
               className="text-primary dark:text-background size-[26px]"
               strokeWidth={1.9}
@@ -214,7 +233,7 @@ export default function LandingPage() {
 
       {/* Bento del producto */}
       <section id="producto" className="flex scroll-mt-6 flex-col gap-3.5">
-        <div className="grid gap-3.5 md:grid-cols-3" data-reveal>
+        <div className="grid gap-3.5 md:grid-cols-3" data-reveal-stagger>
           <div className="bg-card shadow-card flex flex-col gap-3.5 rounded-lg p-5">
             <div className="flex items-center gap-2.5">
               <div className="bg-foreground/10 text-foreground flex size-[26px] items-center justify-center rounded-[9px]">
@@ -284,7 +303,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="grid gap-3.5 lg:grid-cols-[2fr_1fr]" data-reveal>
+        <div className="grid gap-3.5 lg:grid-cols-[2fr_1fr]" data-reveal-stagger>
           <div className="bg-card shadow-card flex flex-col gap-4 rounded-lg p-[22px]">
             <div className="flex items-center justify-between">
               <span className="text-[17px] font-medium tracking-[-0.02em]">
@@ -301,7 +320,7 @@ export default function LandingPage() {
                 </span>
               </div>
             </div>
-            <div className="flex h-[180px] items-end gap-2 sm:gap-3.5">
+            <div className="flex h-[180px] items-end gap-2 sm:gap-3.5" data-bars>
               {WEEK_BARS.map((bar) => (
                 <div
                   key={bar.day}
@@ -319,6 +338,7 @@ export default function LandingPage() {
                         : "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px]"
                     }
                     style={{ height: `${bar.h}%` }}
+                    data-bar
                   >
                     <div
                       className="bg-primary dark:bg-background w-full rounded-full"
@@ -343,7 +363,7 @@ export default function LandingPage() {
             <span className="text-[15px] font-medium tracking-[-0.01em]">
               Secciones por hashtag
             </span>
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2.5" data-bars-x>
               {SECTION_BARS.map((row) => (
                 <div key={row.label} className="flex items-center gap-2.5">
                   <span className="text-muted-foreground w-[84px] text-xs">
@@ -353,6 +373,7 @@ export default function LandingPage() {
                     <div
                       className={`${row.fill} h-3.5 rounded-full`}
                       style={{ width: row.w }}
+                      data-bar-x
                     />
                   </div>
                 </div>
@@ -387,7 +408,10 @@ export default function LandingPage() {
           <span className="bg-primary text-primary-foreground self-start rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.14em]">
             PROFUNDIDAD
           </span>
-          <h2 className="text-background text-[32px] leading-[1.08] font-medium tracking-[-0.03em] md:text-[44px]">
+          <h2
+            className="text-background text-[32px] leading-[1.08] font-medium tracking-[-0.03em] md:text-[44px]"
+            data-split
+          >
             Cada día, una capa más de historia.
           </h2>
           <p className="text-background/60 max-w-[480px] leading-[1.55]">
@@ -432,12 +456,14 @@ export default function LandingPage() {
       <section
         id="como-funciona"
         className="flex scroll-mt-6 flex-col gap-[22px]"
-        data-reveal
       >
-        <h2 className="text-[34px] font-medium tracking-[-0.025em]">
+        <h2
+          className="text-[34px] font-medium tracking-[-0.025em]"
+          data-reveal
+        >
           Tres pasos, cero mantenimiento
         </h2>
-        <div className="grid gap-3.5 md:grid-cols-3">
+        <div className="grid gap-3.5 md:grid-cols-3" data-reveal-stagger>
           {STEPS.map((step) => (
             <div
               key={step.n}
@@ -459,7 +485,7 @@ export default function LandingPage() {
       <section
         id="mcp"
         className="grid scroll-mt-6 gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
-        data-reveal
+        data-reveal-stagger
       >
         {FEATURES.map((feature) => (
           <div
@@ -538,7 +564,7 @@ export default function LandingPage() {
         </span>
       </footer>
 
-      <LandingMotion />
-    </main>
+      </main>
+    </LandingMotion>
   );
 }

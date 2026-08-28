@@ -140,13 +140,19 @@ Grid, portada del diseño elegido en Claude Design (hero + collage texturizado, 
 producto, banda parallax "Cada día, una capa más de historia", cómo funciona, features, cierre
 y footer). El proxy la deja pasar sin sesión y manda `/` anónimo → `/landing` (el resto sigue
 yendo a `/login?next=`). Server Component con datos de muestra reales; el movimiento vive en
-`src/components/landing/landing-motion.tsx` (client): **único punto de entrada de GSAP en la
-app** — se importa dinámico tras hidratar (chunk propio de la ruta, el dashboard no lo
-descarga; `/landing` es estática y GSAP no está en su First Load JS). Contrato por atributos:
-`data-reveal` (fade-up al entrar al viewport) y `data-plx="slow|mid|fast"` dentro de un
-`data-plx-scope` (parallax con scrub, ±28/±70/±120 px). Respeta `prefers-reduced-motion`
-vía `gsap.matchMedia` y sin JS la página queda en su composición estática (los reveals usan
-`gsap.from`: el SSR es el estado final). **Regla: no importar `gsap` fuera de
+`src/components/landing/landing-motion.tsx` (client, **wrapper con `useGSAP` de
+`@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
+de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
+descarga). Envuelve el `<main>` como scope: selectores acotados y cleanup automático de
+tweens/ScrollTriggers/splits al desmontar. Contrato por atributos en el markup del server:
+`data-hero-item`/`data-hero-piece` (timeline de intro del hero), `data-reveal` (fade-up),
+`data-reveal-stagger` (hijos en cascada), `data-bars`/`data-bar` y `data-bars-x`/`data-bar-x`
+(barras que crecen con scaleY/scaleX, nunca height/width), `data-split` (titular palabra por
+palabra con SplitText) y `data-plx="slow|mid|fast"` dentro de `data-plx-scope` (parallax con
+scrub, ±28/±70/±120 px). Respeta `prefers-reduced-motion` vía `gsap.matchMedia` y sin JS la
+página queda en su composición estática (todo usa `gsap.from`: el SSR es el estado final).
+Las skills oficiales de GSAP viven en `.agents/skills/gsap-*` (consultarlas al tocar
+animaciones). **Regla: no importar `gsap` ni `@gsap/react` fuera de
 `src/components/landing/`.**
 
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
