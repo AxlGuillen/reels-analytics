@@ -17,6 +17,18 @@ describe("classifyContentType", () => {
     expect(classifyContentType(["mundial2026"])).toBe("mundial2026");
   });
 
+  test("las grafías históricas de cumpleaños caen en cumpleaneros", () => {
+    for (const tag of ["cumplelolero", "cumpleañeros", "cumpleaños", "cumpleanos"]) {
+      expect(classifyContentType([tag, "leagueoflegends"])).toBe("cumpleaneros");
+    }
+  });
+
+  test("clasifica la sección de debate", () => {
+    expect(classifyContentType(["debatelolero", "leagueoflegends"])).toBe(
+      "debatelolero",
+    );
+  });
+
   test("respeta la precedencia (duiyhal antes que dui)", () => {
     expect(classifyContentType(["dui", "duiyhal"])).toBe("duiyhal");
   });
@@ -50,7 +62,10 @@ describe("RESERVED_TAGS", () => {
       "mundial",
       "mundial2026",
       "cumpleañeros",
+      "cumplelolero",
+      "cumpleaños",
       "soloqchallenge2026",
+      "debatelolero",
     ]) {
       expect(RESERVED_TAGS.has(t)).toBe(true);
     }

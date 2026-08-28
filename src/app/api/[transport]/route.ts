@@ -1,5 +1,6 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
+import { CONTENT_TYPES, type ContentTypeKey } from "@/core/lib/content-type";
 import { env } from "@/core/config/env";
 import { PROTECTED_RESOURCE_PATH, SCOPE, appUrl } from "@/modules/oauth/config";
 import { lookupAccessToken } from "@/modules/oauth/store";
@@ -30,7 +31,11 @@ export const maxDuration = 60;
  */
 
 const platformSchema = z.enum(["tiktok", "instagram"]);
-const contentTypeSchema = z.enum(["audioviral", "dui", "duiyhal", "news"]);
+// Derivado del diccionario: sumar un tipo en content-type.ts lo expone aquí
+// solo (el enum a mano ya se había quedado atrás una vez).
+const contentTypeSchema = z.enum(
+  Object.keys(CONTENT_TYPES) as [ContentTypeKey, ...ContentTypeKey[]],
+);
 
 function json(data: unknown) {
   return {

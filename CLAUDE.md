@@ -174,8 +174,10 @@ publicados con link a `/content`.
 
 **Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
-**`mundial2026`**, **`cumpleaneros`** y **`soloqchallenge2026`** (tipo de EVENTO, con fecha de
-fin ~mediados de ago 2026). Los tipos de evento van ANTES que los de formato en la
+**`mundial2026`**, **`cumpleaneros`** (canónico vigente `#cumplelolero`; las grafías viejas
+`cumpleañeros/cumpleaños/cumpleanos` son alias), **`soloqchallenge2026`** (tipo de EVENTO, con
+fecha de fin ~mediados de ago 2026) y **`debatelolero`** (cierre del formato
+concepto → explicación → debate). Los tipos de evento van ANTES que los de formato en la
 precedencia: si un video cubre el evento, esa es su identidad aunque además sea narración. Cada tipo puede matchear **varios hashtags (alias)**:
 `ContentTypeDef.tags[]` (el primero es el canónico) — p. ej. `mundial2026` cuenta tanto `#mundial`
 como `#mundial2026`. Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya
