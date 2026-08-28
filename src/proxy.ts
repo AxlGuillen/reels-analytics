@@ -43,16 +43,23 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
+  // La landing es la puerta pública: no exige sesión.
+  const isLanding = pathname === "/landing";
 
-  // Sin sesión y fuera del login → mandar al login, recordando a dónde iba.
-  // El `next` importa para /oauth/authorize: si se perdiera la query, el flujo
-  // OAuth se rompería al volver del login.
-  if (!user && !isLogin) {
+  // Sin sesión: la raíz manda a la landing (marketing); el resto al login,
+  // recordando a dónde iba. El `next` importa para /oauth/authorize: si se
+  // perdiera la query, el flujo OAuth se rompería al volver del login.
+  if (!user && !isLogin && !isLanding) {
     const url = request.nextUrl.clone();
+    if (pathname === "/") {
+      url.pathname = "/landing";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
     const target = `${pathname}${request.nextUrl.search}`;
     url.pathname = "/login";
     url.search = "";
-    if (target !== "/") url.searchParams.set("next", target);
+    url.searchParams.set("next", target);
     return NextResponse.redirect(url);
   }
 

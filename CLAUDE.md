@@ -135,6 +135,20 @@ paso a paso sobre los elementos reales para que alguien nuevo entienda cada pág
   "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
   con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
 
+**Landing pública (`/landing`, grupo `(marketing)`):** puerta de entrada de marketing en Acid
+Grid, portada del diseño elegido en Claude Design (hero + collage texturizado, bento del
+producto, banda parallax "Cada día, una capa más de historia", cómo funciona, features, cierre
+y footer). El proxy la deja pasar sin sesión y manda `/` anónimo → `/landing` (el resto sigue
+yendo a `/login?next=`). Server Component con datos de muestra reales; el movimiento vive en
+`src/components/landing/landing-motion.tsx` (client): **único punto de entrada de GSAP en la
+app** — se importa dinámico tras hidratar (chunk propio de la ruta, el dashboard no lo
+descarga; `/landing` es estática y GSAP no está en su First Load JS). Contrato por atributos:
+`data-reveal` (fade-up al entrar al viewport) y `data-plx="slow|mid|fast"` dentro de un
+`data-plx-scope` (parallax con scrub, ±28/±70/±120 px). Respeta `prefers-reduced-motion`
+vía `gsap.matchMedia` y sin JS la página queda en su composición estática (los reveals usan
+`gsap.from`: el SSR es el estado final). **Regla: no importar `gsap` fuera de
+`src/components/landing/`.**
+
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
 namespacean con prefijo **`ra_`**). Esquema de 5 tablas + enum `ra_platform` (migraciones
