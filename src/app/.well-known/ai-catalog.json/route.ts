@@ -40,6 +40,19 @@ export function GET() {
         ],
       },
       {
+        identifier: `urn:air:${host}:mcp:public-info`,
+        displayName: "Public informational MCP server (no auth)",
+        type: "application/json",
+        url: `${appUrl()}/api/public/mcp`,
+        description:
+          "Unauthenticated MCP endpoint with informational tools: project summary, how to get authorized access, the catalog of protected analytics tools and public service health. No creator data.",
+        representativeQueries: [
+          "What is Reels Analytics?",
+          "How do I get access to the creator's analytics?",
+          "Which analytics tools does this MCP server offer?",
+        ],
+      },
+      {
         identifier: `urn:air:${host}:api:health`,
         displayName: "Health check del servicio",
         type: "application/json",

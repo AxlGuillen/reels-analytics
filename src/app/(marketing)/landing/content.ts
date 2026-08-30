@@ -50,6 +50,8 @@ export interface LandingCopy {
     /** Etiquetas de las barras horizontales (4, mismo orden que las anchuras). */
     sectionLabels: readonly [string, string, string, string];
     sectionsNote: string;
+    /** alt de la captura real del Overview (cierre del bento). */
+    panelAlt: string;
   };
   band: {
     kicker: string;
@@ -127,6 +129,8 @@ const es: LandingCopy = {
     sectionLabels: ["Narración", "SoloQ", "Noticias", "Audio viral"],
     sectionsNote:
       "Etiqueta con un hashtag y cada sección se mide sola — sin migraciones, sin hojas de cálculo.",
+    panelAlt:
+      "Overview del panel: vistas y seguidores de la semana, mejor video, vistas por día y tipos de contenido.",
   },
   band: {
     kicker: "PROFUNDIDAD",
@@ -234,6 +238,8 @@ const en: LandingCopy = {
     sectionLabels: ["Narration", "SoloQ", "News", "Viral audio"],
     sectionsNote:
       "Tag with a hashtag and every section measures itself — no migrations, no spreadsheets.",
+    panelAlt:
+      "Dashboard overview: weekly views and followers, best video, views per day and content types.",
   },
   band: {
     kicker: "DEPTH",
@@ -323,7 +329,8 @@ export function landingMetadata(lang: Lang): Metadata {
       alternateLocale: lang === "es" ? "en_US" : "es_MX",
     },
     twitter: {
-      card: "summary",
+      // Con opengraph-image (convención de archivo) ya hay imagen: tarjeta grande.
+      card: "summary_large_image",
       title: meta.title,
       description: meta.description,
     },

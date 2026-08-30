@@ -17,14 +17,17 @@ import { useGSAP } from "@gsap/react";
  * `gsap.from`, de modo que el SSR es el estado terminado. useGSAP revierte todo
  * (tweens, ScrollTriggers y splits) al desmontar.
  *
+ * La intro del hero NO vive aquí: es CSS puro (`.hero-item`/`.hero-piece` en
+ * globals) porque el H1 es el elemento LCP y esperar a este chunk lo retrasaba
+ * ~2,5 s en móvil. GSAP se queda con todo lo ligado al scroll.
+ *
  * Contrato con la página (atributos en el markup del server):
- * - `data-hero-item` / `data-hero-piece` → timeline de entrada del hero
- *   (texto en cascada; el collage asienta con rotación y rebote).
  * - `data-reveal`          → el bloque entra con fade-up al verse (una vez).
  * - `data-reveal-stagger`  → sus HIJOS entran en cascada (grids de cards).
  * - `data-bars` / `data-bar`      → barras verticales crecen (scaleY).
  * - `data-bars-x` / `data-bar-x`  → barras horizontales crecen (scaleX).
  * - `data-split`           → titular se revela palabra por palabra (SplitText).
+ * - `data-scroll-progress`  → cápsula del borde: scaleY = avance del scroll.
  * - `data-plx="slow|mid|fast"` dentro de `data-plx-scope` → parallax con
  *   scrub (±60/±130/±220 px; `slow` viaja en sentido contrario) ligado al
  *   paso de su scope por el viewport.
@@ -49,23 +52,6 @@ export function LandingMotion({ children }: { children: React.ReactNode }) {
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // Intro del hero: cascada de texto y el collage asentándose. Corre al
-        // cargar (sin ScrollTrigger: el hero ya está en viewport).
-        gsap
-          .timeline({ defaults: { ease: "power2.out", duration: 0.6 } })
-          .from("[data-hero-item]", { y: 24, autoAlpha: 0, stagger: 0.12 })
-          .from(
-            "[data-hero-piece]",
-            {
-              scale: 0.85,
-              autoAlpha: 0,
-              rotation: "+=6", // parte 6° pasado de su rotación final y asienta
-              stagger: 0.1,
-              ease: "back.out(1.6)",
-            },
-            "-=0.55",
-          );
-
         // Bloques sueltos: fade-up del conjunto.
         for (const el of gsap.utils.toArray<HTMLElement>("[data-reveal]")) {
           gsap.from(el, {
@@ -125,6 +111,19 @@ export function LandingMotion({ children }: { children: React.ReactNode }) {
             ease: "power2.out",
             stagger: 0.05,
             scrollTrigger: onEnter(el, "top 80%"),
+          });
+        }
+
+        // Indicador del borde: la cápsula crece con el avance TOTAL de la
+        // página (start 0 → end "max"). El estado inicial (scale-y-0) viene
+        // del CSS: sin JS el riel queda vacío, no lleno.
+        for (const el of gsap.utils.toArray<HTMLElement>(
+          "[data-scroll-progress]",
+        )) {
+          gsap.to(el, {
+            scaleY: 1,
+            ease: "none",
+            scrollTrigger: { start: 0, end: "max", scrub: 0.4 },
           });
         }
 

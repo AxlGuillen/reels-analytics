@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // El CSS global (~17 KiB) era el único request que bloqueaba el primer
+    // render (PageSpeed: 300 ms). Inline en el HTML: un roundtrip menos.
+    inlineCss: true,
+  },
   async headers() {
     return [
       // Descubrimiento para agentes (RFC 8288) en las entradas públicas.

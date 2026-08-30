@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Sparkle } from "lucide-react";
 import { BrandGlyph } from "@/components/brand-mark";
@@ -41,14 +42,17 @@ export default async function LoginPage({
         <aside className="bg-foreground text-background relative hidden flex-col justify-between p-10 lg:flex">
           <div className="bg-halftone pointer-events-none absolute inset-0" />
 
-          <div className="relative flex items-center gap-2.5">
+          <Link
+            href="/landing"
+            className="relative flex w-fit items-center gap-2.5"
+          >
             <span className="group bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-[14px]">
               <BrandGlyph className="size-[19px]" />
             </span>
             <span className="text-[13px] font-medium tracking-[-0.01em]">
               Reels Analytics
             </span>
-          </div>
+          </Link>
 
           <div className="relative">
             <h2 className="max-w-[15ch] text-[2.1rem] leading-[1.12] font-medium tracking-[-0.025em]">
@@ -106,6 +110,12 @@ export default async function LoginPage({
             <p className="text-muted-foreground/70 mt-7 text-center font-mono text-[10.5px] tracking-[0.04em]">
               TIKTOK · INSTAGRAM
             </p>
+            <Link
+              href="/landing"
+              className="text-muted-foreground hover:text-foreground mt-4 block text-center text-xs transition-colors"
+            >
+              ← Volver a la landing
+            </Link>
           </div>
         </div>
       </div>

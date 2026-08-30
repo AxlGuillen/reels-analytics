@@ -44,7 +44,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
   // La landing es la puerta pública (en sus dos idiomas): no exige sesión.
-  const isLanding = pathname === "/landing" || pathname === "/en/landing";
+  // Sus tarjetas OG (/landing/opengraph-image) también: los scrapers de
+  // WhatsApp/X/Slack no tienen sesión y un redirect al login rompe el preview.
+  const isLanding = /^\/(?:en\/)?landing(?:\/opengraph-image.*)?$/.test(pathname);
 
   // Sin sesión: la raíz manda a la landing (marketing); el resto al login,
   // recordando a dónde iba. El `next` importa para /oauth/authorize: si se
@@ -79,12 +81,13 @@ export const config = {
    * Corre en todo salvo: internals de Next, favicon, archivos con extensión
    * (imágenes, etc.), `api/cron` (se autentica con `CRON_SECRET`), los
    * transportes del MCP (`api/mcp`, `api/sse`, `api/message` — se autentican en
-   * su route handler), y los endpoints públicos de OAuth: los `.well-known`
+   * su route handler), el MCP público informativo (`api/public`, sin auth por
+   * diseño), y los endpoints públicos de OAuth: los `.well-known`
    * (descubrimiento) y `api/oauth` (`/register` y `/token` son máquina-a-máquina
    * y no llevan sesión). `/oauth/authorize` SÍ pasa por aquí: necesita al
    * usuario logueado.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/health|api/mcp|api/sse|api/message|api/oauth|.*\\.[\\w]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/health|api/mcp|api/sse|api/message|api/oauth|api/public|.*\\.[\\w]+$).*)",
   ],
 };

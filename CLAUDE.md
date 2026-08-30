@@ -108,6 +108,14 @@ en el footer del sidebar junto a Conexiones.
     incorrecto también los quema).
 - **`Authorization: Bearer MCP_SECRET`** (legacy) sigue funcionando: es el que usa el cliente
   de Claude Code ya configurado.
+- **MCP público informativo (`/api/public/mcp`, SIN auth):** 4 tools en inglés que no tocan
+  datos del creador (`modules/mcp/public.ts`: get_project_info, get_connection_guide,
+  list_analytics_tools, get_service_status). Endpoint SEPARADO de `/api/mcp` a propósito: el
+  servidor de analítica debe seguir dando 401 a los anónimos porque ese 401 dispara el flujo
+  OAuth de los conectores. El proxy excluye `api/public`; listado en `ai-catalog.json` y
+  mencionado en `auth.md`. El inglés compartido (resumen + guía de conexión) vive en
+  `modules/mcp/discovery.ts` (`PRODUCT_SUMMARY_EN`, `mcpConnectionInfo("en")`) y lo reusa
+  `landing.md` — ya no hay cadenas inglesas mantenidas a mano ahí.
 - `APP_URL` define issuer y `resource` (fijo por env, nunca del header Host). El proxy excluye
   `.well-known`, `api/oauth`, `api/mcp|sse|message`; `/oauth/authorize` sí pasa por el proxy
   porque necesita sesión (y este redirige a `/login?next=…` preservando la query).
@@ -145,8 +153,11 @@ de muestra reales; el movimiento vive en
 `@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
 de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
 descarga). Envuelve el `<main>` como scope: selectores acotados y cleanup automático de
-tweens/ScrollTriggers/splits al desmontar. Contrato por atributos en el markup del server:
-`data-hero-item`/`data-hero-piece` (timeline de intro del hero), `data-reveal` (fade-up),
+tweens/ScrollTriggers/splits al desmontar. La **intro del hero es CSS puro**
+(`.hero-item`/`.hero-piece` en globals, cascada por `animation-delay` inline): el H1 es el
+elemento LCP y esperar al chunk de GSAP lo retrasaba ~2,5 s en móvil (PageSpeed) — GSAP se
+queda solo con lo ligado al scroll. Contrato por atributos en el markup del server:
+`data-reveal` (fade-up),
 `data-reveal-stagger` (hijos en cascada), `data-bars`/`data-bar` y `data-bars-x`/`data-bar-x`
 (barras que crecen con scaleY/scaleX, nunca height/width), `data-split` (titular palabra por
 palabra con SplitText) y `data-plx="slow|mid|fast"` dentro de `data-plx-scope` (parallax con
@@ -167,7 +178,11 @@ vuelve a la retícula con un contenedor interno de 1180px); textura `.bg-rings` 
 concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="slow"` detrás de
 "Cómo funciona" y features, y **`.bg-graph`** (papel milimétrico: cuadrícula fina + dos cruces
 de acento, una lima) detrás del hero — con `mask-image` de desvanecido para morir antes del
-bento y NO repetir los anillos de abajo; e **iconos animados** vía `LandingIcon`
+bento y NO repetir los anillos de abajo; **indicador de scroll** en el borde derecho
+(riel `bg-border` de 5px fijo y centrado, cápsula `bg-primary` que crece con el avance total de
+la página vía `data-scroll-progress`, scaleY con scrub; decorativo puro: `aria-hidden` +
+`pointer-events-none`, solo desktop, `motion-reduce:hidden`, y `scale-y-0` en CSS para que sin
+JS quede el riel vacío, no lleno); e **iconos animados** vía `LandingIcon`
 (`src/components/landing/landing-icon.tsx`, client, mapa nombre→icono de `@animateicons`):
 animan una vez al entrar al viewport (IntersectionObserver, se salta con reduced-motion) y en
 hover — no usa GSAP. Jerarquía por tono extrapolada del bento: card 02 de los pasos en oscuro y
@@ -188,15 +203,28 @@ sección (`#producto`, `#como-funciona`, `#mcp`) son contrato con nav/WebMCP y N
 `/landing.md` acepta `?lang=en` (y la negociación por `Accept` desde `/en/landing`; detecta el
 idioma por query O pathname, porque el rewrite conserva la URL original) reusando el mismo
 `COPY`. **Regla editorial: al tocar copy de la landing se tocan AMBOS idiomas de `content.ts`
-y se revisa `landing.md`.** Ojo con ese archivo: los pasos y features se derivan de `COPY` (se
-actualizan solos), pero el resumen inglés (`MD.en.summary`) y el bloque de conexión de
-`connectionInfo("en")` son cadenas sueltas — el español sale de `modules/mcp/discovery.ts`,
-que también alimenta la skill, y el inglés se mantiene A MANO ahí mismo.
+y se revisa `landing.md`.** Pasos y features se derivan de `COPY`; resumen y
+bloque de conexión (ambos idiomas) salen de `modules/mcp/discovery.ts`, que también alimenta
+la skill — la variante `es` de `mcpConnectionInfo` está ligada al sha256 del índice de skills.
 
 El idioma del contenido se marca con `lang` en el propio `<main>` (llega en el SSR, así que un
 lector de pantalla no anuncia `/en/landing` en español antes de hidratar); `SetHtmlLang` solo
 corrige el elemento raíz después, para las heurísticas de traducción del navegador. Sitemap con `alternates.languages`, robots permite `/en/landing` y
 el header `Link` de next.config cubre las tres entradas públicas.
+
+**Assets reales de la landing (`public/assets/`):** frame 9:16 de un Reel
+(`video-single.png`, en el collage del hero vía `next/image` + `fill`) y capturas del Overview
+(`dashboard-{light,dark}.webp`, cierre del bento `#producto`; la variante sigue al tema con
+`dark:hidden`/`dark:block` y la oculta NO se descarga gracias a `loading="lazy"`).
+`videos-collection.png` (tira de 3 frames con vistas) está en assets pero aún sin usar.
+Nada de ilustraciones/fotos IA decorativas: solo producto y contenido reales.
+
+**Performance (PageSpeed ~91 → objetivo 95+):** además de la intro CSS del hero (ver arriba),
+`browserslist` en package.json fija Baseline (Chrome/Edge/Firefox 111+, Safari 16.4+) para no
+transpilar ni polyfilear de más (~14 KiB), y `experimental.inlineCss` en next.config mete el
+CSS global en el HTML (el único request que bloqueaba el primer render, ~300 ms). El resto de
+avisos del reporte (reflow forzado de ScrollTrigger, chunk de gsap como "JS sin usar") son el
+costo aceptado del motor de scroll.
 
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
 Next lo inyecta por convención de archivo — no declarar `icons` a mano). El mismo trazo vive como
@@ -211,7 +239,15 @@ el "4" hace un pop de ~250 ms; el tile del nav de la landing añade `brand-glyph
 única al cargar). Todo bajo `prefers-reduced-motion: no-preference`. El root layout define
 `metadataBase` (desde `APP_URL`), `lang="es"`, `title.template` ("%s · Reels Analytics") y
 `viewport.themeColor` por tema; la metadata de la landing es por idioma (ver i18n arriba) con
-`title.absolute` para esquivar el template, porque su título ya lleva la marca.
+`title.absolute` para esquivar el template, porque su título ya lleva la marca. La **tarjeta
+social (OG)** se genera por código, no como PNG suelto: `landing/og-image.tsx`
+(`ImageResponse` de `next/og`, hexes de marca fijados a mano porque satori no lee CSS vars;
+Space Grotesk/JetBrains Mono se bajan de Google Fonts en build con el patrón `loadGoogleFont`
+de la docs de Next, con fallback a la fuente default si falla) + los dos
+`opengraph-image.tsx` (convención de archivo, `/landing` y `/en/landing`, prerender estático).
+El copy sale del mismo `COPY`, así que los dos idiomas se actualizan solos; `twitter.card` es
+`summary_large_image`. El proxy deja pasar `/landing/opengraph-image*` (los scrapers no tienen
+sesión). El login enlaza de vuelta a `/landing` (marca del panel oscuro + link bajo el form).
 
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
