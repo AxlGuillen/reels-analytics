@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Activity, Sparkle } from "lucide-react";
+import { Sparkle } from "lucide-react";
+import { BrandGlyph } from "@/components/brand-mark";
 import { createServerSupabase } from "@/core/supabase/server";
 import { LoginForm } from "./login-form";
 
@@ -42,7 +43,7 @@ export default async function LoginPage({
 
           <div className="relative flex items-center gap-2.5">
             <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-[14px]">
-              <Activity className="size-[18px]" />
+              <BrandGlyph className="size-[19px]" />
             </span>
             <span className="text-[13px] font-medium tracking-[-0.01em]">
               Reels Analytics

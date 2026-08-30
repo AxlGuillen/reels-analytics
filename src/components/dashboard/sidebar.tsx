@@ -10,7 +10,6 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ActivityIcon,
   AudioLinesIcon,
   BlocksIcon,
   ChevronLeftIcon,
@@ -23,6 +22,7 @@ import {
   TrendingUpIcon,
 } from "@animateicons/react/lucide";
 import { CircleHelp, X } from "lucide-react";
+import { BrandGlyph } from "@/components/brand-mark";
 import { cn } from "@/lib/utils";
 import { runTour } from "@/components/tour/run-tour";
 import { tourRouteFor } from "@/components/tour/steps";
@@ -236,7 +236,6 @@ export function DesktopSidebar({
   user: UserInfo;
 }) {
   const [collapsed, toggle] = useCollapsed();
-  const [brandRef, brandHover] = useHoverIcon();
   const [collapseRef, collapseHover] = useHoverIcon();
 
   return (
@@ -255,10 +254,9 @@ export function DesktopSidebar({
             "mb-3 flex shrink-0 items-center",
             !collapsed && "w-full gap-2.5 px-0.5",
           )}
-          {...brandHover}
         >
           <span className="bg-primary text-primary-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px]">
-            <ActivityIcon ref={brandRef} size={18} />
+            <BrandGlyph className="size-[20px]" />
           </span>
           {!collapsed && (
             <span className="truncate text-[13px] font-medium tracking-[-0.01em]">
@@ -364,7 +362,7 @@ export function MobileNav({
           <MenuIcon size={20} />
         </button>
         <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-[10px]">
-          <ActivityIcon size={15} />
+          <BrandGlyph className="size-[16px]" />
         </span>
         <span className="text-sm font-medium tracking-tight">Reels Analytics</span>
       </header>
@@ -379,7 +377,7 @@ export function MobileNav({
           <div className="bg-sidebar text-sidebar-foreground absolute inset-y-0 left-0 flex w-64 flex-col gap-1 rounded-r-[26px] p-4">
             <div className="mb-3 flex items-center gap-2.5">
               <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-[12px]">
-                <ActivityIcon size={16} />
+                <BrandGlyph className="size-[17px]" />
               </span>
               <span className="flex-1 text-sm font-medium">Reels Analytics</span>
               <button

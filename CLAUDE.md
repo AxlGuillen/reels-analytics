@@ -170,7 +170,11 @@ oscuro**: `ThemeToggle` con variante `pill` en el nav (píldora de 38px, a juego
 los dos únicos usos de lima-sobre-superficie-invertida llevan su swap `dark:`.
 
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
-Next lo inyecta por convención de archivo — no declarar `icons` a mano). El root layout define
+Next lo inyecta por convención de archivo — no declarar `icons` a mano). El mismo trazo vive como
+componente en `src/components/brand-mark.tsx` (`BrandGlyph`, SVG en `currentColor`): es la marca
+de TODOS los tiles de brand (rail del sidebar, header/drawer móvil, login, nav/footer/collage de
+la landing) — el contraste lo pone la zona (tile lima → glifo tinta; superficie oscura → glifo
+lima con swap `dark:`). No volver a usar el icono `Activity` como marca. El root layout define
 `metadataBase` (desde `APP_URL`), `title.template` ("%s · Reels Analytics") y `viewport.themeColor`
 por tema; el layout de marketing agrega canonical `/landing`, Open Graph y Twitter card (usa
 `title.absolute` para esquivar el template, porque su título ya lleva la marca).

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import {
-  ActivityIcon,
   BlocksIcon,
   LayoutGridIcon,
   MessageCircleIcon,
@@ -21,7 +20,6 @@ import type { IconHandle } from "@/components/dashboard/sidebar";
  */
 
 const ICONS = {
-  activity: ActivityIcon,
   "trending-up": TrendingUpIcon,
   "layout-grid": LayoutGridIcon,
   "message-circle": MessageCircleIcon,
