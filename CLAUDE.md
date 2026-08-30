@@ -145,8 +145,11 @@ de muestra reales; el movimiento vive en
 `@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
 de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
 descarga). Envuelve el `<main>` como scope: selectores acotados y cleanup automático de
-tweens/ScrollTriggers/splits al desmontar. Contrato por atributos en el markup del server:
-`data-hero-item`/`data-hero-piece` (timeline de intro del hero), `data-reveal` (fade-up),
+tweens/ScrollTriggers/splits al desmontar. La **intro del hero es CSS puro**
+(`.hero-item`/`.hero-piece` en globals, cascada por `animation-delay` inline): el H1 es el
+elemento LCP y esperar al chunk de GSAP lo retrasaba ~2,5 s en móvil (PageSpeed) — GSAP se
+queda solo con lo ligado al scroll. Contrato por atributos en el markup del server:
+`data-reveal` (fade-up),
 `data-reveal-stagger` (hijos en cascada), `data-bars`/`data-bar` y `data-bars-x`/`data-bar-x`
 (barras que crecen con scaleY/scaleX, nunca height/width), `data-split` (titular palabra por
 palabra con SplitText) y `data-plx="slow|mid|fast"` dentro de `data-plx-scope` (parallax con
@@ -197,6 +200,20 @@ El idioma del contenido se marca con `lang` en el propio `<main>` (llega en el S
 lector de pantalla no anuncia `/en/landing` en español antes de hidratar); `SetHtmlLang` solo
 corrige el elemento raíz después, para las heurísticas de traducción del navegador. Sitemap con `alternates.languages`, robots permite `/en/landing` y
 el header `Link` de next.config cubre las tres entradas públicas.
+
+**Assets reales de la landing (`public/assets/`):** frame 9:16 de un Reel
+(`video-single.png`, en el collage del hero vía `next/image` + `fill`) y capturas del Overview
+(`dashboard-{light,dark}.webp`, cierre del bento `#producto`; la variante sigue al tema con
+`dark:hidden`/`dark:block` y la oculta NO se descarga gracias a `loading="lazy"`).
+`videos-collection.png` (tira de 3 frames con vistas) está en assets pero aún sin usar.
+Nada de ilustraciones/fotos IA decorativas: solo producto y contenido reales.
+
+**Performance (PageSpeed ~91 → objetivo 95+):** además de la intro CSS del hero (ver arriba),
+`browserslist` en package.json fija Baseline (Chrome/Edge/Firefox 111+, Safari 16.4+) para no
+transpilar ni polyfilear de más (~14 KiB), y `experimental.inlineCss` en next.config mete el
+CSS global en el HTML (el único request que bloqueaba el primer render, ~300 ms). El resto de
+avisos del reporte (reflow forzado de ScrollTrigger, chunk de gsap como "JS sin usar") son el
+costo aceptado del motor de scroll.
 
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
 Next lo inyecta por convención de archivo — no declarar `icons` a mano). El mismo trazo vive como
