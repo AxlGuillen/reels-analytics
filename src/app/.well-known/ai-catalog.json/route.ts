@@ -1,6 +1,7 @@
 import { appUrl, resourceUrl } from "@/modules/oauth/config";
 import { PRODUCT_SUMMARY } from "@/modules/mcp/discovery";
 import { agentJson } from "@/core/lib/agent-response";
+import { MCP_TOOLS } from "@/modules/mcp/catalog";
 
 export const runtime = "nodejs";
 
@@ -29,8 +30,7 @@ export function GET() {
         displayName: "Servidor MCP de analítica del creador",
         type: "application/json",
         url: resourceUrl(),
-        description:
-          "Servidor MCP (Streamable HTTP, OAuth 2.1) con 9 tools de solo lectura sobre la analítica persistida de TikTok e Instagram Reels.",
+        description: `Servidor MCP (Streamable HTTP, OAuth 2.1) con ${MCP_TOOLS.length} tools de solo lectura sobre la analítica persistida de TikTok e Instagram Reels.`,
         representativeQueries: [
           "¿Cuál fue mi mejor video de la última semana?",
           "Compara el rendimiento de TikTok contra Instagram este mes",
