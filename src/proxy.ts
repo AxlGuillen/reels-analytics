@@ -81,12 +81,13 @@ export const config = {
    * Corre en todo salvo: internals de Next, favicon, archivos con extensión
    * (imágenes, etc.), `api/cron` (se autentica con `CRON_SECRET`), los
    * transportes del MCP (`api/mcp`, `api/sse`, `api/message` — se autentican en
-   * su route handler), y los endpoints públicos de OAuth: los `.well-known`
+   * su route handler), el MCP público informativo (`api/public`, sin auth por
+   * diseño), y los endpoints públicos de OAuth: los `.well-known`
    * (descubrimiento) y `api/oauth` (`/register` y `/token` son máquina-a-máquina
    * y no llevan sesión). `/oauth/authorize` SÍ pasa por aquí: necesita al
    * usuario logueado.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/health|api/mcp|api/sse|api/message|api/oauth|.*\\.[\\w]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|api/cron|api/health|api/mcp|api/sse|api/message|api/oauth|api/public|.*\\.[\\w]+$).*)",
   ],
 };

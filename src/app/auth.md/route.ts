@@ -56,6 +56,13 @@ exactly from then on. Public client: no \`client_secret\`.
 
 Full discovery: \`${base}/.well-known/oauth-authorization-server\`.
 
+## Public endpoint (no auth)
+
+Before registering, you can inspect the service anonymously:
+\`${base}/api/public/mcp\` is a public MCP server with informational tools
+(project summary, this connection guide, the catalog of protected tools and
+service health). It exposes no creator data.
+
 ## Notes
 
 - Tokens are issued with an audience bound to the MCP server: they are not

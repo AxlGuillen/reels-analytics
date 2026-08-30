@@ -108,6 +108,14 @@ en el footer del sidebar junto a Conexiones.
     incorrecto también los quema).
 - **`Authorization: Bearer MCP_SECRET`** (legacy) sigue funcionando: es el que usa el cliente
   de Claude Code ya configurado.
+- **MCP público informativo (`/api/public/mcp`, SIN auth):** 4 tools en inglés que no tocan
+  datos del creador (`modules/mcp/public.ts`: get_project_info, get_connection_guide,
+  list_analytics_tools, get_service_status). Endpoint SEPARADO de `/api/mcp` a propósito: el
+  servidor de analítica debe seguir dando 401 a los anónimos porque ese 401 dispara el flujo
+  OAuth de los conectores. El proxy excluye `api/public`; listado en `ai-catalog.json` y
+  mencionado en `auth.md`. El inglés compartido (resumen + guía de conexión) vive en
+  `modules/mcp/discovery.ts` (`PRODUCT_SUMMARY_EN`, `mcpConnectionInfo("en")`) y lo reusa
+  `landing.md` — ya no hay cadenas inglesas mantenidas a mano ahí.
 - `APP_URL` define issuer y `resource` (fijo por env, nunca del header Host). El proxy excluye
   `.well-known`, `api/oauth`, `api/mcp|sse|message`; `/oauth/authorize` sí pasa por el proxy
   porque necesita sesión (y este redirige a `/login?next=…` preservando la query).
@@ -191,10 +199,9 @@ sección (`#producto`, `#como-funciona`, `#mcp`) son contrato con nav/WebMCP y N
 `/landing.md` acepta `?lang=en` (y la negociación por `Accept` desde `/en/landing`; detecta el
 idioma por query O pathname, porque el rewrite conserva la URL original) reusando el mismo
 `COPY`. **Regla editorial: al tocar copy de la landing se tocan AMBOS idiomas de `content.ts`
-y se revisa `landing.md`.** Ojo con ese archivo: los pasos y features se derivan de `COPY` (se
-actualizan solos), pero el resumen inglés (`MD.en.summary`) y el bloque de conexión de
-`connectionInfo("en")` son cadenas sueltas — el español sale de `modules/mcp/discovery.ts`,
-que también alimenta la skill, y el inglés se mantiene A MANO ahí mismo.
+y se revisa `landing.md`.** Pasos y features se derivan de `COPY`; resumen y
+bloque de conexión (ambos idiomas) salen de `modules/mcp/discovery.ts`, que también alimenta
+la skill — la variante `es` de `mcpConnectionInfo` está ligada al sha256 del índice de skills.
 
 El idioma del contenido se marca con `lang` en el propio `<main>` (llega en el SSR, así que un
 lector de pantalla no anuncia `/en/landing` en español antes de hidratar); `SetHtmlLang` solo

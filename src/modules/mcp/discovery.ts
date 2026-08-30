@@ -14,8 +14,23 @@ import { MCP_TOOLS } from "./catalog";
 export const PRODUCT_SUMMARY =
   "Reels Analytics centraliza las métricas de TikTok e Instagram Reels de un creador: guarda un snapshot diario por video y convierte esa historia en decisiones (qué formato rinde, mejor día y hora, curvas de crecimiento, benchmark por cohorte semanal).";
 
-/** Pasos de conexión al MCP, en texto plano reutilizable. */
-export function mcpConnectionInfo(): string {
+/** El mismo resumen en inglés (landing.md?lang=en y el MCP público). */
+export const PRODUCT_SUMMARY_EN =
+  "Reels Analytics centralizes a creator's TikTok and Instagram Reels metrics: it stores one daily snapshot per video and turns that history into decisions (which format performs, best day and hour, growth curves, weekly-cohort benchmarks).";
+
+/** Pasos de conexión al MCP, en texto plano reutilizable. OJO: la variante
+ *  `es` alimenta `skillMarkdown()` (y su sha256 publicado): no cambiarla a la ligera. */
+export function mcpConnectionInfo(lang: "es" | "en" = "es"): string {
+  if (lang === "en") {
+    return [
+      `MCP server (Streamable HTTP): ${resourceUrl()}`,
+      "Authentication: OAuth 2.1 with PKCE S256 and dynamic client registration (RFC 7591) — paste the URL into a Claude/Cowork remote connector and the flow is automatic.",
+      `Scope: ${SCOPE} (read-only).`,
+      `Discovery: ${appUrl()}/.well-known/oauth-protected-resource`,
+      `Agent registration guide: ${appUrl()}/auth.md`,
+      `Public informational MCP (no auth): ${appUrl()}/api/public/mcp`,
+    ].join("\n");
+  }
   return [
     `Servidor MCP (Streamable HTTP): ${resourceUrl()}`,
     "Autenticación: OAuth 2.1 con PKCE S256 y registro dinámico (RFC 7591) — pega la URL en un conector remoto de Claude/Cowork y el flujo es automático.",

@@ -1,5 +1,9 @@
-import { appUrl, resourceUrl, SCOPE } from "@/modules/oauth/config";
-import { mcpConnectionInfo, PRODUCT_SUMMARY } from "@/modules/mcp/discovery";
+import { appUrl, resourceUrl } from "@/modules/oauth/config";
+import {
+  mcpConnectionInfo,
+  PRODUCT_SUMMARY,
+  PRODUCT_SUMMARY_EN,
+} from "@/modules/mcp/discovery";
 import { MCP_TOOLS } from "@/modules/mcp/catalog";
 import { agentText } from "@/core/lib/agent-response";
 import { COPY, type Lang } from "@/app/(marketing)/landing/content";
@@ -30,8 +34,7 @@ const MD = {
     linkAuth: "Registro para agentes",
   },
   en: {
-    summary:
-      "Reels Analytics centralizes a creator's TikTok and Instagram Reels metrics: it stores one daily snapshot per video and turns that history into decisions (which format performs, best day and hour, growth curves, weekly-cohort benchmarks).",
+    summary: PRODUCT_SUMMARY_EN,
     howTitle: "How it works (three steps, zero maintenance)",
     offersTitle: "What it offers",
     mcpTitle: "MCP server",
@@ -44,18 +47,10 @@ const MD = {
   },
 } as const;
 
-/** Bloque de conexión al MCP por idioma (el español reusa el de discovery.ts,
- *  que es el mismo que publica la skill; el inglés lo traduce con las mismas
- *  URLs). */
+/** Bloque de conexión al MCP por idioma: ambos centralizados en
+ *  `modules/mcp/discovery.ts` (el inglés también lo usa el MCP público). */
 function connectionInfo(lang: Lang): string {
-  if (lang === "es") return mcpConnectionInfo();
-  return [
-    `MCP server (Streamable HTTP): ${resourceUrl()}`,
-    "Authentication: OAuth 2.1 with PKCE S256 and dynamic client registration (RFC 7591) — paste the URL into a Claude/Cowork remote connector and the flow is automatic.",
-    `Scope: ${SCOPE} (read-only).`,
-    `Discovery: ${appUrl()}/.well-known/oauth-protected-resource`,
-    `Agent registration guide: ${appUrl()}/auth.md`,
-  ].join("\n");
+  return mcpConnectionInfo(lang);
 }
 
 export function GET(request: Request) {
