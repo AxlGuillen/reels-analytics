@@ -34,7 +34,7 @@ export function ThemeToggle({
   expanded = false,
 }: {
   collapsed?: boolean;
-  variant?: "row" | "icon" | "rail";
+  variant?: "row" | "icon" | "rail" | "pill";
   expanded?: boolean;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -125,6 +125,22 @@ export function ThemeToggle({
         aria-label={label}
         title={label}
         className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-ring/40 flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors duration-150"
+      >
+        {icon}
+      </button>
+    );
+  }
+
+  // Píldora para la landing: mismo alto que los CTAs del nav (contrato Acid
+  // Grid: todo control es píldora).
+  if (variant === "pill") {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={label}
+        title={label}
+        className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-ring/40 flex size-[38px] shrink-0 items-center justify-center rounded-full border transition-colors duration-150"
       >
         {icon}
       </button>

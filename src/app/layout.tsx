@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { env } from "@/core/config/env";
 import { ThemeProvider } from "@/components/theme-provider";
 
 // Grotesca geométrica: toda la UI y los números protagonistas ("Acid Grid").
@@ -18,9 +19,26 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Reels Analytics",
+  // Base para URLs relativas de OG/canonical. `APP_URL` es la fuente de verdad
+  // del origen (igual que en OAuth); el fallback cubre el build local.
+  metadataBase: new URL(env("APP_URL") ?? "http://localhost:3000"),
+  title: {
+    default: "Reels Analytics",
+    // Las páginas que definan `title` heredan la marca sin repetirla a mano.
+    template: "%s · Reels Analytics",
+  },
   description:
     "Centraliza y analiza el rendimiento de tus videos de TikTok e Instagram.",
+  applicationName: "Reels Analytics",
+  // El favicon (src/app/icon.svg) lo inyecta Next por convención de archivo.
+};
+
+/** Color de la barra del navegador acorde al tema activo. */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f1f1ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#111211" },
+  ],
 };
 
 export default function RootLayout({
