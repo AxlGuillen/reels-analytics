@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { appUrl, resourceUrl, SCOPE } from "@/modules/oauth/config";
+import { appUrl, resourceUrl, SCOPE } from "@/core/config/app";
 import { MCP_TOOLS } from "./catalog";
 
 /**

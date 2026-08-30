@@ -1,6 +1,7 @@
 import { appUrl, resourceUrl, SCOPE } from "@/modules/oauth/config";
 import { MCP_TOOLS } from "@/modules/mcp/catalog";
 import { PRODUCT_SUMMARY } from "@/modules/mcp/discovery";
+import { agentJson } from "@/core/lib/agent-response";
 import packageJson from "../../../../../package.json";
 
 export const runtime = "nodejs";
@@ -39,11 +40,5 @@ export function GET() {
     },
   };
 
-  return new Response(JSON.stringify(body), {
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  return agentJson(body);
 }

@@ -1,39 +1,23 @@
-import { requireEnv } from "@/core/config/env";
+import {
+  appUrl,
+  issuer,
+  PROTECTED_RESOURCE_PATH,
+  resourceUrl,
+  SCOPE,
+} from "@/core/config/app";
 
 /**
- * Identidades y tiempos del authorization server. El issuer y el `resource` se
- * derivan de `APP_URL` (fijo por env, nunca del header Host, que es spoofable):
- * si cambiaran entre peticiones, los tokens dejarían de validar.
+ * Tiempos y metadata del authorization server. La identidad (appUrl/issuer/
+ * resource/scope) vive en `core/config/app` — la consumen otros módulos y los
+ * módulos hermanos no pueden importarse entre sí. Se re-exporta desde aquí para
+ * los consumidores de `app/` que ya la importaban de este módulo.
  */
-
-/** Único scope: los tools del MCP son de solo lectura. */
-export const SCOPE = "analytics:read";
+export { appUrl, issuer, PROTECTED_RESOURCE_PATH, resourceUrl, SCOPE };
 
 /** Vida de cada credencial. Access corto + refresh rotativo (OAuth 2.1). */
 export const CODE_TTL_MS = 60_000; // 1 min: solo para canjearlo
 export const ACCESS_TTL_S = 60 * 60; // 1 h
 export const REFRESH_TTL_S = 30 * 24 * 60 * 60; // 30 días
-
-/** Origen público sin barra final. */
-export function appUrl(): string {
-  return requireEnv("APP_URL").replace(/\/+$/, "");
-}
-
-/** Issuer OAuth (= origen de la app). */
-export function issuer(): string {
-  return appUrl();
-}
-
-/**
- * URI canónica del MCP (RFC 8707). Es el `aud` de los tokens: el resource server
- * rechaza cualquier token emitido para otro recurso.
- */
-export function resourceUrl(): string {
-  return `${appUrl()}/api/mcp`;
-}
-
-/** Ruta del documento de Protected Resource Metadata (RFC 9728). */
-export const PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
 
 /**
  * Cabeceras de los endpoints públicos de OAuth. Son públicos por diseño

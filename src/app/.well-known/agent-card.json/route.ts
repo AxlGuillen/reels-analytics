@@ -1,6 +1,7 @@
 import { appUrl, resourceUrl, SCOPE } from "@/modules/oauth/config";
 import { MCP_TOOLS } from "@/modules/mcp/catalog";
 import { PRODUCT_SUMMARY } from "@/modules/mcp/discovery";
+import { agentJson } from "@/core/lib/agent-response";
 import packageJson from "../../../../package.json";
 
 export const runtime = "nodejs";
@@ -24,10 +25,18 @@ export function GET() {
       pushNotifications: false,
       stateTransitionHistory: false,
     },
+    // `oauth2` con flows explícitos: en la URL de descubrimiento servimos
+    // RFC 8414, no un documento OIDC, así que `openIdConnect` mentiría.
     securitySchemes: {
       oauth: {
-        type: "openIdConnect",
-        openIdConnectUrl: `${appUrl()}/.well-known/oauth-authorization-server`,
+        type: "oauth2",
+        flows: {
+          authorizationCode: {
+            authorizationUrl: `${appUrl()}/oauth/authorize`,
+            tokenUrl: `${appUrl()}/api/oauth/token`,
+            scopes: { [SCOPE]: "Lectura de la analítica del creador" },
+          },
+        },
       },
     },
     defaultInputModes: ["application/json"],
@@ -41,11 +50,5 @@ export function GET() {
     })),
   };
 
-  return new Response(JSON.stringify(body), {
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  return agentJson(body);
 }

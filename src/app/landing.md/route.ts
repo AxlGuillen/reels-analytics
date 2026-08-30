@@ -1,6 +1,7 @@
 import { appUrl, resourceUrl } from "@/modules/oauth/config";
 import { mcpConnectionInfo, PRODUCT_SUMMARY } from "@/modules/mcp/discovery";
 import { MCP_TOOLS } from "@/modules/mcp/catalog";
+import { agentText } from "@/core/lib/agent-response";
 
 export const runtime = "nodejs";
 
@@ -61,12 +62,8 @@ ${tools}
 - MCP: ${resourceUrl()}
 `;
 
-  return new Response(body, {
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
-      // Señala la relación con la versión HTML.
-      Link: `<${base}/landing>; rel="canonical"; type="text/html"`,
-    },
+  // Extra: señala la relación con la versión HTML.
+  return agentText(body, "text/markdown; charset=utf-8", {
+    Link: `<${base}/landing>; rel="canonical"; type="text/html"`,
   });
 }

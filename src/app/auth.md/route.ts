@@ -1,4 +1,5 @@
 import { appUrl, resourceUrl, SCOPE } from "@/modules/oauth/config";
+import { agentText } from "@/core/lib/agent-response";
 
 export const runtime = "nodejs";
 
@@ -57,11 +58,5 @@ Descubrimiento completo: \`${base}/.well-known/oauth-authorization-server\`.
 - Guía de uso de las tools: \`${base}/.well-known/agent-skills/reels-analytics-mcp/SKILL.md\`
 `;
 
-  return new Response(body, {
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  return agentText(body);
 }

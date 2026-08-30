@@ -1,5 +1,6 @@
 import { appUrl } from "@/modules/oauth/config";
 import { skillDigest } from "@/modules/mcp/discovery";
+import { agentJson } from "@/core/lib/agent-response";
 
 export const runtime = "nodejs";
 
@@ -24,11 +25,5 @@ export function GET() {
     ],
   };
 
-  return new Response(JSON.stringify(body), {
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  return agentJson(body);
 }
