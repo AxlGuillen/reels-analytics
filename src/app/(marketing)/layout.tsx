@@ -6,10 +6,30 @@ import type { Metadata } from "next";
  * deja pasar `/landing` sin sesión.
  */
 
+const MARKETING_TITLE =
+  "Reels Analytics — Mide lo que publicas. Entiende lo que crece.";
+const MARKETING_DESCRIPTION =
+  "Snapshots diarios de tus videos de TikTok e Instagram Reels: curvas de crecimiento por video, benchmark contra su semana y un digest cada lunes.";
+
 export const metadata: Metadata = {
-  title: "Reels Analytics — Mide lo que publicas. Entiende lo que crece.",
-  description:
-    "Snapshots diarios de tus videos de TikTok e Instagram Reels: curvas de crecimiento por video, benchmark contra su semana y un digest cada lunes.",
+  // `absolute` esquiva el template "%s · Reels Analytics" del root: este título
+  // ya lleva la marca.
+  title: { absolute: MARKETING_TITLE },
+  description: MARKETING_DESCRIPTION,
+  alternates: { canonical: "/landing" },
+  openGraph: {
+    type: "website",
+    url: "/landing",
+    siteName: "Reels Analytics",
+    title: MARKETING_TITLE,
+    description: MARKETING_DESCRIPTION,
+    locale: "es_MX",
+  },
+  twitter: {
+    card: "summary",
+    title: MARKETING_TITLE,
+    description: MARKETING_DESCRIPTION,
+  },
 };
 
 export default function MarketingLayout({

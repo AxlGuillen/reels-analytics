@@ -165,7 +165,15 @@ concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="sl
 (`src/components/landing/landing-icon.tsx`, client, mapa nombre→icono de `@animateicons`):
 animan una vez al entrar al viewport (IntersectionObserver, se salta con reduced-motion) y en
 hover — no usa GSAP. Jerarquía por tono extrapolada del bento: card 02 de los pasos en oscuro y
-la card MCP de features en lima (una card de acento por rejilla).
+la card MCP de features en lima (una card de acento por rejilla). La landing soporta **tema
+oscuro**: `ThemeToggle` con variante `pill` en el nav (píldora de 38px, a juego con los CTAs);
+los dos únicos usos de lima-sobre-superficie-invertida llevan su swap `dark:`.
+
+**Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
+Next lo inyecta por convención de archivo — no declarar `icons` a mano). El root layout define
+`metadataBase` (desde `APP_URL`), `title.template` ("%s · Reels Analytics") y `viewport.themeColor`
+por tema; el layout de marketing agrega canonical `/landing`, Open Graph y Twitter card (usa
+`title.absolute` para esquivar el template, porque su título ya lleva la marca).
 
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se

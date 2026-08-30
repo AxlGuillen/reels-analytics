@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import {
   LandingIcon,
   type LandingIconName,
@@ -135,6 +136,7 @@ export default function LandingPage() {
           </a>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle variant="pill" />
           <a
             href={GITHUB_URL}
             target="_blank"
