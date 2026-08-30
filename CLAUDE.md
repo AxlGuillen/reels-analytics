@@ -244,6 +244,26 @@ usan /growth y /content. La tabla "Rendimiento por tipo" de /growth enlaza al dr
 > para lo más viejo que ~4.5 semanas (el crecimiento de **cuenta** no se afecta). Follow-up: subir
 > el tope solo del cron o backfill por lotes.
 
+**Agent-ready (isitagentready.com, implementado):** endpoints públicos de descubrimiento para
+agentes/crawlers, todos fuera del proxy (extensiones y `.well-known` ya excluidos del matcher) y
+con `APP_URL` como base:
+- `robots.txt` (route handler, no la convención tipada: lleva líneas `Content-Signal`) con
+  reglas explícitas para crawlers IA. **Política del creador: `search=yes, ai-input=yes,
+  ai-train=no`.** `sitemap.ts` solo lista `/landing`.
+- Headers `Link` (RFC 8288) en `/` y `/landing` vía `next.config.ts`, y **Markdown para
+  agentes**: `/landing` con `Accept: text/markdown` reescribe a `/landing.md` (rewrite
+  `beforeFiles` con condición `has`). **`landing.md` es contenido curado: al cambiar la landing
+  de fondo, actualizarlo también.**
+- `/.well-known/`: `api-catalog` (RFC 9727), `mcp/server-card.json` (SEP-1649, draft),
+  `ai-catalog.json` (ARD), `agent-card.json` (A2A — redactado honesto: somos un servicio de
+  datos vía MCP, sin endpoint JSON-RPC A2A), `agent-skills/index.json` + su `SKILL.md` (el
+  sha256 se calcula del mismo módulo: `modules/mcp/discovery.ts`, que centraliza también el
+  resumen del producto). `/auth.md` (workos/auth.md) + bloque `agent_auth` en el AS metadata.
+- WebMCP: `src/components/landing/web-mcp.tsx` (client, feature-detect de
+  `navigator.modelContext`; no-op donde no existe) con 3 tools simples.
+- **No cubiertos por hosting en Vercel:** DNS-AID (requiere zona DNS propia + DNSSEC;
+  `*.vercel.app` no lo permite) y Web Bot Auth (verificación de firmas a nivel CDN).
+
 ## Stack
 
 | Capa | Tecnología |

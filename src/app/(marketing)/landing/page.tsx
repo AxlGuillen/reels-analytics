@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { BrandGlyph } from "@/components/brand-mark";
+import { WebMcp } from "@/components/landing/web-mcp";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import {
   LandingIcon,
@@ -623,6 +624,7 @@ export default function LandingPage() {
         </span>
       </footer>
 
+      <WebMcp />
       </main>
     </LandingMotion>
   );

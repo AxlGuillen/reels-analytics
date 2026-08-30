@@ -65,5 +65,13 @@ export function authorizationServerMetadata() {
     code_challenge_methods_supported: ["S256"],
     // Cliente público: no hay client_secret que presentar en /token.
     token_endpoint_auth_methods_supported: ["none"],
+    // Bloque de auth.md (workos/auth.md): registro para agentes. Solo campos
+    // que tenemos de verdad; claim/revocación no existen y se omiten.
+    agent_auth: {
+      registration_endpoint: `${base}/api/oauth/register`,
+      documentation: `${base}/auth.md`,
+      identity_types: ["url"],
+      credential_types: ["oauth2_authorization_code"],
+    },
   };
 }
