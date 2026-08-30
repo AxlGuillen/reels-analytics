@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { BrandGlyph } from "@/components/brand-mark";
+import { WebMcp } from "@/components/landing/web-mcp";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import {
   LandingIcon,
@@ -115,7 +117,7 @@ export default function LandingPage() {
       <nav className="bg-card shadow-card flex items-center justify-between rounded-full py-2.5 pr-2.5 pl-3">
         <div className="flex items-center gap-2.5">
           <div className="bg-primary text-primary-foreground flex size-[38px] items-center justify-center rounded-[14px]">
-            <LandingIcon name="activity" size={18} className="flex" />
+            <BrandGlyph className="size-[20px]" />
           </div>
           <span className="text-sm font-medium tracking-[-0.01em]">
             Reels Analytics
@@ -231,11 +233,7 @@ export default function LandingPage() {
             className="bg-foreground absolute -top-4 right-6 flex size-16 rotate-6 items-center justify-center rounded-full"
             data-hero-piece
           >
-            <LandingIcon
-              name="activity"
-              size={26}
-              className="text-primary dark:text-background flex"
-            />
+            <BrandGlyph className="text-primary dark:text-background size-[28px]" />
           </div>
         </div>
       </section>
@@ -595,7 +593,7 @@ export default function LandingPage() {
       <footer className="-mt-8 flex flex-col items-center justify-between gap-5 border-t pt-6 sm:flex-row">
         <div className="flex items-center gap-2.5">
           <div className="bg-primary text-primary-foreground flex size-[26px] items-center justify-center rounded-[9px]">
-            <LandingIcon name="activity" size={13} className="flex" />
+            <BrandGlyph className="size-[14px]" />
           </div>
           <span className="text-[13px] font-medium">Reels Analytics</span>
         </div>
@@ -626,6 +624,7 @@ export default function LandingPage() {
         </span>
       </footer>
 
+      <WebMcp />
       </main>
     </LandingMotion>
   );
