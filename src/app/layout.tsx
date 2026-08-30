@@ -9,6 +9,11 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  // "optional": si la fuente no llega para el primer paint se queda el
+  // fallback y NO hay repintado por swap — ese repintado era lo que Lighthouse
+  // registraba como LCP (~3,3 s en 4G lento). next/font la precarga, así que
+  // en conexiones normales sí entra desde el primer frame.
+  display: "optional",
 });
 
 // Mono para etiquetas técnicas y cifras tabulares (unidades, %, tokens).
@@ -16,6 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  display: "optional",
 });
 
 export const metadata: Metadata = {

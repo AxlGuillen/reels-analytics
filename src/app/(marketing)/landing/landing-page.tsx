@@ -130,7 +130,7 @@ export function LandingPage({ lang }: { lang: Lang }) {
             {copy.hero.kicker}
           </p>
           <h1
-            className="hero-item text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
+            className="hero-slide text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
             style={{ animationDelay: "0.1s" }}
           >
             {copy.hero.h1a}{" "}

@@ -148,12 +148,12 @@ de marketing en Acid Grid, portada del diseño elegido en Claude Design (hero + 
 texturizado, bento del producto, banda parallax "Cada día, una capa más de historia", cómo
 funciona, features, cierre y footer). El proxy deja pasar ambas variantes sin sesión y manda
 `/` anónimo → `/landing` (el resto sigue yendo a `/login?next=`). Server Component con datos
-de muestra reales; el movimiento vive en
-`src/components/landing/landing-motion.tsx` (client, **wrapper con `useGSAP` de
-`@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
-de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
-descarga). Envuelve el `<main>` como scope: selectores acotados y cleanup automático de
-tweens/ScrollTriggers/splits al desmontar. La **intro del hero es CSS puro**
+de muestra reales; el movimiento vive en `src/components/landing/landing-motion.tsx`
+(client, cáscara SIN gsap) + `landing-effects.ts` (**único punto de entrada de GSAP en la
+app**, en un chunk ASYNC: la cáscara lo importa dinámico en `requestIdleCallback` con timeout
+1.5 s — sus ~70 KB fuera del chunk crítico eran el task largo que dominaba el TBT móvil; los
+efectos son todos de scroll y llegar ~1 s tarde es imperceptible). `gsap.context` acota los
+selectores al scope y revierte todo al desmontar. La **intro del hero es CSS puro**
 (`.hero-item`/`.hero-piece` en globals, cascada por `animation-delay` inline): el H1 es el
 elemento LCP y esperar al chunk de GSAP lo retrasaba ~2,5 s en móvil (PageSpeed) — GSAP se
 queda solo con lo ligado al scroll. Contrato por atributos en el markup del server:
@@ -229,12 +229,22 @@ la variante sigue al tema con
 `videos-collection.png` (tira de 3 frames con vistas) está en assets pero aún sin usar.
 Nada de ilustraciones/fotos IA decorativas: solo producto y contenido reales.
 
-**Performance (PageSpeed ~91 → objetivo 95+):** además de la intro CSS del hero (ver arriba),
-`browserslist` en package.json fija Baseline (Chrome/Edge/Firefox 111+, Safari 16.4+) para no
-transpilar ni polyfilear de más (~14 KiB), y `experimental.inlineCss` en next.config mete el
-CSS global en el HTML (el único request que bloqueaba el primer render, ~300 ms). El resto de
-avisos del reporte (reflow forzado de ScrollTrigger, chunk de gsap como "JS sin usar") son el
-costo aceptado del motor de scroll.
+**Performance (auditada con Lighthouse local, 87→94 con throttling real):** herramienta en el
+scratchpad (`bun add lighthouse` + `node …/lighthouse/cli http://localhost:3100/landing
+--throttling-method=devtools --chrome-flags="--headless=new"` con `CHROME_PATH` al Edge del
+sistema; `--throttling-method=devtools` da métricas observadas de verdad — la simulación
+Lantern con tiempos de localhost infla el LCP por artefacto). Decisiones vigentes:
+- Intro CSS del hero (ver arriba) y **H1 con `.hero-slide` (desliza SIN fade)**: nacer en
+  `opacity: 0` excluye al elemento como candidato LCP (la opacidad es solo compositor, sin
+  registro de paint) y Lighthouse coronaba a un elemento menor con repintado tardío.
+- **Fuentes `display: "optional"`** (next/font): sin repintado por swap — ese repintado
+  re-registraba el LCP en 4G lento; con la precarga self-hosted, en conexiones normales la
+  fuente sí entra desde el primer frame.
+- **GSAP diferido a idle** (ver landing-motion arriba): TBT 490→280 ms.
+- `browserslist` Baseline en package.json (menos transpile/polyfills) y
+  `experimental.inlineCss` (el CSS global era el único request render-blocking, ~300 ms).
+- Costo aceptado: el task de hidratación del documento (~335 ms throttled) y los polyfills
+  que Next incluye incondicionalmente (~13 KiB).
 
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
 Next lo inyecta por convención de archivo — no declarar `icons` a mano). El mismo trazo vive como
