@@ -274,6 +274,57 @@
     );
   }
 
+  /* Papel milimétrico: cuadrícula fina + cruces de acento para el hero de la
+     landing (capa absoluta aria-hidden con data-plx="slow"). Distinta de los
+     anillos de las secciones inferiores; alphas sobre tokens → claro y oscuro. */
+  .bg-graph {
+    background-image:
+      /* cruz lima de acento */
+      linear-gradient(
+        color-mix(in oklab, var(--primary) 55%, transparent),
+        color-mix(in oklab, var(--primary) 55%, transparent)
+      ),
+      linear-gradient(
+        color-mix(in oklab, var(--primary) 55%, transparent),
+        color-mix(in oklab, var(--primary) 55%, transparent)
+      ),
+      /* cruz tinta de acento */
+      linear-gradient(
+        color-mix(in oklab, var(--foreground) 22%, transparent),
+        color-mix(in oklab, var(--foreground) 22%, transparent)
+      ),
+      linear-gradient(
+        color-mix(in oklab, var(--foreground) 22%, transparent),
+        color-mix(in oklab, var(--foreground) 22%, transparent)
+      ),
+      /* cuadrícula */
+      repeating-linear-gradient(
+        0deg,
+        color-mix(in oklab, var(--foreground) 4.5%, transparent) 0 1px,
+        transparent 1px 56px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        color-mix(in oklab, var(--foreground) 4.5%, transparent) 0 1px,
+        transparent 1px 56px
+      );
+    background-size:
+      14px 2px,
+      2px 14px,
+      14px 2px,
+      2px 14px,
+      auto,
+      auto;
+    background-position:
+      calc(75% - 6px) 168px,
+      75% calc(168px - 6px),
+      calc(25% - 6px) 392px,
+      25% calc(392px - 6px),
+      0 0,
+      0 0;
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat;
+  }
+
   /* Anillos concéntricos grandes y tenues: textura decorativa para secciones
      planas de la landing (capas absolutas aria-hidden, a menudo con
      data-plx="slow" para que deriven al hacer scroll). Tinta a baja alpha + un
@@ -310,6 +361,47 @@
         transparent 212px
       );
     background-repeat: no-repeat;
+  }
+
+  /* Marca 4XL (BrandGlyph): micro-animación CSS pura. Al hover del tile
+     contenedor (.group) la barra se desliza y el "4" hace un pop sutil; con
+     .brand-glyph-intro además hay una entrada única al cargar (landing).
+     transform-box: fill-box para que scale/translate usen la caja del path. */
+  .brand-glyph-bar,
+  .brand-glyph-four {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .brand-glyph-intro .brand-glyph-bar {
+      animation: brand-bar-slide 0.3s ease-out 0.2s backwards;
+    }
+    .brand-glyph-intro .brand-glyph-four {
+      animation: brand-four-pop 0.3s ease-out 0.2s backwards;
+    }
+    /* Después de las de intro (misma especificidad): el hover debe ganar para
+       poder re-animar un tile que además tuvo entrada. */
+    .group:hover .brand-glyph-bar {
+      animation: brand-bar-slide 0.25s ease-out;
+    }
+    .group:hover .brand-glyph-four {
+      animation: brand-four-pop 0.25s ease-out;
+    }
+  }
+  @keyframes brand-bar-slide {
+    from {
+      transform: translateX(-14%);
+      opacity: 0.3;
+    }
+  }
+  @keyframes brand-four-pop {
+    0% {
+      transform: scale(0.92);
+      opacity: 0.5;
+    }
+    60% {
+      transform: scale(1.06);
+    }
   }
 
   /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */

@@ -1,69 +1,120 @@
-import { appUrl, resourceUrl } from "@/modules/oauth/config";
+import { appUrl, resourceUrl, SCOPE } from "@/modules/oauth/config";
 import { mcpConnectionInfo, PRODUCT_SUMMARY } from "@/modules/mcp/discovery";
 import { MCP_TOOLS } from "@/modules/mcp/catalog";
 import { agentText } from "@/core/lib/agent-response";
+import { COPY, type Lang } from "@/app/(marketing)/landing/content";
 
 export const runtime = "nodejs";
 
 /**
  * Versión markdown de la landing para agentes ("Markdown for Agents"): se sirve
- * directo en /landing.md y por negociación cuando /landing recibe
- * `Accept: text/markdown` (rewrite en next.config). Es contenido CURADO, no una
- * transcripción del HTML — al cambiar la landing de fondo, tocar esto también
- * (nota en CLAUDE.md).
+ * directo en /landing.md (y /landing.md?lang=en) y por negociación cuando
+ * /landing o /en/landing reciben `Accept: text/markdown` (rewrites en
+ * next.config). Es contenido CURADO, no una transcripción del HTML: los pasos y
+ * features salen del mismo `content.ts` que la landing, y el resto (resumen,
+ * conexión MCP) se redacta aquí por idioma.
  */
-export function GET() {
+
+/** Cadenas propias del documento markdown que no existen en la landing HTML. */
+const MD = {
+  es: {
+    summary: PRODUCT_SUMMARY,
+    howTitle: "Cómo funciona (tres pasos, cero mantenimiento)",
+    offersTitle: "Qué ofrece",
+    mcpTitle: "Servidor MCP",
+    toolsTitle: "Tools",
+    linksTitle: "Enlaces",
+    linkLanding: "Landing (HTML)",
+    linkCode: "Código",
+    linkHealth: "Salud del servicio",
+    linkAuth: "Registro para agentes",
+  },
+  en: {
+    summary:
+      "Reels Analytics centralizes a creator's TikTok and Instagram Reels metrics: it stores one daily snapshot per video and turns that history into decisions (which format performs, best day and hour, growth curves, weekly-cohort benchmarks).",
+    howTitle: "How it works (three steps, zero maintenance)",
+    offersTitle: "What it offers",
+    mcpTitle: "MCP server",
+    toolsTitle: "Tools",
+    linksTitle: "Links",
+    linkLanding: "Landing (HTML)",
+    linkCode: "Code",
+    linkHealth: "Service health",
+    linkAuth: "Agent registration guide",
+  },
+} as const;
+
+/** Bloque de conexión al MCP por idioma (el español reusa el de discovery.ts,
+ *  que es el mismo que publica la skill; el inglés lo traduce con las mismas
+ *  URLs). */
+function connectionInfo(lang: Lang): string {
+  if (lang === "es") return mcpConnectionInfo();
+  return [
+    `MCP server (Streamable HTTP): ${resourceUrl()}`,
+    "Authentication: OAuth 2.1 with PKCE S256 and dynamic client registration (RFC 7591) — paste the URL into a Claude/Cowork remote connector and the flow is automatic.",
+    `Scope: ${SCOPE} (read-only).`,
+    `Discovery: ${appUrl()}/.well-known/oauth-protected-resource`,
+    `Agent registration guide: ${appUrl()}/auth.md`,
+  ].join("\n");
+}
+
+export function GET(request: Request) {
+  // Doble detección: `?lang=en` (acceso directo) o pathname bajo `/en/`
+  // (negociación por Accept desde /en/landing: el rewrite conserva la URL
+  // original en `request.url`, así que la query del destination no llega).
+  const url = new URL(request.url);
+  const lang: Lang =
+    url.searchParams.get("lang") === "en" || url.pathname.startsWith("/en/")
+      ? "en"
+      : "es";
   const base = appUrl();
-  const tools = MCP_TOOLS.map((tool) => `- **${tool.title}**: ${tool.description}`)
+  const copy = COPY[lang];
+  const md = MD[lang];
+  const canonicalPath = lang === "en" ? "/en/landing" : "/landing";
+
+  const tools = MCP_TOOLS.map(
+    (tool) => `- **${tool.title}**: ${tool.description}`,
+  ).join("\n");
+  const steps = copy.steps.items
+    .map((step, i) => `${i + 1}. **${step.title}** — ${step.body}`)
+    .join("\n");
+  const features = copy.features.items
+    .map((feature) => `- **${feature.title}**: ${feature.body}`)
     .join("\n");
 
-  const body = `# Reels Analytics — Mide lo que publicas. Entiende lo que crece.
+  const body = `# ${copy.meta.title}
 
-${PRODUCT_SUMMARY}
+${md.summary}
 
-Las APIs oficiales de TikTok e Instagram solo devuelven el presente. Reels
-Analytics guarda un snapshot diario de cada video y convierte esa historia en
-decisiones: qué formato rinde, qué día despegó y contra qué compararte.
+${copy.hero.sub}
 
-## Cómo funciona (tres pasos, cero mantenimiento)
+## ${md.howTitle}
 
-1. **Conecta tus cuentas** — OAuth con TikTok e Instagram; los tokens se
-   refrescan solos antes de usarse.
-2. **El cron captura a diario** — un snapshot por video cada 24 h; la historia
-   se acumula aunque no abras el panel.
-3. **Decide con evidencia** — curvas por video, benchmark contra su semana y un
-   digest cada lunes por Telegram.
+${steps}
 
-## Qué ofrece
+## ${md.offersTitle}
 
-- **Curva por video**: vistas a los 7 días, velocidad inicial y el momento
-  exacto del despegue.
-- **Cohorte semanal**: cada video se compara contra los de su misma semana —
-  el crecimiento de audiencia no infla el veredicto.
-- **Digest por Telegram**: cada lunes, vistas, seguidores, secciones y mejor
-  video; además vigila que la ingesta no se caiga.
-- **Habla con tus datos (MCP)**: servidor MCP de solo lectura para preguntarle
-  a Claude por tu analítica desde donde escribes.
+${features}
 
-## Servidor MCP
+## ${md.mcpTitle}
 
-${mcpConnectionInfo()}
+${connectionInfo(lang)}
 
-### Tools
+### ${md.toolsTitle}
 
 ${tools}
 
-## Enlaces
+## ${md.linksTitle}
 
-- Landing (HTML): ${base}/landing
-- Código: https://github.com/AxlGuillen/reels-analytics
-- Salud del servicio: ${base}/api/health
-- Registro para agentes: ${base}/auth.md
+- ${md.linkLanding}: ${base}${canonicalPath}
+- ${md.linkCode}: https://github.com/AxlGuillen/reels-analytics
+- ${md.linkHealth}: ${base}/api/health
+- ${md.linkAuth}: ${base}/auth.md
 - MCP: ${resourceUrl()}
 `;
 
   // Extra: señala la relación con la versión HTML.
   return agentText(body, "text/markdown; charset=utf-8", {
-    Link: `<${base}/landing>; rel="canonical"; type="text/html"`,
+    Link: `<${base}${canonicalPath}>; rel="canonical"; type="text/html"`,
   });
 }

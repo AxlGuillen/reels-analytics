@@ -135,11 +135,12 @@ paso a paso sobre los elementos reales para que alguien nuevo entienda cada pág
   "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
   con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
 
-**Landing pública (`/landing`, grupo `(marketing)`):** puerta de entrada de marketing en Acid
-Grid, portada del diseño elegido en Claude Design (hero + collage texturizado, bento del
-producto, banda parallax "Cada día, una capa más de historia", cómo funciona, features, cierre
-y footer). El proxy la deja pasar sin sesión y manda `/` anónimo → `/landing` (el resto sigue
-yendo a `/login?next=`). Server Component con datos de muestra reales; el movimiento vive en
+**Landing pública (`/landing` es + `/en/landing` en, grupo `(marketing)`):** puerta de entrada
+de marketing en Acid Grid, portada del diseño elegido en Claude Design (hero + collage
+texturizado, bento del producto, banda parallax "Cada día, una capa más de historia", cómo
+funciona, features, cierre y footer). El proxy deja pasar ambas variantes sin sesión y manda
+`/` anónimo → `/landing` (el resto sigue yendo a `/login?next=`). Server Component con datos
+de muestra reales; el movimiento vive en
 `src/components/landing/landing-motion.tsx` (client, **wrapper con `useGSAP` de
 `@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
 de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
@@ -149,7 +150,10 @@ tweens/ScrollTriggers/splits al desmontar. Contrato por atributos en el markup d
 `data-reveal-stagger` (hijos en cascada), `data-bars`/`data-bar` y `data-bars-x`/`data-bar-x`
 (barras que crecen con scaleY/scaleX, nunca height/width), `data-split` (titular palabra por
 palabra con SplitText) y `data-plx="slow|mid|fast"` dentro de `data-plx-scope` (parallax con
-scrub, ±36/±90/±150 px). Respeta `prefers-reduced-motion` vía `gsap.matchMedia` y sin JS la
+`scrub: 0.6`, ±60/±130/±220 px; la capa `slow` — fondos — viaja en sentido CONTRARIO al resto:
+el movimiento relativo entre capas es lo que se lee como profundidad, y por eso las capas
+`slow` llevan sobre-alto/-inset extra para no exponer bordes). Respeta
+`prefers-reduced-motion` vía `gsap.matchMedia` y sin JS la
 página queda en su composición estática (todo usa `gsap.from`: el SSR es el estado final).
 Las skills oficiales de GSAP viven en `.agents/skills/gsap-*` (consultarlas al tocar
 animaciones). **Regla: no importar `gsap` ni `@gsap/react` fuera de
@@ -161,7 +165,9 @@ full-bleed** (breakout `w-screen` + márgenes negativos, sin transform para no p
 el `overflow-x-clip` del layout de marketing evita la scrollbar horizontal, y el contenido
 vuelve a la retícula con un contenedor interno de 1180px); textura `.bg-rings` (anillos
 concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="slow"` detrás de
-"Cómo funciona" y features; e **iconos animados** vía `LandingIcon`
+"Cómo funciona" y features, y **`.bg-graph`** (papel milimétrico: cuadrícula fina + dos cruces
+de acento, una lima) detrás del hero — con `mask-image` de desvanecido para morir antes del
+bento y NO repetir los anillos de abajo; e **iconos animados** vía `LandingIcon`
 (`src/components/landing/landing-icon.tsx`, client, mapa nombre→icono de `@animateicons`):
 animan una vez al entrar al viewport (IntersectionObserver, se salta con reduced-motion) y en
 hover — no usa GSAP. Jerarquía por tono extrapolada del bento: card 02 de los pasos en oscuro y
@@ -169,15 +175,43 @@ la card MCP de features en lima (una card de acento por rejilla). La landing sop
 oscuro**: `ThemeToggle` con variante `pill` en el nav (píldora de 38px, a juego con los CTAs);
 los dos únicos usos de lima-sobre-superficie-invertida llevan su swap `dark:`.
 
+**i18n de la landing (es/en, sin librería):** TODO el copy vive en
+`(marketing)/landing/content.ts` (`LandingCopy` tipado, instancias `es`/`en` + helper
+`landingMetadata`); el markup es UNO (`landing/landing-page.tsx`, recibe `lang`) y las rutas
+quedan finas: `/landing` (español, canonical histórico y `x-default`) y `/en/landing`. Metadata
+por idioma en cada `page.tsx` (título/descripción, `og:locale` es_MX/en_US, canonical propio y
+`alternates.languages` con hreflang cruzado); el layout de marketing ya NO define metadata. El
+root layout fija `lang="es"` y `/en/landing` lo corrige tras hidratar con `SetHtmlLang`
+(client-effect mínimo; los crawlers leen el idioma por hreflang/og:locale del SSR). Toggle de
+idioma: píldora EN/ES en el nav + link en el footer (links cruzados, server-safe). Los ids de
+sección (`#producto`, `#como-funciona`, `#mcp`) son contrato con nav/WebMCP y NO se traducen.
+`/landing.md` acepta `?lang=en` (y la negociación por `Accept` desde `/en/landing`; detecta el
+idioma por query O pathname, porque el rewrite conserva la URL original) reusando el mismo
+`COPY`. **Regla editorial: al tocar copy de la landing se tocan AMBOS idiomas de `content.ts`
+y se revisa `landing.md`.** Ojo con ese archivo: los pasos y features se derivan de `COPY` (se
+actualizan solos), pero el resumen inglés (`MD.en.summary`) y el bloque de conexión de
+`connectionInfo("en")` son cadenas sueltas — el español sale de `modules/mcp/discovery.ts`,
+que también alimenta la skill, y el inglés se mantiene A MANO ahí mismo.
+
+El idioma del contenido se marca con `lang` en el propio `<main>` (llega en el SSR, así que un
+lector de pantalla no anuncia `/en/landing` en español antes de hidratar); `SetHtmlLang` solo
+corrige el elemento raíz después, para las heurísticas de traducción del navegador. Sitemap con `alternates.languages`, robots permite `/en/landing` y
+el header `Link` de next.config cubre las tres entradas públicas.
+
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
 Next lo inyecta por convención de archivo — no declarar `icons` a mano). El mismo trazo vive como
 componente en `src/components/brand-mark.tsx` (`BrandGlyph`, SVG en `currentColor`): es la marca
 de TODOS los tiles de brand (rail del sidebar, header/drawer móvil, login, nav/footer/collage de
 la landing) — el contraste lo pone la zona (tile lima → glifo tinta; superficie oscura → glifo
-lima con swap `dark:`). No volver a usar el icono `Activity` como marca. El root layout define
-`metadataBase` (desde `APP_URL`), `title.template` ("%s · Reels Analytics") y `viewport.themeColor`
-por tema; el layout de marketing agrega canonical `/landing`, Open Graph y Twitter card (usa
-`title.absolute` para esquivar el template, porque su título ya lleva la marca).
+lima con swap `dark:`). No volver a usar el icono `Activity` como marca. Los dos paths del
+glifo llevan clases (`brand-glyph-bar`/`brand-glyph-four`) para su **micro-animación CSS pura**
+(bloque "Marca 4XL" en globals.css, sin GSAP — el glifo también vive en el dashboard): al hover
+del tile contenedor (clase `group` en los tiles de rail/nav/footer/login) la barra se desliza y
+el "4" hace un pop de ~250 ms; el tile del nav de la landing añade `brand-glyph-intro` (entrada
+única al cargar). Todo bajo `prefers-reduced-motion: no-preference`. El root layout define
+`metadataBase` (desde `APP_URL`), `lang="es"`, `title.template` ("%s · Reels Analytics") y
+`viewport.themeColor` por tema; la metadata de la landing es por idioma (ver i18n arriba) con
+`title.absolute` para esquivar el template, porque su título ya lleva la marca.
 
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
@@ -249,20 +283,34 @@ agentes/crawlers, todos fuera del proxy (extensiones y `.well-known` ya excluido
 con `APP_URL` como base:
 - `robots.txt` (route handler, no la convención tipada: lleva líneas `Content-Signal`) con
   reglas explícitas para crawlers IA. **Política del creador: `search=yes, ai-input=yes,
-  ai-train=no`.** `sitemap.ts` solo lista `/landing`.
-- Headers `Link` (RFC 8288) en `/` y `/landing` vía `next.config.ts`, y **Markdown para
-  agentes**: `/landing` con `Accept: text/markdown` reescribe a `/landing.md` (rewrite
-  `beforeFiles` con condición `has`). **`landing.md` es contenido curado: al cambiar la landing
-  de fondo, actualizarlo también.**
+  ai-train=no`.** `sitemap.ts` lista `/landing` y `/en/landing` (con hreflang).
+- Headers `Link` (RFC 8288) en `/`, `/landing` y `/en/landing` vía `next.config.ts`, y
+  **Markdown para agentes**: `/landing` (y `/en/landing`) con `Accept: text/markdown`
+  reescriben a `/landing.md` (rewrites `beforeFiles` con condición `has`). **`landing.md` es
+  contenido curado (pasos/features salen de `content.ts`, en ambos idiomas): al cambiar la
+  landing de fondo, revisarlo también.**
 - `/.well-known/`: `api-catalog` (RFC 9727), `mcp/server-card.json` (SEP-1649, draft),
-  `ai-catalog.json` (ARD), `agent-card.json` (A2A — redactado honesto: somos un servicio de
-  datos vía MCP, sin endpoint JSON-RPC A2A), `agent-skills/index.json` + su `SKILL.md` (el
+  `ai-catalog.json` (ARD — cada entrada usa `identifier` con su URN `urn:air:…`, NO `id`),
+  `agent-card.json` (A2A — redactado honesto: somos un servicio de datos vía MCP, sin endpoint
+  JSON-RPC A2A; publica `url`+`preferredTransport` **y** `supportedInterfaces`, que declaran lo
+  mismo para clientes de dos épocas del spec), `agent-skills/index.json` + su `SKILL.md` (el
   sha256 se calcula del mismo módulo: `modules/mcp/discovery.ts`, que centraliza también el
   resumen del producto). `/auth.md` (workos/auth.md) + bloque `agent_auth` en el AS metadata.
+- **La superficie de auth para agentes va en INGLÉS** (decisión del creador: es el idioma del
+  ecosistema que la consume) — `auth.md`, cuyo H1 debe ser literalmente `# Auth.md — …` porque
+  los validadores lo buscan como heading, y las descripciones de scope del agent card. La
+  pantalla de consentimiento sigue en español: la ve el creador, no un agente.
+- El **Protected Resource Metadata** (RFC 9728, `oauth-protected-resource/[[...path]]`) se
+  redacta a mano en vez de usar `protectedResourceHandler` de mcp-handler: ese helper solo emite
+  `resource` y `authorization_servers`, y sin `scopes_supported` el agente no sabe qué scope
+  pedir. Si se toca, `resource` y `authorization_servers` deben conservar su valor exacto (los
+  clientes ya autorizados dependen de ellos).
 - WebMCP: `src/components/landing/web-mcp.tsx` (client, feature-detect de
   `navigator.modelContext`; no-op donde no existe) con 3 tools simples.
-- **No cubiertos por hosting en Vercel:** DNS-AID (requiere zona DNS propia + DNSSEC;
-  `*.vercel.app` no lo permite) y Web Bot Auth (verificación de firmas a nivel CDN).
+- **No cubiertos por hosting en Vercel:** DNS-AID (requiere zona DNS propia + DNSSEC para
+  publicar los SVCB/HTTPS `_index._agents.…`; `*.vercel.app` no lo permite — solo se
+  desbloquea comprando dominio propio, y eso arrastra migrar `APP_URL`, que es el issuer OAuth
+  y la identidad de los conectores MCP ya autorizados) y Web Bot Auth (firmas a nivel CDN).
 
 ## Stack
 

@@ -255,7 +255,7 @@ export function DesktopSidebar({
             !collapsed && "w-full gap-2.5 px-0.5",
           )}
         >
-          <span className="bg-primary text-primary-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px]">
+          <span className="group bg-primary text-primary-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px]">
             <BrandGlyph className="size-[20px]" />
           </span>
           {!collapsed && (
@@ -361,7 +361,7 @@ export function MobileNav({
         >
           <MenuIcon size={20} />
         </button>
-        <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-[10px]">
+        <span className="group bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-[10px]">
           <BrandGlyph className="size-[16px]" />
         </span>
         <span className="text-sm font-medium tracking-tight">Reels Analytics</span>
@@ -376,7 +376,7 @@ export function MobileNav({
           />
           <div className="bg-sidebar text-sidebar-foreground absolute inset-y-0 left-0 flex w-64 flex-col gap-1 rounded-r-[26px] p-4">
             <div className="mb-3 flex items-center gap-2.5">
-              <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-[12px]">
+              <span className="group bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-[12px]">
                 <BrandGlyph className="size-[17px]" />
               </span>
               <span className="flex-1 text-sm font-medium">Reels Analytics</span>

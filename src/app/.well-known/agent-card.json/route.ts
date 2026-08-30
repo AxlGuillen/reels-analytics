@@ -19,6 +19,11 @@ export function GET() {
     description: `${PRODUCT_SUMMARY} No es un agente conversacional: expone datos vía MCP (Streamable HTTP, OAuth 2.1).`,
     url: resourceUrl(),
     preferredTransport: "HTTP+JSON",
+    // `url` + `preferredTransport` es la forma de la 0.3.0; las revisiones
+    // nuevas del spec piden la lista explícita. Se publican las dos porque
+    // declaran lo mismo (una sola interfaz: el MCP) y así valen para clientes
+    // de ambas épocas.
+    supportedInterfaces: [{ url: resourceUrl(), transport: "HTTP+JSON" }],
     provider: { organization: "axelsine", url: `${appUrl()}/landing` },
     capabilities: {
       streaming: false,
@@ -34,7 +39,8 @@ export function GET() {
           authorizationCode: {
             authorizationUrl: `${appUrl()}/oauth/authorize`,
             tokenUrl: `${appUrl()}/api/oauth/token`,
-            scopes: { [SCOPE]: "Lectura de la analítica del creador" },
+            // En inglés como el resto de la superficie de auth para agentes.
+            scopes: { [SCOPE]: "Read the creator's analytics" },
           },
         },
       },

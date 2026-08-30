@@ -43,8 +43,8 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
-  // La landing es la puerta pública: no exige sesión.
-  const isLanding = pathname === "/landing";
+  // La landing es la puerta pública (en sus dos idiomas): no exige sesión.
+  const isLanding = pathname === "/landing" || pathname === "/en/landing";
 
   // Sin sesión: la raíz manda a la landing (marketing); el resto al login,
   // recordando a dónde iba. El `next` importa para /oauth/authorize: si se

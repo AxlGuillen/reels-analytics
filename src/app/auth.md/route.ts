@@ -8,54 +8,59 @@ export const runtime = "nodejs";
  * autenticación para agentes, en markdown legible por máquina y humano.
  * Route handler (no archivo en public/) para interpolar APP_URL y fijar el
  * content-type.
+ *
+ * En INGLÉS a propósito (decisión del creador): la superficie de auth para
+ * agentes se estandariza en inglés, que es el idioma del ecosistema y de los
+ * clientes que la consumen. El título literal "Auth.md" es parte de la
+ * convención — los validadores lo buscan como heading.
  */
 export function GET() {
   const base = appUrl();
-  const body = `# Autenticación para agentes — Reels Analytics
+  const body = `# Auth.md — Reels Analytics
 
-Este sitio expone un **servidor MCP de solo lectura** con la analítica del
-creador. El dashboard humano es privado; los agentes se autentican por OAuth.
+This site exposes a **read-only MCP server** with the creator's analytics. The
+human dashboard is private; agents authenticate through OAuth.
 
-## Recurso protegido
+## Protected resource
 
 - MCP (Streamable HTTP): \`${resourceUrl()}\`
-- Scope único: \`${SCOPE}\` (solo lectura; no publica ni modifica nada)
-- Metadata del recurso: \`${base}/.well-known/oauth-protected-resource\`
+- Single scope: \`${SCOPE}\` (read-only; it never publishes or modifies anything)
+- Resource metadata: \`${base}/.well-known/oauth-protected-resource\`
 
-## Registro (Dynamic Client Registration, RFC 7591)
+## Registration (Dynamic Client Registration, RFC 7591)
 
-No hay relación previa: regístrate solo.
+There is no prior relationship: register yourself.
 
 \`\`\`
 POST ${base}/api/oauth/register
 Content-Type: application/json
 
-{ "client_name": "Mi agente", "redirect_uris": ["https://tu-app.example/callback"] }
+{ "client_name": "My agent", "redirect_uris": ["https://your-app.example/callback"] }
 \`\`\`
 
-Los \`redirect_uris\` deben ser HTTPS (o HTTP solo en loopback), con
-coincidencia exacta después. Cliente público: sin \`client_secret\`.
+\`redirect_uris\` must be HTTPS (or HTTP on loopback only), and they are matched
+exactly from then on. Public client: no \`client_secret\`.
 
-## Flujo (OAuth 2.1)
+## Flow (OAuth 2.1)
 
-1. \`GET ${base}/oauth/authorize\` con \`response_type=code\`, tu \`client_id\`,
-   \`redirect_uri\`, \`state\` y PKCE (\`code_challenge\`, método \`S256\`
-   obligatorio). El dueño del sitio inicia sesión y autoriza.
-2. Canjea el código en \`POST ${base}/api/oauth/token\`
-   (\`grant_type=authorization_code\` + \`code_verifier\`). Los códigos son de
-   un solo uso.
-3. Refresca con \`grant_type=refresh_token\` — hay **rotación**: cada refresh
-   invalida el anterior, y reusar uno viejo revoca la familia completa.
-4. Llama al MCP con \`Authorization: Bearer <access_token>\` (los tokens nunca
-   van en la URL).
+1. \`GET ${base}/oauth/authorize\` with \`response_type=code\`, your
+   \`client_id\`, \`redirect_uri\`, \`state\` and PKCE (\`code_challenge\`, with
+   method \`S256\` — mandatory). The site owner signs in and grants access.
+2. Exchange the code at \`POST ${base}/api/oauth/token\`
+   (\`grant_type=authorization_code\` + \`code_verifier\`). Codes are single-use.
+3. Refresh with \`grant_type=refresh_token\` — refresh tokens **rotate**: every
+   refresh invalidates the previous one, and replaying an old one revokes the
+   whole family.
+4. Call the MCP server with \`Authorization: Bearer <access_token>\` (tokens
+   never travel in the URL).
 
-Descubrimiento completo: \`${base}/.well-known/oauth-authorization-server\`.
+Full discovery: \`${base}/.well-known/oauth-authorization-server\`.
 
-## Notas
+## Notes
 
-- Los tokens se emiten con audiencia ligada al MCP: no sirven para otros
-  recursos ni se aceptan tokens de terceros.
-- Guía de uso de las tools: \`${base}/.well-known/agent-skills/reels-analytics-mcp/SKILL.md\`
+- Tokens are issued with an audience bound to the MCP server: they are not
+  valid for any other resource, and third-party tokens are not accepted.
+- Tool usage guide: \`${base}/.well-known/agent-skills/reels-analytics-mcp/SKILL.md\`
 `;
 
   return agentText(body);
