@@ -676,6 +676,22 @@ export function LandingPage({ lang }: { lang: Lang }) {
         </span>
       </footer>
 
+      {/* Indicador de progreso de scroll: cápsula lima creciendo sobre un riel
+          fino (eco de las barras de cápsula del dashboard). Decorativo puro:
+          pointer-events-none + aria-hidden; solo desktop; sin JS o con
+          reduced-motion queda el riel vacío casi invisible (motion-reduce lo
+          oculta del todo). El fill lo anima LandingMotion vía
+          [data-scroll-progress]. */}
+      <div
+        className="pointer-events-none fixed top-1/2 right-4 z-40 hidden h-44 w-[5px] -translate-y-1/2 overflow-hidden rounded-full bg-border motion-reduce:hidden lg:block"
+        aria-hidden
+      >
+        <div
+          className="bg-primary h-full w-full origin-top scale-y-0 rounded-full"
+          data-scroll-progress
+        />
+      </div>
+
       <WebMcp />
       </main>
     </LandingMotion>

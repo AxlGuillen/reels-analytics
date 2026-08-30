@@ -27,6 +27,7 @@ import { useGSAP } from "@gsap/react";
  * - `data-bars` / `data-bar`      → barras verticales crecen (scaleY).
  * - `data-bars-x` / `data-bar-x`  → barras horizontales crecen (scaleX).
  * - `data-split`           → titular se revela palabra por palabra (SplitText).
+ * - `data-scroll-progress`  → cápsula del borde: scaleY = avance del scroll.
  * - `data-plx="slow|mid|fast"` dentro de `data-plx-scope` → parallax con
  *   scrub (±60/±130/±220 px; `slow` viaja en sentido contrario) ligado al
  *   paso de su scope por el viewport.
@@ -110,6 +111,19 @@ export function LandingMotion({ children }: { children: React.ReactNode }) {
             ease: "power2.out",
             stagger: 0.05,
             scrollTrigger: onEnter(el, "top 80%"),
+          });
+        }
+
+        // Indicador del borde: la cápsula crece con el avance TOTAL de la
+        // página (start 0 → end "max"). El estado inicial (scale-y-0) viene
+        // del CSS: sin JS el riel queda vacío, no lleno.
+        for (const el of gsap.utils.toArray<HTMLElement>(
+          "[data-scroll-progress]",
+        )) {
+          gsap.to(el, {
+            scaleY: 1,
+            ease: "none",
+            scrollTrigger: { start: 0, end: "max", scrub: 0.4 },
           });
         }
 

@@ -178,7 +178,11 @@ vuelve a la retícula con un contenedor interno de 1180px); textura `.bg-rings` 
 concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="slow"` detrás de
 "Cómo funciona" y features, y **`.bg-graph`** (papel milimétrico: cuadrícula fina + dos cruces
 de acento, una lima) detrás del hero — con `mask-image` de desvanecido para morir antes del
-bento y NO repetir los anillos de abajo; e **iconos animados** vía `LandingIcon`
+bento y NO repetir los anillos de abajo; **indicador de scroll** en el borde derecho
+(riel `bg-border` de 5px fijo y centrado, cápsula `bg-primary` que crece con el avance total de
+la página vía `data-scroll-progress`, scaleY con scrub; decorativo puro: `aria-hidden` +
+`pointer-events-none`, solo desktop, `motion-reduce:hidden`, y `scale-y-0` en CSS para que sin
+JS quede el riel vacío, no lleno); e **iconos animados** vía `LandingIcon`
 (`src/components/landing/landing-icon.tsx`, client, mapa nombre→icono de `@animateicons`):
 animan una vez al entrar al viewport (IntersectionObserver, se salta con reduced-motion) y en
 hover — no usa GSAP. Jerarquía por tono extrapolada del bento: card 02 de los pasos en oscuro y
