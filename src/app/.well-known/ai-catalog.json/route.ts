@@ -26,7 +26,8 @@ export function GET() {
     },
     entries: [
       {
-        id: `urn:air:${host}:mcp:analytics`,
+        // El spec ARD nombra este campo `identifier` (no `id`).
+        identifier: `urn:air:${host}:mcp:analytics`,
         displayName: "Servidor MCP de analítica del creador",
         type: "application/json",
         url: resourceUrl(),
@@ -39,7 +40,7 @@ export function GET() {
         ],
       },
       {
-        id: `urn:air:${host}:api:health`,
+        identifier: `urn:air:${host}:api:health`,
         displayName: "Health check del servicio",
         type: "application/json",
         url: `${appUrl()}/api/health`,

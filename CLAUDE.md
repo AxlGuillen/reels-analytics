@@ -283,14 +283,27 @@ con `APP_URL` como base:
   contenido curado (pasos/features salen de `content.ts`, en ambos idiomas): al cambiar la
   landing de fondo, revisarlo también.**
 - `/.well-known/`: `api-catalog` (RFC 9727), `mcp/server-card.json` (SEP-1649, draft),
-  `ai-catalog.json` (ARD), `agent-card.json` (A2A — redactado honesto: somos un servicio de
-  datos vía MCP, sin endpoint JSON-RPC A2A), `agent-skills/index.json` + su `SKILL.md` (el
+  `ai-catalog.json` (ARD — cada entrada usa `identifier` con su URN `urn:air:…`, NO `id`),
+  `agent-card.json` (A2A — redactado honesto: somos un servicio de datos vía MCP, sin endpoint
+  JSON-RPC A2A; publica `url`+`preferredTransport` **y** `supportedInterfaces`, que declaran lo
+  mismo para clientes de dos épocas del spec), `agent-skills/index.json` + su `SKILL.md` (el
   sha256 se calcula del mismo módulo: `modules/mcp/discovery.ts`, que centraliza también el
   resumen del producto). `/auth.md` (workos/auth.md) + bloque `agent_auth` en el AS metadata.
+- **La superficie de auth para agentes va en INGLÉS** (decisión del creador: es el idioma del
+  ecosistema que la consume) — `auth.md`, cuyo H1 debe ser literalmente `# Auth.md — …` porque
+  los validadores lo buscan como heading, y las descripciones de scope del agent card. La
+  pantalla de consentimiento sigue en español: la ve el creador, no un agente.
+- El **Protected Resource Metadata** (RFC 9728, `oauth-protected-resource/[[...path]]`) se
+  redacta a mano en vez de usar `protectedResourceHandler` de mcp-handler: ese helper solo emite
+  `resource` y `authorization_servers`, y sin `scopes_supported` el agente no sabe qué scope
+  pedir. Si se toca, `resource` y `authorization_servers` deben conservar su valor exacto (los
+  clientes ya autorizados dependen de ellos).
 - WebMCP: `src/components/landing/web-mcp.tsx` (client, feature-detect de
   `navigator.modelContext`; no-op donde no existe) con 3 tools simples.
-- **No cubiertos por hosting en Vercel:** DNS-AID (requiere zona DNS propia + DNSSEC;
-  `*.vercel.app` no lo permite) y Web Bot Auth (verificación de firmas a nivel CDN).
+- **No cubiertos por hosting en Vercel:** DNS-AID (requiere zona DNS propia + DNSSEC para
+  publicar los SVCB/HTTPS `_index._agents.…`; `*.vercel.app` no lo permite — solo se
+  desbloquea comprando dominio propio, y eso arrastra migrar `APP_URL`, que es el issuer OAuth
+  y la identidad de los conectores MCP ya autorizados) y Web Bot Auth (firmas a nivel CDN).
 
 ## Stack
 
