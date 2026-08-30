@@ -26,13 +26,14 @@ import { useGSAP } from "@gsap/react";
  * - `data-bars-x` / `data-bar-x`  → barras horizontales crecen (scaleX).
  * - `data-split`           → titular se revela palabra por palabra (SplitText).
  * - `data-plx="slow|mid|fast"` dentro de `data-plx-scope` → parallax con
- *   scrub (±28/±70/±120 px) ligado al paso de la banda por el viewport.
+ *   scrub (±60/±130/±220 px; `slow` viaja en sentido contrario) ligado al
+ *   paso de su scope por el viewport.
  */
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
-// La banda parallax es full-bleed: con más lienzo, más recorrido por capa.
-const PLX_TRAVEL: Record<string, number> = { slow: 36, mid: 90, fast: 150 };
+// Recorridos amplios (la banda es full-bleed) — sin esto el efecto no se nota.
+const PLX_TRAVEL: Record<string, number> = { slow: 60, mid: 130, fast: 220 };
 
 /** Trigger estándar de los efectos de entrada: al asomarse, una sola vez. */
 const onEnter = (trigger: Element, start = "top 85%") => ({
@@ -127,22 +128,26 @@ export function LandingMotion({ children }: { children: React.ReactNode }) {
           });
         }
 
-        // Parallax de la banda: tres velocidades ligadas al scroll (scrub)
-        // mientras su `data-plx-scope` cruza el viewport.
+        // Parallax: tres velocidades ligadas al scroll mientras su
+        // `data-plx-scope` cruza el viewport. La capa `slow` (fondos) viaja en
+        // sentido CONTRARIO al resto: el movimiento relativo entre capas es lo
+        // que se lee como profundidad. `scrub: 0.6` añade un pelín de lag que
+        // hace el efecto visible incluso en scrolls rápidos.
         for (const el of gsap.utils.toArray<HTMLElement>("[data-plx]")) {
           const travel = PLX_TRAVEL[el.dataset.plx ?? ""];
           if (!travel) continue;
+          const direction = el.dataset.plx === "slow" ? -1 : 1;
           gsap.fromTo(
             el,
-            { y: travel },
+            { y: travel * direction },
             {
-              y: -travel,
+              y: -travel * direction,
               ease: "none",
               scrollTrigger: {
                 trigger: el.closest<HTMLElement>("[data-plx-scope]") ?? el,
                 start: "top bottom",
                 end: "bottom top",
-                scrub: true,
+                scrub: 0.6,
               },
             },
           );

@@ -14,8 +14,9 @@ export function BrandGlyph({ className }: { className?: string }) {
       aria-hidden
     >
       <g transform="translate(8,14)">
-        <path d="M0 52 H104 V66 H0 Z" />
-        <path d="M66 0 H80 V78 H104 V92 H66 V20 L26 60 H6 Z" />
+        {/* Clases para la micro-animación CSS (globals: "Marca 4XL"). */}
+        <path className="brand-glyph-bar" d="M0 52 H104 V66 H0 Z" />
+        <path className="brand-glyph-four" d="M66 0 H80 V78 H104 V92 H66 V20 L26 60 H6 Z" />
       </g>
     </svg>
   );

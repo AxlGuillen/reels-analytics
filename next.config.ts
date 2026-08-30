@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async headers() {
     return [
-      // Descubrimiento para agentes (RFC 8288) en las dos entradas públicas.
-      ...["/", "/landing"].map((source) => ({
+      // Descubrimiento para agentes (RFC 8288) en las entradas públicas.
+      ...["/", "/landing", "/en/landing"].map((source) => ({
         source,
         headers: [
           {
@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
           source: "/landing",
           has: [{ type: "header", key: "accept", value: ".*text/markdown.*" }],
           destination: "/landing.md",
+        },
+        {
+          source: "/en/landing",
+          has: [{ type: "header", key: "accept", value: ".*text/markdown.*" }],
+          destination: "/landing.md?lang=en",
         },
       ],
       afterFiles: [],

@@ -42,7 +42,7 @@ export default async function LoginPage({
           <div className="bg-halftone pointer-events-none absolute inset-0" />
 
           <div className="relative flex items-center gap-2.5">
-            <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-[14px]">
+            <span className="group bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-[14px]">
               <BrandGlyph className="size-[19px]" />
             </span>
             <span className="text-[13px] font-medium tracking-[-0.01em]">

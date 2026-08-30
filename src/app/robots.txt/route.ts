@@ -40,6 +40,7 @@ function rulesFor(agent: string): string {
     `User-agent: ${agent}`,
     "Allow: /landing",
     "Allow: /landing.md",
+    "Allow: /en/landing",
     "Allow: /login",
     ...DISALLOW.map((path) => `Disallow: ${path}`),
   ].join("\n");
