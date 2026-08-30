@@ -1,3 +1,4 @@
+import { PageTour } from "@/components/tour/page-tour";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -48,7 +49,7 @@ export default async function McpPage() {
         </p>
       </header>
 
-      <Card>
+      <Card data-tour="mcp-servidor">
         <CardHeader>
           <CardTitle className="text-sm">Dirección del servidor</CardTitle>
           <CardDescription>
@@ -107,7 +108,7 @@ export default async function McpPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-tour="mcp-conectores">
         <CardHeader>
           <CardTitle className="text-sm">Conectores autorizados</CardTitle>
           <CardDescription>
@@ -148,7 +149,7 @@ export default async function McpPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-tour="mcp-tools">
         <CardHeader>
           <CardTitle className="text-sm">
             Tools disponibles ({MCP_TOOLS.length})
@@ -175,6 +176,7 @@ export default async function McpPage() {
           </ul>
         </CardContent>
       </Card>
+      <PageTour route="/settings/mcp" />
     </div>
   );
 }

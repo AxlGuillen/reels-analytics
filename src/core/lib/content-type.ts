@@ -15,7 +15,8 @@ export type ContentTypeKey =
   | "news"
   | "mundial2026"
   | "cumpleaneros"
-  | "soloqchallenge2026";
+  | "soloqchallenge2026"
+  | "debatelolero";
 
 export interface ContentTypeDef {
   /**
@@ -34,7 +35,13 @@ export const CONTENT_TYPES: Record<ContentTypeKey, ContentTypeDef> = {
   duiyhal: { tags: ["duiyhal"], label: "Dui y Hal" },
   news: { tags: ["news"], label: "Noticias" },
   mundial2026: { tags: ["mundial2026", "mundial"], label: "Mundial 2026" },
-  cumpleaneros: { tags: ["cumpleañeros"], label: "Cumpleañeros" },
+  // La sección de cumpleaños cambió de tag con el tiempo: el canónico es el
+  // vigente (#cumplelolero) y las grafías viejas quedan como alias para no
+  // perder la historia (jul 2026 usó tres variantes distintas).
+  cumpleaneros: {
+    tags: ["cumplelolero", "cumpleañeros", "cumpleaños", "cumpleanos"],
+    label: "Cumplelolero",
+  },
   // Cobertura del SoloQ Challenge 2026: tipo ligado a un EVENTO con fecha de
   // fin (~mediados de agosto 2026). Cuando termine, deja de recibir videos
   // nuevos pero se conserva para poder mirar hacia atrás cómo rindió.
@@ -42,6 +49,8 @@ export const CONTENT_TYPES: Record<ContentTypeKey, ContentTypeDef> = {
     tags: ["soloqchallenge2026"],
     label: "SoloQ Challenge",
   },
+  // Cierre del formato concepto → explicación → debate (ago 2026).
+  debatelolero: { tags: ["debatelolero"], label: "Debate lolero" },
 };
 
 /** Etiqueta para los videos sin ningún tag de tipo. */
@@ -60,6 +69,7 @@ const PRECEDENCE: ContentTypeKey[] = [
   "dui",
   "news",
   "mundial2026",
+  "debatelolero",
   "cumpleaneros",
   "audioviral",
 ];

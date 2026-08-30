@@ -1,5 +1,6 @@
 import { CaptureButton } from "@/components/dashboard/capture-button";
 import { RangeSelect } from "@/components/dashboard/range-select";
+import { PageTour } from "@/components/tour/page-tour";
 import { TikTokPanel } from "@/components/tiktok-panel";
 import { readBreakoutIds } from "@/modules/analytics/breakouts";
 import { getSession } from "@/modules/tiktok/session";
@@ -22,7 +23,10 @@ export default async function TikTokPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header
+        data-tour="rango"
+        className="flex flex-wrap items-end justify-between gap-4"
+      >
         <div>
           <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">TikTok</h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -47,6 +51,7 @@ export default async function TikTokPage({
       )}
 
       <TikTokPanel result={result} breakouts={breakouts} />
+      <PageTour route="/tiktok" />
     </div>
   );
 }

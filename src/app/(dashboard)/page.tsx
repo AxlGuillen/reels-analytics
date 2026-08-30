@@ -12,6 +12,7 @@ import {
 // lucide v1 quitó los iconos de marca; el de Instagram vive en animateicons.
 import { InstagramIcon } from "@animateicons/react/lucide";
 import { PeriodNav } from "@/components/dashboard/period-nav";
+import { PageTour } from "@/components/tour/page-tour";
 import { formatCount } from "@/core/lib/format";
 import { contentHref, type ContentTypeKey } from "@/core/lib/content-type";
 import {
@@ -68,7 +69,7 @@ function ProgressCapsules({
                   : "bg-foreground h-9 flex-1 rounded-[9px]"
                 : tone === "onAccent"
                   ? "border-foreground/30 h-9 flex-1 rounded-[9px] border border-dashed"
-                  : "border-border h-9 flex-1 rounded-[9px] border border-dashed"
+                  : "border-muted-foreground/40 h-9 flex-1 rounded-[9px] border border-dashed"
             }
           />
         );
@@ -128,7 +129,7 @@ function StatsChart({ buckets }: { buckets: SubBucketMetrics[] }) {
               <div
                 className={
                   isTop
-                    ? "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px] outline-1 outline-dashed outline-border outline-offset-[5px]"
+                    ? "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px] outline-1 outline-dashed outline-muted-foreground/40 outline-offset-[5px]"
                     : "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px]"
                 }
                 style={{ height: h }}
@@ -165,7 +166,8 @@ function TypeBars({ types }: { types: OverviewSummary["contentTypes"] }) {
   const sorted = [...types].sort((a, b) => b.totalViews - a.totalViews);
   const max = Math.max(1, ...sorted.map((t) => t.totalViews));
   // Escala monocroma + lima: el 2.º puesto es el acento, el resto se apaga.
-  const fill = ["bg-foreground", "bg-primary", "bg-muted-foreground", "bg-border"];
+  // El 4.º tono era bg-border: invisible sobre el track en ambos temas (1.08/1.3).
+  const fill = ["bg-foreground", "bg-primary", "bg-muted-foreground", "bg-muted-foreground/50"];
 
   return (
     <div className="flex flex-col">
@@ -262,7 +264,10 @@ export default async function OverviewPage({
 
   return (
     <PageShell>
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <header
+        data-tour="periodo"
+        className="mb-5 flex flex-wrap items-start justify-between gap-4"
+      >
         <h1 className="max-w-[520px] text-[2.1rem] leading-[1.1] font-medium tracking-[-0.025em]">
           Cómo van{" "}
           <span className="bg-primary text-primary-foreground inline-flex items-center gap-1.5 rounded-full px-3.5 pt-0.5 pb-1">
@@ -283,7 +288,7 @@ export default async function OverviewPage({
       <div className="flex flex-col gap-3.5 xl:flex-row">
         {/* Columna principal */}
         <div className="min-w-0 flex-1">
-          <section className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <section data-tour="kpis" className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {/* Vistas — card blanca */}
             <div className="bg-card shadow-card rounded-lg p-[18px]">
               <div className="flex items-center justify-between">
@@ -366,7 +371,10 @@ export default async function OverviewPage({
           </section>
 
           {/* Estadísticas */}
-          <section className="bg-card shadow-card mt-3.5 rounded-lg p-[18px]">
+          <section
+            data-tour="chart"
+            className="bg-card shadow-card mt-3.5 rounded-lg p-[18px]"
+          >
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
               <span className="flex flex-wrap items-center gap-2.5">
                 <IconTile>
@@ -394,7 +402,10 @@ export default async function OverviewPage({
           </section>
 
           {/* Tipos de contenido */}
-          <section className="bg-card shadow-card mt-3.5 rounded-lg p-[18px]">
+          <section
+            data-tour="tipos"
+            className="bg-card shadow-card mt-3.5 rounded-lg p-[18px]"
+          >
             <div className="mb-2 text-[15px] font-medium tracking-[-0.01em]">
               Tipos de contenido
             </div>
@@ -409,7 +420,10 @@ export default async function OverviewPage({
         </div>
 
         {/* Columna lateral */}
-        <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-[246px]">
+        <aside
+          data-tour="plataformas"
+          className="flex w-full shrink-0 flex-col gap-3 xl:w-[246px]"
+        >
           <div className="grid grid-cols-2 gap-3">
             <PlatformCard
               href="/tiktok"
@@ -460,6 +474,9 @@ export default async function OverviewPage({
           </div>
         </aside>
       </div>
+
+      {/* Tour de primera visita (auto-start una vez; ver components/tour). */}
+      <PageTour route="/" />
     </PageShell>
   );
 }

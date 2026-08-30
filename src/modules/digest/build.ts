@@ -155,12 +155,20 @@ export async function buildWeeklyDigest(): Promise<string> {
     lines.push("");
   }
 
-  // Sección (tipo de contenido) con más vistas en la semana.
-  const topType = [...contentTypes].sort((a, b) => b.totalViews - a.totalViews)[0];
-  if (topType && topType.totalViews > 0) {
-    lines.push(
-      `🏷 <b>Sección top</b>: ${escapeHtml(topType.label)} — ${formatCount(topType.totalViews)} vistas (${topType.count} video${topType.count !== 1 ? "s" : ""})`,
-    );
+  // Secciones de la semana: antes solo salía la top; el desglose completo
+  // permite seguir una sección NUEVA desde su primera semana sin esperar a que
+  // gane. Ordenado por vistas, tope 6 líneas para no inflar el mensaje.
+  const sections = [...contentTypes]
+    .filter((t) => t.count > 0)
+    .sort((a, b) => b.totalViews - a.totalViews)
+    .slice(0, 6);
+  if (sections.length > 0) {
+    lines.push("🏷 <b>Secciones de la semana</b>");
+    for (const t of sections) {
+      lines.push(
+        `• ${escapeHtml(t.label)}: ${t.count} video${t.count !== 1 ? "s" : ""} · ${formatCount(t.totalViews)} vistas`,
+      );
+    }
   }
 
   // Duración por formato. Solo TikTok expone duración en la API, pero como los

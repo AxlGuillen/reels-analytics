@@ -116,7 +116,11 @@ export async function getVideoStats(params: {
           multiple: Number(benchmark.result.multiple.toFixed(2)),
           atAgeDays: benchmark.result.atAgeDays,
           medianViews: benchmark.result.medianViews,
-          note: "múltiplo vs. la mediana de videos recientes de la plataforma a la misma edad.",
+          cohortScope: benchmark.scope,
+          note:
+            benchmark.scope === "week"
+              ? "múltiplo vs. la mediana de los videos publicados esa MISMA SEMANA a la misma edad (neutraliza el crecimiento de audiencia: comparable entre meses)."
+              : "múltiplo vs. la mediana de TODO el catálogo reciente a la misma edad (su semana no juntó cohorte suficiente); ojo: la audiencia crece con el tiempo, así que no es comparable entre meses.",
         }
       : null,
     history: history.map((p) => ({
@@ -365,6 +369,7 @@ export async function getBreakouts(params: { platform?: Platform } = {}) {
                   multiple: Number(d.result.multiple.toFixed(2)),
                   atAgeDays: d.result.atAgeDays,
                   medianViews: d.result.medianViews,
+                  cohortScope: d.scope,
                 },
               },
             ]

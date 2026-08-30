@@ -30,7 +30,7 @@ export const MCP_TOOLS = [
     name: "get_top_videos",
     title: "Top de videos",
     description:
-      "Ranking de videos por vistas o engagement, filtrable por tipo de contenido (audioviral/dui/duiyhal/news), plataforma y ventana de publicación.",
+      "Ranking de videos por vistas o engagement, filtrable por tipo de contenido (todas las claves de content-type.ts), plataforma y ventana de publicación.",
   },
   {
     name: "get_activity_timeline",

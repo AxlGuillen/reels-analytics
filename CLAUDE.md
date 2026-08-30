@@ -65,6 +65,16 @@ rendimiento real.
 > (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
 > `/settings/mcp`, para que no se desincronicen. Los esquemas zod siguen junto a cada tool.
 
+**Benchmark por cohorte semanal (neutraliza el crecimiento de audiencia):** el múltiplo
+"vs. lo típico" de un video (`modules/analytics/breakouts.ts`) NO se calcula contra todo el
+catálogo sino contra **los videos publicados su misma semana** (`weeklyCohort` en
+`timeseries.ts`, puro y testeado). Motivo: la audiencia creció ~3.5× en seis semanas, así
+que comparar un video de julio contra uno de agosto mezcla "mejor contenido" con "más
+seguidores" — un múltiplo contra cohorte semanal sí es comparable entre meses. Si una
+semana no junta `MIN_COHORT` (4) miembros, cae al catálogo completo y lo reporta en
+`scope: "week" | "all"`; la UI (`video-growth.tsx`) y el MCP (`cohortScope`) lo muestran en
+vez de fingir precisión.
+
 **Health check (`/api/health`, para monitoreo externo):** `modules/health/{status,checks}.ts`
 (`status.ts` es la parte pura y testeada: tipos + `rollupStatus`; `checks.ts` toca BD/red).
 Chequea: `database`, `page` (self-fetch a `/login`), `mcp` (self-fetch a `/api/mcp` sin token →
@@ -106,6 +116,45 @@ en el footer del sidebar junto a Conexiones.
 > soporta `asChild`; para un link con estilo de botón usar `buttonVariants()` en el
 > `className` del `<Link>` (la polimorfía de Base UI es vía prop `render`, no `asChild`).
 
+**Tours guiados (`src/components/tour/`, Driver.js):** onboarding por pantalla — spotlight
+paso a paso sobre los elementos reales para que alguien nuevo entienda cada página.
+- `steps.ts`: registro **puro** de pasos por ruta (`target` = `[data-tour="..."]`, título,
+  descripción, `version`). Regla editorial: **máx. 6 pasos** y el copy dice *para qué sirve*,
+  no *qué es*. Subir `version` re-muestra el tour a quien ya lo vio. `tourRouteFor` (puro)
+  mapea pathname → clave (los detalles de video comparten `/video`).
+- `page-tour.tsx` (client, montado al final de cada página): **auto-start solo la primera
+  visita** (`tour-seen:<ruta>:vN` en localStorage); cerrar a medias también marca visto.
+  `run-tour.ts` es el arranque compartido (singleton: un tour a la vez; navegar destruye el
+  activo). El JS de driver.js se importa dinámico al arrancar. El **botón ?** del rail
+  relanza el tour de la ruta actual.
+- Anclas `data-tour` en las páginas (mismo idioma que `data-slot`). Las ausentes se filtran
+  en runtime (estados vacíos degradan en silencio). **Dos tests guardianes**: `steps.test.ts`
+  (forma y reglas editoriales) y `anchors.test.ts` (escanea `src/` y falla si un target
+  pierde su ancla en un refactor, o si hay anclas muertas sin paso).
+- Skin del popover en `globals.css` (bloque "Tour guiado"): tokens semánticos, CTA
+  "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
+  con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
+
+**Landing pública (`/landing`, grupo `(marketing)`):** puerta de entrada de marketing en Acid
+Grid, portada del diseño elegido en Claude Design (hero + collage texturizado, bento del
+producto, banda parallax "Cada día, una capa más de historia", cómo funciona, features, cierre
+y footer). El proxy la deja pasar sin sesión y manda `/` anónimo → `/landing` (el resto sigue
+yendo a `/login?next=`). Server Component con datos de muestra reales; el movimiento vive en
+`src/components/landing/landing-motion.tsx` (client, **wrapper con `useGSAP` de
+`@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
+de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
+descarga). Envuelve el `<main>` como scope: selectores acotados y cleanup automático de
+tweens/ScrollTriggers/splits al desmontar. Contrato por atributos en el markup del server:
+`data-hero-item`/`data-hero-piece` (timeline de intro del hero), `data-reveal` (fade-up),
+`data-reveal-stagger` (hijos en cascada), `data-bars`/`data-bar` y `data-bars-x`/`data-bar-x`
+(barras que crecen con scaleY/scaleX, nunca height/width), `data-split` (titular palabra por
+palabra con SplitText) y `data-plx="slow|mid|fast"` dentro de `data-plx-scope` (parallax con
+scrub, ±28/±70/±120 px). Respeta `prefers-reduced-motion` vía `gsap.matchMedia` y sin JS la
+página queda en su composición estática (todo usa `gsap.from`: el SSR es el estado final).
+Las skills oficiales de GSAP viven en `.agents/skills/gsap-*` (consultarlas al tocar
+animaciones). **Regla: no importar `gsap` ni `@gsap/react` fuera de
+`src/components/landing/`.**
+
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se
 namespacean con prefijo **`ra_`**). Esquema de 5 tablas + enum `ra_platform` (migraciones
@@ -145,8 +194,10 @@ publicados con link a `/content`.
 
 **Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
-**`mundial2026`**, **`cumpleaneros`** y **`soloqchallenge2026`** (tipo de EVENTO, con fecha de
-fin ~mediados de ago 2026). Los tipos de evento van ANTES que los de formato en la
+**`mundial2026`**, **`cumpleaneros`** (canónico vigente `#cumplelolero`; las grafías viejas
+`cumpleañeros/cumpleaños/cumpleanos` son alias), **`soloqchallenge2026`** (tipo de EVENTO, con
+fecha de fin ~mediados de ago 2026) y **`debatelolero`** (cierre del formato
+concepto → explicación → debate). Los tipos de evento van ANTES que los de formato en la
 precedencia: si un video cubre el evento, esa es su identidad aunque además sea narración. Cada tipo puede matchear **varios hashtags (alias)**:
 `ContentTypeDef.tags[]` (el primero es el canónico) — p. ej. `mundial2026` cuenta tanto `#mundial`
 como `#mundial2026`. Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya

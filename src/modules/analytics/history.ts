@@ -206,6 +206,8 @@ export async function readVideoHistory(
 export interface VideoSeries {
   externalId: string;
   platform: Platform;
+  /** Fecha de publicación: la necesita el cohorte semanal (ver `weeklyCohort`). */
+  publishedAt: Date;
   points: AgePoint[];
 }
 
@@ -280,6 +282,7 @@ export async function readVideoSeries(
   return videos.map((v) => ({
     externalId: v.external_id,
     platform: v.platform,
+    publishedAt: new Date(v.published_at),
     points: toAgePoints(new Date(v.published_at), byVideo.get(v.id) ?? []),
   }));
 }

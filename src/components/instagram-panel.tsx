@@ -42,7 +42,7 @@ const Stat = StatCard;
 
 function AccountHeader({ account }: { account: AccountStats }) {
   return (
-    <div className="space-y-4">
+    <div data-tour="panel-perfil" className="space-y-4">
       <div className="flex items-center gap-4">
         {account.avatarUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- CDN de Instagram con URL firmada
@@ -81,7 +81,7 @@ function InsightCharts({ videos }: { videos: VideoWithMetrics[] }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
+      <Card data-tour="panel-insights">
         <CardHeader>
           <CardTitle className="text-sm">Vistas promedio por día</CardTitle>
         </CardHeader>
@@ -214,7 +214,7 @@ function Overview({
             <Stat label="Engagement prom." value={formatPercent(summary.avgEngagement)} />
           </section>
 
-          <div>
+          <div data-tour="panel-videos">
             <h3 className="mb-3 text-sm font-semibold">Reels ({videos.length})</h3>
             <Table>
               <TableHeader>

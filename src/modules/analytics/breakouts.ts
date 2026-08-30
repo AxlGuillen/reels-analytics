@@ -1,24 +1,44 @@
 import "server-only";
 import type { Platform } from "@/core/domain";
-import { readVideoSeries } from "./history";
+import { weekKey } from "@/core/lib/datetime";
+import { readVideoSeries, type VideoSeries } from "./history";
+import { CREATOR_TIMEZONE } from "./insights";
 import {
   benchmarkAgainstCohort,
   isBreakout,
   medianCurve,
+  weeklyCohort,
   type AgePoint,
   type BenchmarkResult,
+  type CohortMember,
+  type CohortScope,
 } from "./timeseries";
 
 /**
- * Breakouts y benchmark contra el cohorte de la plataforma. El cohorte es
- * "videos recientes con historia temprana" (los que `readVideoSeries` puede
- * situar por edad); la clasificación es derivada al leer, nada se persiste.
- * Si el cohorte aún es chico (ingesta joven), devuelve vacío/null — honesto.
+ * Breakouts y benchmark contra el cohorte de la plataforma. El cohorte se acota
+ * a la **misma semana de publicación** para neutralizar el crecimiento de la
+ * audiencia: comparar contra todo el catálogo mezclaba "mejor contenido" con
+ * "más seguidores que hace un mes". Si una semana no junta cohorte suficiente,
+ * `weeklyCohort` cae al catálogo completo y lo reporta en `scope`.
+ *
+ * Todo es derivado al leer, nada se persiste. Si el cohorte aún es chico
+ * (ingesta joven), devuelve vacío/null — honesto.
  */
+
+/** Convierte las series a miembros de cohorte, llaveados por semana de publicación. */
+function toMembers(series: VideoSeries[]): CohortMember[] {
+  return series.map((s) => ({
+    key: s.externalId,
+    weekKey: weekKey(s.publishedAt, CREATOR_TIMEZONE),
+    points: s.points,
+  }));
+}
 
 export interface BreakoutDetail {
   externalId: string;
   result: BenchmarkResult;
+  /** contra qué se comparó: su semana o todo el catálogo. */
+  scope: CohortScope;
 }
 
 /** Breakouts con su múltiplo, ordenados del más fuerte al más débil. */
@@ -26,15 +46,13 @@ export async function readBreakoutDetails(
   platform: Platform,
 ): Promise<BreakoutDetail[]> {
   const series = await readVideoSeries({ platform });
+  const members = toMembers(series);
   const details: BreakoutDetail[] = [];
-  for (const s of series) {
-    // Cohorte sin el propio video: que no compita contra sí mismo.
-    const others = series
-      .filter((o) => o.externalId !== s.externalId)
-      .map((o) => o.points);
-    const result = benchmarkAgainstCohort(s.points, others);
-    if (result && isBreakout(s.points, others)) {
-      details.push({ externalId: s.externalId, result });
+  for (const m of members) {
+    const { cohort, scope } = weeklyCohort(m, members);
+    const result = benchmarkAgainstCohort(m.points, cohort);
+    if (result && isBreakout(m.points, cohort)) {
+      details.push({ externalId: m.key, result, scope });
     }
   }
   // Guard: si "todo" despega es que el cohorte no discrimina; mejor nada.
@@ -42,7 +60,7 @@ export async function readBreakoutDetails(
   return details.sort((a, b) => b.result.multiple - a.result.multiple);
 }
 
-/** externalIds de los videos que van ≥2× la mediana de su plataforma a su edad. */
+/** externalIds de los videos que van ≥2× la mediana de su cohorte a su edad. */
 export async function readBreakoutIds(platform: Platform): Promise<Set<string>> {
   const details = await readBreakoutDetails(platform);
   return new Set(details.map((d) => d.externalId));
@@ -52,22 +70,23 @@ export interface VideoBenchmark {
   result: BenchmarkResult;
   /** curva típica (mediana) del cohorte, para superponer. */
   curve: AgePoint[];
+  /** contra qué se comparó: su semana o todo el catálogo. */
+  scope: CohortScope;
 }
 
-/** Benchmark de UN video contra su plataforma (para la página de detalle). */
+/** Benchmark de UN video contra su cohorte semanal (para la página de detalle). */
 export async function readVideoBenchmark(
   platform: Platform,
   externalId: string,
 ): Promise<VideoBenchmark | null> {
   const series = await readVideoSeries({ platform });
-  const own = series.find((s) => s.externalId === externalId);
+  const members = toMembers(series);
+  const own = members.find((m) => m.key === externalId);
   if (!own) return null;
 
-  const cohort = series
-    .filter((s) => s.externalId !== externalId)
-    .map((s) => s.points);
+  const { cohort, scope } = weeklyCohort(own, members);
   const result = benchmarkAgainstCohort(own.points, cohort);
   if (!result) return null;
 
-  return { result, curve: medianCurve(cohort) };
+  return { result, curve: medianCurve(cohort), scope };
 }

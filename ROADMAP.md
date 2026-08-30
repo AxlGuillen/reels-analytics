@@ -156,6 +156,62 @@ Métricas concretas: mediana de vistas a 7d de `dui` por semana, y ratio
 pega porque el audio tiene tracción. Subir a 3/día obligaría a usar audios mediocres y la
 tasa de pegue caería. Recomendación vigente: **1–2/día**, no más.
 
+## Experimento abierto: formato "concepto → explicación → debate" (desde 17 ago 2026)
+
+**Contexto.** Terminó el SoloQ Challenge, que ocupaba 1 de los 3 slots diarios y era
+el motor de alcance (1.09M vistas). Su lección **no** fue "los eventos funcionan": fue
+que **el gancho narrativo funciona y el parte diario cansa** — los que explotaron
+fueron el de contexto (70k) y "Día 5 **y todos estancados**" (92k), mientras los
+"Día N" a secas cayeron a 5.7k.
+
+**El formato.** Un concepto del torneo (p. ej. *el mental*) → video de explicación
+científica/psicológica con la sección Hal y Dui → cierre en debate con más voces.
+Lo respalda la estructura: es serializado (la fuerza de SoloQ), trae gancho integrado
+en cada entrega, empuja a formato largo, y **resuelve el cuello de botella real del
+creador — idear, no editar** (una idea rinde 3 videos).
+
+**Checklist de ejecución (todo medido, ver más abajo):**
+- **Duración 2–3 min.** Mediana 23.2k vs 3.6k de los <1min: **6.4×**. Los comentarios
+  NO caen con la duración (corrige una lectura previa hecha con muestra chica).
+- **Título de 45+ caracteres y que prometa conflicto.** Largos 15.5k vs medios 8.3k de
+  mediana, y el efecto gancho de SoloQ (92k vs 5.7k) es del mismo orden.
+- **`#leagueoflegends` siempre** (mediana 8.4k, el mejor). **Fuera los de memes**
+  (`gamingmemes`/`leagueoflegendsmemes`, 4.3k) del contenido serio; resérvalos para
+  audioviral. `#humor` es lotería: promedio alto, mediana baja.
+- **Cadencia: se mantienen 3 slots** (`dui` + arco nuevo + audioviral). Audioviral se
+  queda pese a ser el peor en comunidad (8.0 comentarios/10k vs 20.8 de `dui`) porque
+  **no consume ideación** — es el seguro contra el desgaste mientras el arco nuevo
+  demanda cabeza. Si el arco satura, bajar audioviral a día por medio **antes** que
+  tocar `dui`.
+
+**Regla de decisión (pre-comprometida).** A los **15 videos** (~5 arcos):
+- **Se queda** si la mediana supera **8,000** vistas a 7 días *o* si algún video pasa
+  de **50k**.
+- **Se descarta o se rehace** si no.
+- Nunca decidir con menos de 10 videos: la varianza de esta cuenta ya engañó dos veces
+  (el "mejor horario" resultó artefacto, y el "techo duro" de audioviral se rompió con
+  un 149k).
+
+**Cómo medirlo sin sesgo (importante).** La audiencia pasó de ~2.2k a ~7.7k seguidores
+en seis semanas, así que **comparar contra datos de julio mezcla contenido con tamaño
+de audiencia**. Evidencia: hasta el 20 jul las "vistas por seguidor" fueron planas
+(1.35–1.72) — o sea, ese crecimiento fue casi todo audiencia. Dos consecuencias:
+
+1. **Comparar en paralelo, no en secuencia.** Los 3 slots diarios ya son un experimento
+   paralelo natural: mismo día, misma audiencia, mismo algoritmo. Ésa es la comparación
+   limpia — no "arco nuevo en agosto vs SoloQ en julio".
+2. **Usar el múltiplo vs. cohorte semanal**, no vistas crudas (ya implementado, ver
+   `weeklyCohort`). Un "1.8× su semana" es comparable entre meses; "12k vistas" no.
+
+> Corrección que este sesgo obliga: la mejora de la **mediana** de audioviral era
+> ~1.3× normalizada, no 3.3×. Lo que sí cambió de verdad es la **cola** (techo de 3.6k
+> → pico de 149k): audioviral no rinde mucho mejor de forma típica, pero ahora **puede
+> explotar**. Sigue siendo lotería, con premios más grandes.
+
+**Señal a vigilar.** Las vistas por seguidor vienen bajando (4.03 → 3.92 → 2.72) mientras
+los seguidores suben: es la **dilución** que pre-registramos en el seguimiento de
+audioviral. Confirmar con la siguiente semana antes de reaccionar (n=8 es ruidoso).
+
 ## Reglas transversales
 
 - Cada fase termina con `build` + `lint` + tests verdes y commit por bloque.
