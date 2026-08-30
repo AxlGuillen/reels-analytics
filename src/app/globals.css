@@ -189,6 +189,14 @@
 }
 
 @layer base {
+  /* Scroll suave para las anclas de la landing (#producto, #como-funciona…).
+     Solo si el usuario no pidió movimiento reducido. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
@@ -264,6 +272,44 @@
       color-mix(in oklab, var(--foreground) 12%, transparent) 0 7px,
       color-mix(in oklab, var(--foreground) 6%, transparent) 7px 14px
     );
+  }
+
+  /* Anillos concéntricos grandes y tenues: textura decorativa para secciones
+     planas de la landing (capas absolutas aria-hidden, a menudo con
+     data-plx="slow" para que deriven al hacer scroll). Tinta a baja alpha + un
+     anillo lima de acento; los alphas van sobre tokens, así que funciona igual
+     en claro y oscuro. */
+  .bg-rings {
+    background-image:
+      radial-gradient(
+        circle at 15% 30%,
+        transparent 118px,
+        color-mix(in oklab, var(--foreground) 6%, transparent) 119px,
+        color-mix(in oklab, var(--foreground) 6%, transparent) 121px,
+        transparent 122px
+      ),
+      radial-gradient(
+        circle at 15% 30%,
+        transparent 178px,
+        color-mix(in oklab, var(--foreground) 4%, transparent) 179px,
+        color-mix(in oklab, var(--foreground) 4%, transparent) 181px,
+        transparent 182px
+      ),
+      radial-gradient(
+        circle at 88% 70%,
+        transparent 148px,
+        color-mix(in oklab, var(--primary) 32%, transparent) 149px,
+        color-mix(in oklab, var(--primary) 32%, transparent) 152px,
+        transparent 153px
+      ),
+      radial-gradient(
+        circle at 88% 70%,
+        transparent 208px,
+        color-mix(in oklab, var(--foreground) 5%, transparent) 209px,
+        color-mix(in oklab, var(--foreground) 5%, transparent) 211px,
+        transparent 212px
+      );
+    background-repeat: no-repeat;
   }
 
   /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */

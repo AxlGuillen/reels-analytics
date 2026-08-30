@@ -1,16 +1,10 @@
 import Link from "next/link";
-import {
-  Activity,
-  ArrowUpRight,
-  Bot,
-  Eye,
-  LayoutGrid,
-  MessageCircle,
-  Sparkles,
-  TrendingUp,
-  UserPlus,
-} from "lucide-react";
+import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import {
+  LandingIcon,
+  type LandingIconName,
+} from "@/components/landing/landing-icon";
 
 /**
  * Landing pública (Acid Grid). Server Component: todo el contenido llega en el
@@ -52,7 +46,7 @@ const SECTION_BARS = [
   { label: "Audio viral", w: "30%", fill: "bg-muted-foreground/50" },
 ] as const;
 
-const STEPS = [
+const STEPS: { n: string; title: string; body: string; dark?: boolean }[] = [
   {
     n: "01",
     title: "Conecta tus cuentas",
@@ -62,42 +56,54 @@ const STEPS = [
     n: "02",
     title: "El cron captura a diario",
     body: "Un snapshot por video cada 24 h. La historia se acumula aunque no abras el panel.",
+    // El paso del cron es el corazón del producto: card oscura (jerarquía por
+    // tono, espejo de la card oscura del bento).
+    dark: true,
   },
   {
     n: "03",
     title: "Decide con evidencia",
     body: "Curvas por video, benchmark contra su semana y un digest cada lunes por Telegram.",
   },
-] as const;
+];
 
-const FEATURES = [
+const FEATURES: {
+  icon: LandingIconName;
+  title: string;
+  body: string;
+  /** una card de acento por rejilla (regla Acid Grid): la del MCP va en lima. */
+  accent?: boolean;
+}[] = [
   {
-    icon: TrendingUp,
+    icon: "trending-up",
     title: "Curva por video",
     body: "Vistas a los 7 días, velocidad inicial y el momento exacto del despegue.",
   },
   {
-    icon: LayoutGrid,
+    icon: "layout-grid",
     title: "Cohorte semanal",
     body: "Cada video se compara contra los de su misma semana — el crecimiento de audiencia no infla el veredicto.",
   },
   {
-    icon: MessageCircle,
+    icon: "message-circle",
     title: "Digest por Telegram",
     body: "Cada lunes: vistas, seguidores, secciones y mejor video. Además vigila que la ingesta no se caiga.",
   },
   {
-    icon: Bot,
+    icon: "blocks",
     title: "Habla con tus datos",
     body: "Servidor MCP con 9 tools de solo lectura: pregúntale a Claude por tu analítica desde donde escribes.",
+    accent: true,
   },
-] as const;
+];
 
-/** Filas fantasma de la banda parallax (la capa lenta del fondo). */
+/** Filas fantasma de la banda parallax (la capa lenta del fondo). La banda es
+ *  full-bleed, así que cada fila se duplica para cubrir pantallas anchas. */
 const GHOST_ROWS = Array.from({ length: 9 }, (_, i) => {
   const day = 24 + i;
   const date = day <= 31 ? `2026-08-${day}` : `2026-09-0${day - 31}`;
-  return `${date} · 08:35 · ${413 + i * 3} videos`;
+  const base = `${date} · 08:35 · ${413 + i * 3} videos`;
+  return `${base}   ·   ${base}`;
 });
 
 export default function LandingPage() {
@@ -108,7 +114,7 @@ export default function LandingPage() {
       <nav className="bg-card shadow-card flex items-center justify-between rounded-full py-2.5 pr-2.5 pl-3">
         <div className="flex items-center gap-2.5">
           <div className="bg-primary text-primary-foreground flex size-[38px] items-center justify-center rounded-[14px]">
-            <Activity className="size-[18px]" strokeWidth={1.9} />
+            <LandingIcon name="activity" size={18} className="flex" />
           </div>
           <span className="text-sm font-medium tracking-[-0.01em]">
             Reels Analytics
@@ -223,9 +229,10 @@ export default function LandingPage() {
             className="bg-foreground absolute -top-4 right-6 flex size-16 rotate-6 items-center justify-center rounded-full"
             data-hero-piece
           >
-            <Activity
-              className="text-primary dark:text-background size-[26px]"
-              strokeWidth={1.9}
+            <LandingIcon
+              name="activity"
+              size={26}
+              className="text-primary dark:text-background flex"
             />
           </div>
         </div>
@@ -388,14 +395,17 @@ export default function LandingPage() {
       </section>
 
       {/* Parallax: la historia como capas */}
+      {/* Full-bleed: rompe el max-w del <main> con w-screen + márgenes
+          negativos (sin transform, para no pelearse con los tweens de GSAP).
+          El overflow-x-clip del layout evita la scrollbar horizontal. */}
       <section
-        className="bg-foreground shadow-rail relative h-[420px] overflow-hidden rounded-[26px] md:h-[520px]"
+        className="bg-foreground shadow-rail relative h-[420px] w-screen max-w-none overflow-hidden md:h-[520px] -mx-[calc((100vw-100%)/2)]"
         data-plx-scope
         data-reveal
       >
         <div className="bg-halftone text-background absolute inset-0" aria-hidden />
         <div
-          className="text-background/[0.07] absolute top-[-10px] left-6 flex flex-col gap-2.5 font-mono text-[42px] tracking-[-0.02em] whitespace-nowrap md:left-12"
+          className="text-background/[0.07] absolute top-[-10px] left-0 flex flex-col gap-2.5 font-mono text-[42px] tracking-[-0.02em] whitespace-nowrap"
           data-plx="slow"
           aria-hidden
         >
@@ -404,23 +414,28 @@ export default function LandingPage() {
           ))}
         </div>
 
-        <div className="relative flex h-full max-w-[620px] flex-col justify-center gap-4 px-8 md:px-16">
-          <span className="bg-primary text-primary-foreground self-start rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.14em]">
-            PROFUNDIDAD
-          </span>
-          <h2
-            className="text-background text-[32px] leading-[1.08] font-medium tracking-[-0.03em] md:text-[44px]"
-            data-split
+        {/* El contenido vuelve a la retícula de 1180px de la página. */}
+        <div className="relative mx-auto h-full w-full max-w-[1180px] px-5">
+          <div
+            className="flex h-full max-w-[620px] flex-col justify-center gap-4 px-3 md:px-8"
+            data-plx="slow"
           >
-            Cada día, una capa más de historia.
-          </h2>
-          <p className="text-background/60 max-w-[480px] leading-[1.55]">
-            Los snapshots se apilan en silencio, hoy encima de ayer. Cuando
-            necesitas la curva de un video, ya lleva semanas escribiéndose.
-          </p>
-        </div>
+            <span className="bg-primary text-primary-foreground self-start rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.14em]">
+              PROFUNDIDAD
+            </span>
+            <h2
+              className="text-background text-[32px] leading-[1.08] font-medium tracking-[-0.03em] md:text-[44px]"
+              data-split
+            >
+              Cada día, una capa más de historia.
+            </h2>
+            <p className="text-background/60 max-w-[480px] leading-[1.55]">
+              Los snapshots se apilan en silencio, hoy encima de ayer. Cuando
+              necesitas la curva de un video, ya lleva semanas escribiéndose.
+            </p>
+          </div>
 
-        <div className="absolute top-[66px] right-[200px] hidden lg:block" data-plx="mid">
+          <div className="absolute top-[66px] right-[200px] hidden md:block" data-plx="mid">
           <div className="bg-background/10 text-background ring-background/15 shadow-lift flex -rotate-3 flex-col gap-1 rounded-[18px] px-4 py-3.5 ring-1">
             <span className="text-background/50 font-mono text-[9.5px] tracking-[0.12em]">
               HACE 14 DÍAS
@@ -430,24 +445,25 @@ export default function LandingPage() {
             </span>
           </div>
         </div>
-        <div className="absolute right-[72px] bottom-[150px] hidden lg:block" data-plx="mid">
-          <div className="bg-background/10 text-background ring-background/15 shadow-lift flex rotate-2 flex-col gap-1 rounded-[18px] px-4 py-3.5 ring-1">
-            <span className="text-background/50 font-mono text-[9.5px] tracking-[0.12em]">
-              HACE 7 DÍAS
-            </span>
-            <span className="text-2xl font-medium tracking-[-0.03em]">
-              8.427 vistas
-            </span>
+          <div className="absolute right-[72px] bottom-[150px] hidden md:block" data-plx="mid">
+            <div className="bg-background/10 text-background ring-background/15 shadow-lift flex rotate-2 flex-col gap-1 rounded-[18px] px-4 py-3.5 ring-1">
+              <span className="text-background/50 font-mono text-[9.5px] tracking-[0.12em]">
+                HACE 7 DÍAS
+              </span>
+              <span className="text-2xl font-medium tracking-[-0.03em]">
+                8.427 vistas
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="absolute right-[148px] bottom-11 hidden lg:block" data-plx="fast">
-          <div className="bg-primary text-primary-foreground bg-halftone shadow-lift flex -rotate-2 flex-col gap-1 rounded-[18px] px-[18px] py-4">
-            <span className="text-primary-foreground/60 font-mono text-[9.5px] tracking-[0.12em]">
-              HOY
-            </span>
-            <span className="text-[30px] font-medium tracking-[-0.03em]">
-              92.453 vistas
-            </span>
+          <div className="absolute right-[148px] bottom-11 hidden md:block" data-plx="fast">
+            <div className="bg-primary text-primary-foreground bg-halftone shadow-lift flex -rotate-2 flex-col gap-1 rounded-[18px] px-[18px] py-4">
+              <span className="text-primary-foreground/60 font-mono text-[9.5px] tracking-[0.12em]">
+                HOY
+              </span>
+              <span className="text-[30px] font-medium tracking-[-0.03em]">
+                92.453 vistas
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -455,25 +471,42 @@ export default function LandingPage() {
       {/* Cómo funciona */}
       <section
         id="como-funciona"
-        className="flex scroll-mt-6 flex-col gap-[22px]"
+        className="relative flex scroll-mt-6 flex-col gap-[22px]"
+        data-plx-scope
       >
+        {/* Anillos tenues de fondo, derivando con el scroll. */}
+        <div
+          className="bg-rings pointer-events-none absolute -inset-x-16 -inset-y-14"
+          data-plx="slow"
+          aria-hidden
+        />
         <h2
-          className="text-[34px] font-medium tracking-[-0.025em]"
+          className="relative text-[34px] font-medium tracking-[-0.025em]"
           data-reveal
         >
           Tres pasos, cero mantenimiento
         </h2>
-        <div className="grid gap-3.5 md:grid-cols-3" data-reveal-stagger>
+        <div className="relative grid gap-3.5 md:grid-cols-3" data-reveal-stagger>
           {STEPS.map((step) => (
             <div
               key={step.n}
-              className="bg-card shadow-card flex flex-col gap-2.5 rounded-lg p-[22px]"
+              className={
+                step.dark
+                  ? "bg-foreground text-background bg-halftone shadow-lift flex flex-col gap-2.5 rounded-lg p-[22px]"
+                  : "bg-card shadow-card flex flex-col gap-2.5 rounded-lg p-[22px]"
+              }
             >
               <span className="bg-primary text-primary-foreground self-start rounded-full px-3 py-[3px] font-mono text-[11px]">
                 {step.n}
               </span>
               <span className="font-medium">{step.title}</span>
-              <span className="text-muted-foreground text-[13.5px] leading-[1.5]">
+              <span
+                className={
+                  step.dark
+                    ? "text-background/60 text-[13.5px] leading-[1.5]"
+                    : "text-muted-foreground text-[13.5px] leading-[1.5]"
+                }
+              >
                 {step.body}
               </span>
             </div>
@@ -484,23 +517,50 @@ export default function LandingPage() {
       {/* Features */}
       <section
         id="mcp"
-        className="grid scroll-mt-6 gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
-        data-reveal-stagger
+        className="relative scroll-mt-6"
+        data-plx-scope
       >
-        {FEATURES.map((feature) => (
-          <div
-            key={feature.title}
-            className="bg-card shadow-card flex flex-col gap-2.5 rounded-lg p-[18px]"
-          >
-            <div className="bg-foreground/10 text-foreground flex size-[26px] items-center justify-center rounded-[9px]">
-              <feature.icon className="size-3.5" strokeWidth={1.9} />
+        {/* Anillos tenues también aquí (posición espejada por el -inset mayor). */}
+        <div
+          className="bg-rings pointer-events-none absolute -inset-x-20 -inset-y-24 -scale-x-100"
+          data-plx="slow"
+          aria-hidden
+        />
+        <div
+          className="relative grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
+          data-reveal-stagger
+        >
+          {FEATURES.map((feature) => (
+            <div
+              key={feature.title}
+              className={
+                feature.accent
+                  ? "bg-primary text-primary-foreground bg-halftone shadow-card flex flex-col gap-2.5 rounded-lg p-[18px]"
+                  : "bg-card shadow-card flex flex-col gap-2.5 rounded-lg p-[18px]"
+              }
+            >
+              <div
+                className={
+                  feature.accent
+                    ? "bg-primary-foreground/10 text-primary-foreground flex size-[26px] items-center justify-center rounded-[9px]"
+                    : "bg-foreground/10 text-foreground flex size-[26px] items-center justify-center rounded-[9px]"
+                }
+              >
+                <LandingIcon name={feature.icon} size={14} className="flex" />
+              </div>
+              <span className="text-sm font-medium">{feature.title}</span>
+              <span
+                className={
+                  feature.accent
+                    ? "text-primary-foreground/70 text-[12.5px] leading-[1.5]"
+                    : "text-muted-foreground text-[12.5px] leading-[1.5]"
+                }
+              >
+                {feature.body}
+              </span>
             </div>
-            <span className="text-sm font-medium">{feature.title}</span>
-            <span className="text-muted-foreground text-[12.5px] leading-[1.5]">
-              {feature.body}
-            </span>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
       {/* Cierre */}
@@ -533,7 +593,7 @@ export default function LandingPage() {
       <footer className="-mt-8 flex flex-col items-center justify-between gap-5 border-t pt-6 sm:flex-row">
         <div className="flex items-center gap-2.5">
           <div className="bg-primary text-primary-foreground flex size-[26px] items-center justify-center rounded-[9px]">
-            <Activity className="size-[13px]" strokeWidth={1.9} />
+            <LandingIcon name="activity" size={13} className="flex" />
           </div>
           <span className="text-[13px] font-medium">Reels Analytics</span>
         </div>
