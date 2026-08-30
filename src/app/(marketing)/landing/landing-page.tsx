@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
@@ -164,14 +165,12 @@ export function LandingPage({ lang }: { lang: Lang }) {
         />
         <div className="relative flex max-w-[760px] flex-1 flex-col gap-6">
           <p
-            className="text-muted-foreground font-mono text-[11px] tracking-[0.16em]"
-            data-hero-item
-          >
+            className="hero-item text-muted-foreground font-mono text-[11px] tracking-[0.16em]">
             {copy.hero.kicker}
           </p>
           <h1
-            className="text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
-            data-hero-item
+            className="hero-item text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
+            style={{ animationDelay: "0.1s" }}
           >
             {copy.hero.h1a}{" "}
             <span className="bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-full px-4 pt-0.5 pb-1.5 md:px-5">
@@ -181,12 +180,15 @@ export function LandingPage({ lang }: { lang: Lang }) {
             {copy.hero.h1b}
           </h1>
           <p
-            className="text-muted-foreground max-w-[620px] text-lg leading-[1.55]"
-            data-hero-item
+            className="hero-item text-muted-foreground max-w-[620px] text-lg leading-[1.55]"
+            style={{ animationDelay: "0.2s" }}
           >
             {copy.hero.sub}
           </p>
-          <div className="flex flex-wrap items-center gap-3" data-hero-item>
+          <div
+            className="hero-item flex flex-wrap items-center gap-3"
+            style={{ animationDelay: "0.3s" }}
+          >
             <Link
               href="/login"
               className={`${CTA_PRIMARY} shadow-lift px-[26px] py-3.5 text-[15px]`}
@@ -208,16 +210,24 @@ export function LandingPage({ lang }: { lang: Lang }) {
         {/* Collage texturizado */}
         <div className="relative hidden h-[360px] w-[300px] shrink-0 lg:block">
           <div
-            className="bg-muted bg-hatch shadow-card absolute top-0 left-5 flex h-[284px] w-[200px] -rotate-3 items-end rounded-lg p-3"
-            data-hero-piece
+            className="hero-piece bg-muted shadow-card absolute top-0 left-5 flex h-[284px] w-[200px] -rotate-3 items-end overflow-hidden rounded-lg p-3"
+            style={{ animationDelay: "0.35s" }}
           >
-            <span className="bg-foreground text-background rotate-3 rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.1em]">
+            {/* Frame real de un Reel del creador (dominio propio, con permiso). */}
+            <Image
+              src="/assets/video-single.png"
+              alt=""
+              fill
+              sizes="200px"
+              className="object-cover"
+            />
+            <span className="bg-foreground text-background relative rotate-3 rounded-full px-3 py-1 font-mono text-[10px] tracking-[0.1em]">
               9:16 · 0:47
             </span>
           </div>
           <div
-            className="bg-primary text-primary-foreground bg-halftone shadow-lift absolute right-0 bottom-6 flex w-[176px] rotate-3 flex-col gap-1.5 rounded-[18px] p-4"
-            data-hero-piece
+            className="hero-piece bg-primary text-primary-foreground bg-halftone shadow-lift absolute right-0 bottom-6 flex w-[176px] rotate-3 flex-col gap-1.5 rounded-[18px] p-4"
+            style={{ animationDelay: "0.45s" }}
           >
             <span className="text-primary-foreground/60 font-mono text-[9.5px] tracking-[0.14em]">
               {copy.collage.snapshotLabel}
@@ -230,8 +240,8 @@ export function LandingPage({ lang }: { lang: Lang }) {
             </span>
           </div>
           <div
-            className="group bg-foreground absolute -top-4 right-6 flex size-16 rotate-6 items-center justify-center rounded-full"
-            data-hero-piece
+            className="hero-piece group bg-foreground absolute -top-4 right-6 flex size-16 rotate-6 items-center justify-center rounded-full"
+            style={{ animationDelay: "0.55s" }}
           >
             <BrandGlyph className="text-primary dark:text-background size-[28px]" />
           </div>
@@ -396,6 +406,31 @@ export function LandingPage({ lang }: { lang: Lang }) {
               {copy.bento.sectionsNote}
             </p>
           </div>
+        </div>
+
+        {/* El panel real (captura del Overview): la variante sigue al tema. */}
+        <div
+          className="bg-card shadow-card overflow-hidden rounded-lg p-2 sm:p-2.5"
+          data-reveal
+        >
+          <Image
+            src="/assets/dashboard-light.webp"
+            alt={copy.bento.panelAlt}
+            width={1898}
+            height={932}
+            loading="lazy"
+            sizes="(max-width: 1180px) 100vw, 1132px"
+            className="w-full rounded-[15px] dark:hidden"
+          />
+          <Image
+            src="/assets/dashboard-dark.webp"
+            alt={copy.bento.panelAlt}
+            width={1893}
+            height={928}
+            loading="lazy"
+            sizes="(max-width: 1180px) 100vw, 1132px"
+            className="hidden w-full rounded-[15px] dark:block"
+          />
         </div>
       </section>
 
