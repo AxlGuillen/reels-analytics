@@ -149,11 +149,23 @@ tweens/ScrollTriggers/splits al desmontar. Contrato por atributos en el markup d
 `data-reveal-stagger` (hijos en cascada), `data-bars`/`data-bar` y `data-bars-x`/`data-bar-x`
 (barras que crecen con scaleY/scaleX, nunca height/width), `data-split` (titular palabra por
 palabra con SplitText) y `data-plx="slow|mid|fast"` dentro de `data-plx-scope` (parallax con
-scrub, ±28/±70/±120 px). Respeta `prefers-reduced-motion` vía `gsap.matchMedia` y sin JS la
+scrub, ±36/±90/±150 px). Respeta `prefers-reduced-motion` vía `gsap.matchMedia` y sin JS la
 página queda en su composición estática (todo usa `gsap.from`: el SSR es el estado final).
 Las skills oficiales de GSAP viven en `.agents/skills/gsap-*` (consultarlas al tocar
 animaciones). **Regla: no importar `gsap` ni `@gsap/react` fuera de
 `src/components/landing/`.**
+
+Detalles de dinamismo de la landing: anclas con **scroll suave** (CSS `scroll-behavior: smooth`
+en `globals.css`, solo bajo `prefers-reduced-motion: no-preference`); la **banda parallax es
+full-bleed** (breakout `w-screen` + márgenes negativos, sin transform para no pelear con GSAP;
+el `overflow-x-clip` del layout de marketing evita la scrollbar horizontal, y el contenido
+vuelve a la retícula con un contenedor interno de 1180px); textura `.bg-rings` (anillos
+concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="slow"` detrás de
+"Cómo funciona" y features; e **iconos animados** vía `LandingIcon`
+(`src/components/landing/landing-icon.tsx`, client, mapa nombre→icono de `@animateicons`):
+animan una vez al entrar al viewport (IntersectionObserver, se salta con reduced-motion) y en
+hover — no usa GSAP. Jerarquía por tono extrapolada del bento: card 02 de los pasos en oscuro y
+la card MCP de features en lima (una card de acento por rejilla).
 
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se

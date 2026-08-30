@@ -16,7 +16,9 @@ export default function MarketingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="bg-background bg-grain text-foreground min-h-dvh flex-1">
+    // overflow-x-clip: la banda full-bleed usa un breakout w-screen y sin esto
+    // aparecería una scrollbar horizontal.
+    <div className="bg-background bg-grain text-foreground min-h-dvh flex-1 overflow-x-clip">
       {children}
     </div>
   );

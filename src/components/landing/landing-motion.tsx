@@ -31,7 +31,8 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
-const PLX_TRAVEL: Record<string, number> = { slow: 28, mid: 70, fast: 120 };
+// La banda parallax es full-bleed: con más lienzo, más recorrido por capa.
+const PLX_TRAVEL: Record<string, number> = { slow: 36, mid: 90, fast: 150 };
 
 /** Trigger estándar de los efectos de entrada: al asomarse, una sola vez. */
 const onEnter = (trigger: Element, start = "top 85%") => ({
