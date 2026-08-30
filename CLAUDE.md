@@ -188,7 +188,14 @@ sección (`#producto`, `#como-funciona`, `#mcp`) son contrato con nav/WebMCP y N
 `/landing.md` acepta `?lang=en` (y la negociación por `Accept` desde `/en/landing`; detecta el
 idioma por query O pathname, porque el rewrite conserva la URL original) reusando el mismo
 `COPY`. **Regla editorial: al tocar copy de la landing se tocan AMBOS idiomas de `content.ts`
-y se revisa `landing.md`.** Sitemap con `alternates.languages`, robots permite `/en/landing` y
+y se revisa `landing.md`.** Ojo con ese archivo: los pasos y features se derivan de `COPY` (se
+actualizan solos), pero el resumen inglés (`MD.en.summary`) y el bloque de conexión de
+`connectionInfo("en")` son cadenas sueltas — el español sale de `modules/mcp/discovery.ts`,
+que también alimenta la skill, y el inglés se mantiene A MANO ahí mismo.
+
+El idioma del contenido se marca con `lang` en el propio `<main>` (llega en el SSR, así que un
+lector de pantalla no anuncia `/en/landing` en español antes de hidratar); `SetHtmlLang` solo
+corrige el elemento raíz después, para las heurísticas de traducción del navegador. Sitemap con `alternates.languages`, robots permite `/en/landing` y
 el header `Link` de next.config cubre las tres entradas públicas.
 
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;

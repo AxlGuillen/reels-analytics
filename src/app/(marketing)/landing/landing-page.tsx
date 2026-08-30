@@ -92,7 +92,15 @@ export function LandingPage({ lang }: { lang: Lang }) {
 
   return (
     <LandingMotion>
-      <main className="mx-auto flex max-w-[1180px] flex-col gap-16 px-5 pt-7 pb-24 md:gap-[88px]">
+      {/* `lang` aquí y no solo en <html>: el root layout sirve `es` y un route
+          segment no puede cambiar ese atributo en el SSR, así que sin esto un
+          lector de pantalla anunciaría /en/landing en español hasta que
+          hidratara `SetHtmlLang`. El atributo del subárbol SÍ llega en el SSR
+          y gana para todo el contenido de la página. */}
+      <main
+        lang={lang}
+        className="mx-auto flex max-w-[1180px] flex-col gap-16 px-5 pt-7 pb-24 md:gap-[88px]"
+      >
       {/* Nav */}
       <nav className="bg-card shadow-card flex items-center justify-between rounded-full py-2.5 pr-2.5 pl-3">
         <div className="flex items-center gap-2.5">
