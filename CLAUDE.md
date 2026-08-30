@@ -211,7 +211,15 @@ el "4" hace un pop de ~250 ms; el tile del nav de la landing añade `brand-glyph
 única al cargar). Todo bajo `prefers-reduced-motion: no-preference`. El root layout define
 `metadataBase` (desde `APP_URL`), `lang="es"`, `title.template` ("%s · Reels Analytics") y
 `viewport.themeColor` por tema; la metadata de la landing es por idioma (ver i18n arriba) con
-`title.absolute` para esquivar el template, porque su título ya lleva la marca.
+`title.absolute` para esquivar el template, porque su título ya lleva la marca. La **tarjeta
+social (OG)** se genera por código, no como PNG suelto: `landing/og-image.tsx`
+(`ImageResponse` de `next/og`, hexes de marca fijados a mano porque satori no lee CSS vars;
+Space Grotesk/JetBrains Mono se bajan de Google Fonts en build con el patrón `loadGoogleFont`
+de la docs de Next, con fallback a la fuente default si falla) + los dos
+`opengraph-image.tsx` (convención de archivo, `/landing` y `/en/landing`, prerender estático).
+El copy sale del mismo `COPY`, así que los dos idiomas se actualizan solos; `twitter.card` es
+`summary_large_image`. El proxy deja pasar `/landing/opengraph-image*` (los scrapers no tienen
+sesión). El login enlaza de vuelta a `/landing` (marca del panel oscuro + link bajo el form).
 
 **Supabase (base de datos + ingesta + cron, funcionando):** proyecto **`Axl-Projects`** (id
 `impscwgourdxhdejwkhe`, región us-east-1, org de axl13.dev; proyecto paraguas → las tablas se

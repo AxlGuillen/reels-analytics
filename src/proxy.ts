@@ -44,7 +44,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
   // La landing es la puerta pública (en sus dos idiomas): no exige sesión.
-  const isLanding = pathname === "/landing" || pathname === "/en/landing";
+  // Sus tarjetas OG (/landing/opengraph-image) también: los scrapers de
+  // WhatsApp/X/Slack no tienen sesión y un redirect al login rompe el preview.
+  const isLanding = /^\/(?:en\/)?landing(?:\/opengraph-image.*)?$/.test(pathname);
 
   // Sin sesión: la raíz manda a la landing (marketing); el resto al login,
   // recordando a dónde iba. El `next` importa para /oauth/authorize: si se

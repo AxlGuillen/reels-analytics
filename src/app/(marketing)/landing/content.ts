@@ -323,7 +323,8 @@ export function landingMetadata(lang: Lang): Metadata {
       alternateLocale: lang === "es" ? "en_US" : "es_MX",
     },
     twitter: {
-      card: "summary",
+      // Con opengraph-image (convención de archivo) ya hay imagen: tarjeta grande.
+      card: "summary_large_image",
       title: meta.title,
       description: meta.description,
     },
