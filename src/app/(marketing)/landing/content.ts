@@ -21,7 +21,15 @@ export interface LandingCopy {
     path: string;
     ogLocale: string;
   };
-  nav: { product: string; how: string; mcp: string; code: string; start: string };
+  nav: {
+    product: string;
+    how: string;
+    mcp: string;
+    code: string;
+    start: string;
+    /** aria-label del botón hamburguesa (nav móvil). */
+    menu: string;
+  };
   hero: {
     kicker: string;
     /** El H1 se parte en tres: texto — píldora de acento — texto. */
@@ -35,6 +43,8 @@ export interface LandingCopy {
     viewsTitle: string;
     viewsValue: string;
     viewsUnit: string;
+    /** Qué significa la card (la captura de abajo ya trae los datos reales). */
+    viewsNote: string;
     /** Etiquetas Lun→Dom de la gráfica de cápsulas (7). */
     weekDays: readonly [string, string, string, string, string, string, string];
     weekLeader: string;
@@ -45,7 +55,9 @@ export interface LandingCopy {
     bestLabel: string;
     bestTitle: string;
     bestViews: string;
+    bestNote: string;
     chartTitle: string;
+    chartNote: string;
     sectionsTitle: string;
     /** Etiquetas de las barras horizontales (4, mismo orden que las anchuras). */
     sectionLabels: readonly [string, string, string, string];
@@ -98,6 +110,7 @@ const es: LandingCopy = {
     mcp: "MCP",
     code: "Ver el código",
     start: "Empieza a medir",
+    menu: "Abrir menú",
   },
   hero: {
     kicker: "TIKTOK · INSTAGRAM — SNAPSHOTS DIARIOS DESDE EL DÍA CERO",
@@ -114,6 +127,8 @@ const es: LandingCopy = {
     viewsTitle: "Vistas de la semana",
     viewsValue: "683,5",
     viewsUnit: "mil · 57% TT",
+    viewsNote:
+      "TikTok e Instagram sumados en un solo pulso, con el split por plataforma siempre a la vista.",
     weekDays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
     weekLeader: "160,8 mil",
     followersTitle: "Seguidores nuevos",
@@ -124,7 +139,11 @@ const es: LandingCopy = {
     bestLabel: "MEJOR VIDEO",
     bestTitle: "Día 5 del SoloQ Challenge y todos estancados",
     bestViews: "92,4 mil vistas",
+    bestNote:
+      "El panel señala solo al que rompió su semana: benchmark contra su cohorte, no contra todo el catálogo.",
     chartTitle: "La curva que las APIs no te dan",
+    chartNote:
+      "Reconstruida de snapshots diarios: las APIs solo devuelven el número de hoy, nunca el camino.",
     sectionsTitle: "Secciones por hashtag",
     sectionLabels: ["Narración", "SoloQ", "Noticias", "Audio viral"],
     sectionsNote:
@@ -207,6 +226,7 @@ const en: LandingCopy = {
     mcp: "MCP",
     code: "View the code",
     start: "Start measuring",
+    menu: "Open menu",
   },
   hero: {
     kicker: "TIKTOK · INSTAGRAM — DAILY SNAPSHOTS FROM DAY ZERO",
@@ -223,6 +243,8 @@ const en: LandingCopy = {
     viewsTitle: "Views this week",
     viewsValue: "683.5",
     viewsUnit: "K · 57% TT",
+    viewsNote:
+      "TikTok and Instagram summed into a single pulse, with the per-platform split always in sight.",
     weekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     weekLeader: "160.8K",
     followersTitle: "New followers",
@@ -233,7 +255,11 @@ const en: LandingCopy = {
     bestLabel: "BEST VIDEO",
     bestTitle: "Day 5 of the SoloQ Challenge and everyone's stuck",
     bestViews: "92.4K views",
+    bestNote:
+      "The panel flags only the one that beat its week: benchmarked against its cohort, not the whole catalog.",
     chartTitle: "The curve the APIs won't give you",
+    chartNote:
+      "Rebuilt from daily snapshots: the APIs only return today's number, never the path.",
     sectionsTitle: "Sections by hashtag",
     sectionLabels: ["Narration", "SoloQ", "News", "Viral audio"],
     sectionsNote:

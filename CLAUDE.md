@@ -178,7 +178,13 @@ vuelve a la retícula con un contenedor interno de 1180px); textura `.bg-rings` 
 concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="slow"` detrás de
 "Cómo funciona" y features, y **`.bg-graph`** (papel milimétrico: cuadrícula fina + dos cruces
 de acento, una lima) detrás del hero — con `mask-image` de desvanecido para morir antes del
-bento y NO repetir los anillos de abajo; **indicador de scroll** en el borde derecho
+bento y NO repetir los anillos de abajo; **nav sticky con menú móvil**
+(`src/components/landing/landing-nav.tsx`, client solo por el estado del hamburguesa; copy por
+props — no conoce content.ts; en móvil los links/toggles viven en un panel desplegable);
+**footer como banda oscura full-bleed** (`bg-foreground` + halftone, `-mb-24` para morir contra
+el borde: el cambio de color marca el final de la página); las **cards del bento llevan nota
+informativa** (`viewsNote`/`bestNote`/`chartNote` en content.ts) — explican la capacidad, la
+captura real de abajo ya trae los datos; **indicador de scroll** en el borde derecho
 (riel `bg-border` de 5px fijo y centrado, cápsula `bg-primary` que crece con el avance total de
 la página vía `data-scroll-progress`, scaleY con scrub; decorativo puro: `aria-hidden` +
 `pointer-events-none`, solo desktop, `motion-reduce:hidden`, y `scale-y-0` en CSS para que sin
@@ -214,7 +220,11 @@ el header `Link` de next.config cubre las tres entradas públicas.
 
 **Assets reales de la landing (`public/assets/`):** frame 9:16 de un Reel
 (`video-single.png`, en el collage del hero vía `next/image` + `fill`) y capturas del Overview
-(`dashboard-{light,dark}.webp`, cierre del bento `#producto`; la variante sigue al tema con
+(`dashboard-{light,dark}.webp` a 3796×1864 — DPR 2, nítidas en retina; regenerables con
+playwright-core + Edge del sistema contra un build local con bypass de auth TEMPORAL que se
+revierte antes de commitear, sembrando `rail-collapsed=0` y `tour-seen:/:v1` en localStorage
+para que no salgan ni el rail colapsado ni el popover del tour; cierre del bento `#producto`;
+la variante sigue al tema con
 `dark:hidden`/`dark:block` y la oculta NO se descarga gracias a `loading="lazy"`).
 `videos-collection.png` (tira de 3 frames con vistas) está en assets pero aún sin usar.
 Nada de ilustraciones/fotos IA decorativas: solo producto y contenido reales.
