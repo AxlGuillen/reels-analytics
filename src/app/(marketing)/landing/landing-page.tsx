@@ -164,8 +164,7 @@ export function LandingPage({ lang }: { lang: Lang }) {
           aria-hidden
         />
         <div className="relative flex max-w-[760px] flex-1 flex-col gap-6">
-          <p
-            className="hero-item text-muted-foreground font-mono text-[11px] tracking-[0.16em]">
+          <p className="hero-item text-muted-foreground font-mono text-[11px] tracking-[0.16em]">
             {copy.hero.kicker}
           </p>
           <h1
