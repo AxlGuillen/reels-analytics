@@ -40,23 +40,25 @@ export interface LandingCopy {
   };
   collage: { snapshotLabel: string; snapshotMeta: string };
   bento: {
+    /** Etiqueta pequeña: la sección del panel a la que corresponde. */
     viewsTitle: string;
-    viewsValue: string;
-    viewsUnit: string;
-    /** Qué significa la card (la captura de abajo ya trae los datos reales). */
+    /** Frase grande: QUÉ ves ahí. Nada de métricas del creador — la captura
+     *  real de más abajo es la que trae los datos. */
+    viewsHeadline: string;
     viewsNote: string;
     /** Etiquetas Lun→Dom de la gráfica de cápsulas (7). */
     weekDays: readonly [string, string, string, string, string, string, string];
-    weekLeader: string;
     followersTitle: string;
-    followersValue: string;
-    followersMeta: string;
+    followersHeadline: string;
     followersNote: string;
     bestLabel: string;
+    /** Título real de un video del creador: es contenido suyo, no una métrica. */
     bestTitle: string;
-    bestViews: string;
+    bestCta: string;
     bestNote: string;
     chartTitle: string;
+    /** Etiqueta del día destacado en la gráfica (no una cifra inventada). */
+    chartLeader: string;
     chartNote: string;
     sectionsTitle: string;
     /** Etiquetas de las barras horizontales (4, mismo orden que las anchuras). */
@@ -124,24 +126,22 @@ const es: LandingCopy = {
     snapshotMeta: "captura #417 · 2 plataformas",
   },
   bento: {
-    viewsTitle: "Vistas de la semana",
-    viewsValue: "683,5",
-    viewsUnit: "mil · 57% TT",
+    viewsTitle: "Vistas por periodo",
+    viewsHeadline: "Una semana o un mes, de un vistazo",
     viewsNote:
       "TikTok e Instagram sumados en un solo pulso, con el split por plataforma siempre a la vista.",
     weekDays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
-    weekLeader: "160,8 mil",
-    followersTitle: "Seguidores nuevos",
-    followersValue: "+1.951",
-    followersMeta: "en 7 días",
+    followersTitle: "Seguidores ganados",
+    followersHeadline: "Cada uno, en el día que llegó",
     followersNote:
-      "Cada delta se atribuye al día en que ocurrió, no al día en que el cron lo capturó.",
+      "El delta se atribuye al día en que ocurrió, no al día en que el cron lo capturó.",
     bestLabel: "MEJOR VIDEO",
     bestTitle: "Día 5 del SoloQ Challenge y todos estancados",
-    bestViews: "92,4 mil vistas",
+    bestCta: "Ver su curva",
     bestNote:
       "El panel señala solo al que rompió su semana: benchmark contra su cohorte, no contra todo el catálogo.",
     chartTitle: "La curva que las APIs no te dan",
+    chartLeader: "MEJOR DÍA",
     chartNote:
       "Reconstruida de snapshots diarios: las APIs solo devuelven el número de hoy, nunca el camino.",
     sectionsTitle: "Secciones por hashtag",
@@ -240,24 +240,22 @@ const en: LandingCopy = {
     snapshotMeta: "capture #417 · 2 platforms",
   },
   bento: {
-    viewsTitle: "Views this week",
-    viewsValue: "683.5",
-    viewsUnit: "K · 57% TT",
+    viewsTitle: "Views by period",
+    viewsHeadline: "A week or a month, at a glance",
     viewsNote:
       "TikTok and Instagram summed into a single pulse, with the per-platform split always in sight.",
     weekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    weekLeader: "160.8K",
-    followersTitle: "New followers",
-    followersValue: "+1,951",
-    followersMeta: "in 7 days",
+    followersTitle: "Followers gained",
+    followersHeadline: "Each one, on the day it landed",
     followersNote:
-      "Every delta is attributed to the day it happened, not the day the cron captured it.",
+      "The delta is attributed to the day it happened, not the day the cron captured it.",
     bestLabel: "BEST VIDEO",
     bestTitle: "Day 5 of the SoloQ Challenge and everyone's stuck",
-    bestViews: "92.4K views",
+    bestCta: "See its curve",
     bestNote:
       "The panel flags only the one that beat its week: benchmarked against its cohort, not the whole catalog.",
     chartTitle: "The curve the APIs won't give you",
+    chartLeader: "BEST DAY",
     chartNote:
       "Rebuilt from daily snapshots: the APIs only return today's number, never the path.",
     sectionsTitle: "Sections by hashtag",

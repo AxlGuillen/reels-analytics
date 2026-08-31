@@ -152,7 +152,7 @@ export function LandingNav({
       {open && (
         <div
           id={MENU_PANEL_ID}
-          className="bg-card shadow-lift absolute inset-x-0 top-[calc(100%+8px)] flex flex-col gap-1 rounded-[22px] p-3 md:hidden"
+          className="landing-menu-panel bg-card shadow-lift absolute inset-x-0 top-[calc(100%+8px)] flex flex-col gap-1 rounded-[22px] p-3 md:hidden"
         >
           {links.map((link) => (
             <a

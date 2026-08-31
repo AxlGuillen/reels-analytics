@@ -206,7 +206,22 @@ export function LandingPage({ lang }: { lang: Lang }) {
       </section>
 
       {/* Bento del producto */}
-      <section id="producto" className="flex scroll-mt-6 flex-col gap-3.5">
+      <section
+        id="producto"
+        className="relative isolate flex scroll-mt-6 flex-col gap-3.5"
+        data-plx-scope
+      >
+        {/* Textura secundaria de la zona: el glifo 4XL como marca de agua muy
+            tenue, asomando por los canales entre cards. `isolate` + `-z-10`
+            para que quede detrás de ellas; deriva con el scroll como las demás
+            capas de fondo. */}
+        <div
+          className="pointer-events-none absolute top-1/2 -right-40 -z-10 hidden -translate-y-1/2 xl:block"
+          data-plx="slow"
+          aria-hidden
+        >
+          <BrandGlyph className="text-foreground/[0.07] size-[560px]" />
+        </div>
         <div className="grid gap-3.5 md:grid-cols-3" data-reveal-stagger>
           <div className="bg-card shadow-card flex flex-col gap-3.5 rounded-lg p-5">
             <div className="flex items-center gap-2.5">
@@ -217,14 +232,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 {copy.bento.viewsTitle}
               </span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[44px] leading-none font-medium tracking-[-0.03em]">
-                {copy.bento.viewsValue}
-              </span>
-              <span className="text-muted-foreground font-mono text-xs">
-                {copy.bento.viewsUnit}
-              </span>
-            </div>
+            <p className="text-[26px] leading-[1.15] font-medium tracking-[-0.025em]">
+              {copy.bento.viewsHeadline}
+            </p>
             <div className="flex gap-[5px]">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="bg-foreground h-9 flex-1 rounded-[9px]" />
@@ -250,14 +260,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 {copy.bento.followersTitle}
               </span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[44px] leading-none font-medium tracking-[-0.03em]">
-                {copy.bento.followersValue}
-              </span>
-              <span className="text-primary-foreground/60 font-mono text-xs">
-                {copy.bento.followersMeta}
-              </span>
-            </div>
+            <p className="text-[26px] leading-[1.15] font-medium tracking-[-0.025em]">
+              {copy.bento.followersHeadline}
+            </p>
             <p className="text-primary-foreground/60 text-[12.5px] leading-[1.45]">
               {copy.bento.followersNote}
             </p>
@@ -275,7 +280,7 @@ export function LandingPage({ lang }: { lang: Lang }) {
               {copy.bento.bestTitle}
             </p>
             <div className="bg-background text-foreground relative flex w-fit items-center gap-2.5 rounded-full py-2 pr-1.5 pl-[15px] text-[12.5px] font-medium">
-              {copy.bento.bestViews}
+              {copy.bento.bestCta}
               <span className="bg-primary text-primary-foreground flex size-[22px] items-center justify-center rounded-full">
                 <ArrowUpRight className="size-3" strokeWidth={2} />
               </span>
@@ -310,8 +315,8 @@ export function LandingPage({ lang }: { lang: Lang }) {
                   className="relative flex h-full flex-1 flex-col items-center justify-end gap-2"
                 >
                   {"leader" in bar && (
-                    <div className="bg-foreground text-background absolute -top-1.5 right-1 rounded-full px-2 py-[3px] font-mono text-[10px]">
-                      {copy.bento.weekLeader}
+                    <div className="bg-foreground text-background absolute -top-1.5 right-1 rounded-full px-2 py-[3px] font-mono text-[9.5px] tracking-[0.1em]">
+                      {copy.bento.chartLeader}
                     </div>
                   )}
                   <div

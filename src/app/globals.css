@@ -441,6 +441,24 @@
     }
   }
 
+  /* Panel del menú móvil de la landing: cae desde la píldora del nav. Solo
+     entrada (el desmontaje es inmediato: animar la salida exigiría máquina de
+     estados y el panel ya se cierra al elegir). Dentro del rango 150-300 ms
+     del contrato. */
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-menu-panel {
+      transform-origin: top center;
+      animation: menu-drop 0.22s cubic-bezier(0.33, 1, 0.68, 1) both;
+    }
+  }
+  @keyframes menu-drop {
+    from {
+      opacity: 0;
+      translate: 0 -10px;
+      scale: 0.97;
+    }
+  }
+
   /* Entrada sutil (login). Se desactiva con prefers-reduced-motion. */
   .animate-fade-up {
     animation: fade-up 0.45s ease-out both;

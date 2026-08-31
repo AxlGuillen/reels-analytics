@@ -181,12 +181,18 @@ de acento, una lima) detrás del hero — con `mask-image` de desvanecido para m
 bento y NO repetir los anillos de abajo; **nav sticky con menú móvil**
 (`src/components/landing/landing-nav.tsx`, client solo por el estado del hamburguesa; copy por
 props — no conoce content.ts; en móvil los links/toggles viven en un panel desplegable que
-cierra al elegir, con Escape —devolviendo el foco al botón— o tocando fuera, y el botón lo
-enlaza con `aria-controls`);
+cierra al elegir, con Escape —devolviendo el foco al botón— o tocando fuera, el botón lo
+enlaza con `aria-controls`, y el panel entra con `.landing-menu-panel` —CSS puro, 220 ms desde
+la píldora; solo entrada: animar la salida exigiría máquina de estados—);
 **footer como banda oscura full-bleed** (`bg-foreground` + halftone, `-mb-24` para morir contra
-el borde: el cambio de color marca el final de la página); las **cards del bento llevan nota
-informativa** (`viewsNote`/`bestNote`/`chartNote` en content.ts) — explican la capacidad, la
-captura real de abajo ya trae los datos; **indicador de scroll** en el borde derecho
+el borde: el cambio de color marca el final de la página); las **cards del bento NO muestran métricas
+del creador**: la captura real del panel (más abajo en la misma sección) es la que trae los
+datos, así que las cards dicen QUÉ se ve — etiqueta pequeña + frase de capacidad
+(`viewsHeadline`/`followersHeadline`) + nota (`viewsNote`/`bestNote`/`chartNote`); el globo de
+la gráfica es una etiqueta (`chartLeader`, "MEJOR DÍA"), no una cifra. Duplicar stats aquí
+además las contradecía con la captura. La **marca de agua del glifo 4XL** (`-z-10` bajo
+`isolate`, `data-plx="slow"`, `xl:` en adelante) es la textura secundaria de la zona: asoma por
+el margen derecho porque las cards cubren el ancho útil; **indicador de scroll** en el borde derecho
 (riel `bg-border` de 5px fijo y centrado, cápsula `bg-primary` que crece con el avance total de
 la página vía `data-scroll-progress`, scaleY con scrub; decorativo puro: `aria-hidden` +
 `pointer-events-none`, solo desktop, `motion-reduce:hidden`, y `scale-y-0` en CSS para que sin
