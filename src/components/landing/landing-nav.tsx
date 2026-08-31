@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { BrandGlyph } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { CTA_OUTLINE, CTA_PRIMARY } from "./cta";
 
 /**
  * Nav de la landing: píldora sticky. Client component solo por el menú móvil
@@ -15,11 +16,6 @@ import { ThemeToggle } from "@/components/dashboard/theme-toggle";
  * Móvil: marca + CTA + hamburguesa; los links, "ver el código" y los toggles
  * de tema/idioma viven en un panel desplegable (se cierra al elegir).
  */
-
-const CTA_PRIMARY =
-  "bg-foreground text-background hover:bg-foreground/90 inline-flex items-center justify-center rounded-full font-medium transition-colors";
-const CTA_OUTLINE =
-  "border-border bg-card hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-full border transition-colors";
 
 export interface LandingNavProps {
   brand: string;

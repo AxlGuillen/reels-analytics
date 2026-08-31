@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { LandingNav } from "@/components/landing/landing-nav";
+import { CTA_OUTLINE, CTA_PRIMARY } from "@/components/landing/cta";
 import { BrandGlyph } from "@/components/brand-mark";
 import { WebMcp } from "@/components/landing/web-mcp";
 import {
@@ -31,11 +32,6 @@ const GITHUB_URL = "https://github.com/AxlGuillen/reels-analytics";
  *  sería invisible. */
 const HATCH_INVERT =
   "bg-[repeating-linear-gradient(135deg,color-mix(in_oklab,var(--background)_14%,transparent)_0_7px,color-mix(in_oklab,var(--background)_6%,transparent)_7px_14px)]";
-
-const CTA_PRIMARY =
-  "bg-foreground text-background hover:bg-foreground/90 inline-flex items-center justify-center rounded-full font-medium transition-colors";
-const CTA_OUTLINE =
-  "border-border bg-card hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-full border transition-colors";
 
 /** Semana de muestra para la gráfica de cápsulas (alto total y segmento IG en
  *  %). Las etiquetas de día y el globo del líder vienen del copy. */
