@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
+import { ArrowUpRight, Eye, Sparkles, TrendingUp, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { CTA_OUTLINE, CTA_PRIMARY } from "@/components/landing/cta";
@@ -33,24 +33,29 @@ const GITHUB_URL = "https://github.com/AxlGuillen/reels-analytics";
 const HATCH_INVERT =
   "bg-[repeating-linear-gradient(135deg,color-mix(in_oklab,var(--background)_14%,transparent)_0_7px,color-mix(in_oklab,var(--background)_6%,transparent)_7px_14px)]";
 
-/** Semana de muestra para la gráfica de cápsulas (alto total y segmento IG en
- *  %). Las etiquetas de día y el globo del líder vienen del copy. */
-const WEEK_BARS = [
-  { h: 32, ig: 31 },
-  { h: 47, ig: 31 },
-  { h: 83, ig: 29, leader: true },
-  { h: 53, ig: 31 },
-  { h: 39, ig: 31 },
-  { h: 33, ig: 33 },
-  { h: 26, ig: 33 },
+/** Curva de crecimiento de muestra (viewBox 400x150): sube rápido y se aplana,
+ *  la forma real de un video. Es una ILUSTRACIÓN de la capacidad, no datos del
+ *  creador — los datos reales los trae la captura del panel de más abajo. */
+const CURVE_PATH =
+  "M0 134 C 24 122, 44 88, 66 74 C 102 50, 142 44, 186 40 C 242 35, 294 30, 346 27 C 372 25.5, 388 24.5, 400 24";
+const CURVE_AREA = `${CURVE_PATH} L400 150 L0 150 Z`;
+
+/** Hitos sobre la curva: % de ancho y de alto (coinciden con el trazo). Las
+ *  etiquetas vienen del copy (`chartPoints`). */
+const CURVE_POINTS = [
+  { x: "16.5%", y: "49%" },
+  { x: "46.5%", y: "26.5%" },
+  { x: "86%", y: "18%" },
 ] as const;
 
-/** Anchuras/rellenos de las barras por sección (las etiquetas, del copy). */
+/** Ranking de formatos: posición + anchura/relleno. Deliberadamente ANÓNIMO
+ *  (01…04, no los tipos reales del creador): la card ilustra que el panel los
+ *  ordena, no cuáles son ni cuánto miden. */
 const SECTION_BARS = [
-  { w: "100%", fill: "bg-foreground" },
-  { w: "78%", fill: "bg-primary" },
-  { w: "46%", fill: "bg-muted-foreground" },
-  { w: "30%", fill: "bg-muted-foreground/50" },
+  { rank: "01", w: "100%", fill: "bg-foreground" },
+  { rank: "02", w: "78%", fill: "bg-primary" },
+  { rank: "03", w: "46%", fill: "bg-muted-foreground" },
+  { rank: "04", w: "30%", fill: "bg-muted-foreground/50" },
 ] as const;
 
 /** El paso del cron es el corazón del producto: card oscura (jerarquía por
@@ -206,7 +211,22 @@ export function LandingPage({ lang }: { lang: Lang }) {
       </section>
 
       {/* Bento del producto */}
-      <section id="producto" className="flex scroll-mt-6 flex-col gap-3.5">
+      <section
+        id="producto"
+        className="relative isolate flex scroll-mt-6 flex-col gap-3.5"
+        data-plx-scope
+      >
+        {/* Textura secundaria de la zona: el glifo 4XL como marca de agua muy
+            tenue, asomando por los canales entre cards. `isolate` + `-z-10`
+            para que quede detrás de ellas; deriva con el scroll como las demás
+            capas de fondo. */}
+        <div
+          className="pointer-events-none absolute top-1/2 -right-40 -z-10 hidden -translate-y-1/2 xl:block"
+          data-plx="slow"
+          aria-hidden
+        >
+          <BrandGlyph className="text-foreground/[0.07] size-[560px]" />
+        </div>
         <div className="grid gap-3.5 md:grid-cols-3" data-reveal-stagger>
           <div className="bg-card shadow-card flex flex-col gap-3.5 rounded-lg p-5">
             <div className="flex items-center gap-2.5">
@@ -217,14 +237,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 {copy.bento.viewsTitle}
               </span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[44px] leading-none font-medium tracking-[-0.03em]">
-                {copy.bento.viewsValue}
-              </span>
-              <span className="text-muted-foreground font-mono text-xs">
-                {copy.bento.viewsUnit}
-              </span>
-            </div>
+            <p className="text-[26px] leading-[1.15] font-medium tracking-[-0.025em]">
+              {copy.bento.viewsHeadline}
+            </p>
             <div className="flex gap-[5px]">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="bg-foreground h-9 flex-1 rounded-[9px]" />
@@ -250,14 +265,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 {copy.bento.followersTitle}
               </span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[44px] leading-none font-medium tracking-[-0.03em]">
-                {copy.bento.followersValue}
-              </span>
-              <span className="text-primary-foreground/60 font-mono text-xs">
-                {copy.bento.followersMeta}
-              </span>
-            </div>
+            <p className="text-[26px] leading-[1.15] font-medium tracking-[-0.025em]">
+              {copy.bento.followersHeadline}
+            </p>
             <p className="text-primary-foreground/60 text-[12.5px] leading-[1.45]">
               {copy.bento.followersNote}
             </p>
@@ -275,9 +285,11 @@ export function LandingPage({ lang }: { lang: Lang }) {
               {copy.bento.bestTitle}
             </p>
             <div className="bg-background text-foreground relative flex w-fit items-center gap-2.5 rounded-full py-2 pr-1.5 pl-[15px] text-[12.5px] font-medium">
-              {copy.bento.bestViews}
+              {copy.bento.bestPill}
+              {/* Icono descriptivo, no una flecha de navegación: la píldora
+                  etiqueta lo que trae la card, no lleva a ningún lado. */}
               <span className="bg-primary text-primary-foreground flex size-[22px] items-center justify-center rounded-full">
-                <ArrowUpRight className="size-3" strokeWidth={2} />
+                <TrendingUp className="size-3" strokeWidth={2} />
               </span>
             </div>
             <p className="text-background/60 relative pr-12 text-[12.5px] leading-[1.45]">
@@ -288,56 +300,71 @@ export function LandingPage({ lang }: { lang: Lang }) {
 
         <div className="grid gap-3.5 lg:grid-cols-[2fr_1fr]" data-reveal-stagger>
           <div className="bg-card shadow-card flex flex-col gap-4 rounded-lg p-[22px]">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-4">
               <span className="text-[17px] font-medium tracking-[-0.02em]">
                 {copy.bento.chartTitle}
               </span>
-              <div className="text-muted-foreground hidden gap-3.5 text-[11.5px] sm:flex">
-                <span className="flex items-center gap-1.5">
-                  <span className="bg-foreground size-[7px] rounded-full" />
-                  TikTok
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="bg-primary ring-foreground/15 size-[7px] rounded-full ring-1" />
-                  Instagram
-                </span>
-              </div>
+              <span className="text-muted-foreground hidden shrink-0 font-mono text-[10px] tracking-[0.12em] sm:block">
+                {copy.bento.chartAxis}
+              </span>
             </div>
-            <div className="flex h-[180px] items-end gap-2 sm:gap-3.5" data-bars>
-              {WEEK_BARS.map((bar, i) => (
-                <div
-                  key={copy.bento.weekDays[i]}
-                  className="relative flex h-full flex-1 flex-col items-center justify-end gap-2"
-                >
-                  {"leader" in bar && (
-                    <div className="bg-foreground text-background absolute -top-1.5 right-1 rounded-full px-2 py-[3px] font-mono text-[10px]">
-                      {copy.bento.weekLeader}
-                    </div>
-                  )}
-                  <div
-                    className={
-                      "leader" in bar
-                        ? "bg-foreground outline-muted-foreground/40 flex w-[26px] flex-col justify-end rounded-full p-[3px] outline-1 outline-offset-[5px] outline-dashed"
-                        : "bg-foreground flex w-[26px] flex-col justify-end rounded-full p-[3px]"
-                    }
-                    style={{ height: `${bar.h}%` }}
-                    data-bar
-                  >
-                    <div
-                      className="bg-primary dark:bg-background w-full rounded-full"
-                      style={{ height: `${bar.ig}%` }}
+            <div className="relative h-[180px] w-full">
+              {/* Retícula tenue: da lectura de "gráfica" sin inventar cifras. */}
+              <svg
+                viewBox="0 0 400 150"
+                preserveAspectRatio="none"
+                className="h-full w-full"
+                aria-hidden
+              >
+                <g className="text-border" stroke="currentColor">
+                  {[30, 70, 110, 150].map((y) => (
+                    <line
+                      key={y}
+                      x1="0"
+                      y1={y}
+                      x2="400"
+                      y2={y}
+                      vectorEffect="non-scaling-stroke"
                     />
-                  </div>
-                  <span
-                    className={
-                      "leader" in bar
-                        ? "text-foreground font-mono text-[10px] font-medium"
-                        : "text-muted-foreground font-mono text-[10px]"
-                    }
-                  >
-                    {copy.bento.weekDays[i]}
-                  </span>
-                </div>
+                  ))}
+                </g>
+                <path
+                  d={CURVE_AREA}
+                  className="text-primary"
+                  fill="currentColor"
+                  fillOpacity="0.35"
+                />
+                <path
+                  d={CURVE_PATH}
+                  className="text-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              {/* Puntos fuera del SVG: con preserveAspectRatio="none" un
+                  <circle> saldría ovalado al estirarse el viewBox. */}
+              {CURVE_POINTS.map((point, i) => (
+                <span
+                  key={copy.bento.chartPoints[i]}
+                  className="bg-foreground ring-card absolute size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full ring-[3px]"
+                  style={{ left: point.x, top: point.y }}
+                  aria-hidden
+                />
+              ))}
+            </div>
+            {/* Eje X: los hitos que el panel marca en cada video. */}
+            <div className="relative h-4">
+              {CURVE_POINTS.map((point, i) => (
+                <span
+                  key={copy.bento.chartPoints[i]}
+                  className="text-muted-foreground absolute -translate-x-1/2 font-mono text-[10px] whitespace-nowrap"
+                  style={{ left: point.x }}
+                >
+                  {copy.bento.chartPoints[i]}
+                </span>
               ))}
             </div>
             <p className="text-muted-foreground text-[12.5px] leading-[1.45]">
@@ -350,13 +377,10 @@ export function LandingPage({ lang }: { lang: Lang }) {
               {copy.bento.sectionsTitle}
             </span>
             <div className="flex flex-col gap-2.5" data-bars-x>
-              {SECTION_BARS.map((row, i) => (
-                <div
-                  key={copy.bento.sectionLabels[i]}
-                  className="flex items-center gap-2.5"
-                >
-                  <span className="text-muted-foreground w-[84px] text-xs">
-                    {copy.bento.sectionLabels[i]}
+              {SECTION_BARS.map((row) => (
+                <div key={row.rank} className="flex items-center gap-3">
+                  <span className="text-muted-foreground shrink-0 font-mono text-[11px]">
+                    {row.rank}
                   </span>
                   <div className="bg-muted h-3.5 flex-1 rounded-full">
                     <div

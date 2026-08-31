@@ -19,15 +19,17 @@ periódicos y persistirlos**; el crecimiento se calcula comparando snapshots.
 
 ## Estado actual
 
-Core inicializado. **Ya hecho:** scaffold de Next 16 + Tailwind 4 + shadcn, estructura
-modular (`core/` + `modules/tiktok` + `modules/instagram`), modelo de dominio normalizado,
-contrato `PlatformProvider`, providers stub (lanzan `NotImplementedError`), registry,
-utilidades (hashtags, fechas), config de env validada y shell del dashboard con las dos
-secciones separadas. `build`, `lint` y `tsc` pasan limpios.
+**Base del proyecto:** Next 16 + Tailwind 4 + shadcn, estructura modular
+(`core/` + `modules/*`), modelo de dominio normalizado, contrato `PlatformProvider`
+(implementado por ambas plataformas — ya no quedan stubs), registry, utilidades
+(hashtags, fechas) y config de env validada. `build`, `lint`, `tsc` y `bun test`
+(144 tests) pasan limpios. El detalle de cada pieza va en las secciones siguientes.
 
 **TikTok (integración funcional):** OAuth Login Kit con PKCE + state
 (`modules/tiktok/oauth.ts`); sesión interina en cookie httpOnly
-(`modules/tiktok/session.ts`, se reemplazará por Supabase); rutas
+(`modules/tiktok/session.ts`) que usa la UI en vivo — convive con los tokens
+persistidos en `ra_connections`, que son los que usa el cron; unificar en Supabase
+sigue pendiente. Rutas
 `app/api/auth/tiktok/{login,callback}`. **Lectura de datos ya implementada:**
 `api.ts` (cliente Display API: user/info, video/list, video/query), `mappers.ts`
 (raw → dominio), `provider.ts` (contrato completo), `read.ts` (overview para la UI con
@@ -51,7 +53,8 @@ snapshot más antiguo por corrida — así todo el catálogo recibe snapshot al 
 sin exceder el rate limit de IG (~200 llamadas/usuario/hora) ni los 60 s del plan Hobby
 (máx. 2 crons, 1 disparo/día). El 2.º cron (`/api/cron/digest`, lunes) manda un **digest
 semanal por Telegram** (`modules/digest`, `core/lib/telegram.ts`) que además hace de
-watchdog de la ingesta. Ver `ROADMAP.md` para las fases de análisis planificadas.
+watchdog de la ingesta. `ROADMAP.md` guarda el diseño de cada fase (ya implementadas) y
+los experimentos de contenido abiertos.
 
 **Servidor MCP** (`/api/mcp`, route en `app/api/[transport]/route.ts` con `mcp-handler`):
 expone la analítica persistida como tools de solo lectura (`modules/mcp/tools.ts`:
@@ -181,12 +184,21 @@ de acento, una lima) detrás del hero — con `mask-image` de desvanecido para m
 bento y NO repetir los anillos de abajo; **nav sticky con menú móvil**
 (`src/components/landing/landing-nav.tsx`, client solo por el estado del hamburguesa; copy por
 props — no conoce content.ts; en móvil los links/toggles viven en un panel desplegable que
-cierra al elegir, con Escape —devolviendo el foco al botón— o tocando fuera, y el botón lo
-enlaza con `aria-controls`);
+cierra al elegir, con Escape —devolviendo el foco al botón— o tocando fuera, el botón lo
+enlaza con `aria-controls`, y el panel entra con `.landing-menu-panel` —CSS puro, 220 ms desde
+la píldora; solo entrada: animar la salida exigiría máquina de estados—);
 **footer como banda oscura full-bleed** (`bg-foreground` + halftone, `-mb-24` para morir contra
-el borde: el cambio de color marca el final de la página); las **cards del bento llevan nota
-informativa** (`viewsNote`/`bestNote`/`chartNote` en content.ts) — explican la capacidad, la
-captura real de abajo ya trae los datos; **indicador de scroll** en el borde derecho
+el borde: el cambio de color marca el final de la página); las **cards del bento NO muestran métricas
+del creador**: la captura real del panel (más abajo en la misma sección) es la que trae los
+datos, así que las cards dicen QUÉ se ve — etiqueta pequeña + frase de capacidad
+(`viewsHeadline`/`followersHeadline`) + nota (`viewsNote`/`bestNote`/`chartNote`); la card de la curva
+DIBUJA una curva (SVG con área lima, hitos 24 h / día 7 / día 30 y eje `chartAxis`) en vez de
+las barras semanales que contradecían su propio título, y la de formatos ordena un ranking
+ANÓNIMO (01…04, no los tipos reales del creador). Las notas dicen QUÉ vas a encontrar, no cómo
+está hecho: el mecanismo ya lo cuenta "Cómo funciona". Duplicar stats aquí
+además las contradecía con la captura. La **marca de agua del glifo 4XL** (`-z-10` bajo
+`isolate`, `data-plx="slow"`, `xl:` en adelante) es la textura secundaria de la zona: asoma por
+el margen derecho porque las cards cubren el ancho útil; **indicador de scroll** en el borde derecho
 (riel `bg-border` de 5px fijo y centrado, cápsula `bg-primary` que crece con el avance total de
 la página vía `data-scroll-progress`, scaleY con scrub; decorativo puro: `aria-hidden` +
 `pointer-events-none`, solo desktop, `motion-reduce:hidden`, y `scale-y-0` en CSS para que sin
@@ -377,7 +389,7 @@ con `APP_URL` como base:
 | Framework | **Next.js 16** (App Router, Server Components) |
 | Lenguaje | **TypeScript** (strict) |
 | Estilos | **Tailwind CSS** |
-| UI | **shadcn/ui** (Radix + Tailwind) |
+| UI | **shadcn/ui** sobre **Base UI** (`@base-ui/react`) + Tailwind |
 | Backend / DB | **Supabase** (Postgres, Auth, RLS, Edge Functions) |
 | Gestor de paquetes | **bun** (usar `bun`, NO npm/pnpm/yarn) |
 
@@ -549,7 +561,9 @@ src/
 
 > Ya aplicado en el proyecto `Axl-Projects`. Los tipos en `src/core/domain/models.ts` son la
 > fuente de verdad; el esquema los refleja. Todas las tablas llevan prefijo `ra_` (Postgres:
-> snake_case, sin guiones ni mayúsculas). Enum `ra_platform` = `'tiktok' | 'instagram'`.
+> snake_case, sin guiones ni mayúsculas). Enums: `ra_platform` = `'tiktok' | 'instagram'`
+> y `ra_oauth_token_kind` (access/refresh). Las 5 primeras tablas son la analítica; las
+> `ra_oauth_*` son el authorization server del MCP (ver "Auth del MCP").
 
 Snapshots inmutables con timestamp; el histórico se construye acumulando filas.
 
@@ -560,6 +574,9 @@ Snapshots inmutables con timestamp; el histórico se construye acumulando filas.
 | `ra_account_snapshots` | métricas de cuenta en el tiempo | `account_id`, `captured_at`, `followers`, `total_views`, `total_likes` |
 | `ra_videos` | un video por plataforma | `account_id`, `platform`, `external_id`, `caption`, `hashtags text[]`, `published_at`, `url`, `duration_s` |
 | `ra_video_snapshots` | métricas de video en el tiempo | `video_id`, `captured_at`, `views`, `likes`, `comments`, `shares`, `saved` |
+| `ra_oauth_clients` | clientes registrados por DCR en el MCP | `client_id`, `client_name`, `redirect_uris` |
+| `ra_oauth_codes` | authorization codes de un solo uso | `code_hash`, `code_challenge`, `expires_at` |
+| `ra_oauth_tokens` | access/refresh **hasheados** del MCP | `token_hash`, `kind`, `client_id`, `resource`, `expires_at`, `revoked_at` |
 
 - **Hashtags, horario y día**: no existen como campos de API; se **derivan** al ingerir
   (parseo de `#\w+` desde el caption/description; `published_at` viene del `timestamp` /
@@ -567,10 +584,15 @@ Snapshots inmutables con timestamp; el histórico se construye acumulando filas.
 - **RLS activado** en todas las tablas. `connections` nunca se expone al cliente.
 - Regenerar `database.types.ts` tras cada migración.
 
-## Integración de plataformas (a futuro)
+## Integración de plataformas (referencia de las APIs)
+
+> Ambas integraciones están **funcionando** (ver "Estado actual"). Esta sección queda
+> como referencia de qué expone cada API y con qué scopes, que es lo que hay que
+> consultar al tocar los adapters.
 
 Ambas requieren: cuenta profesional/creador, app de desarrollador registrada, OAuth y
-**App Review** para desbloquear scopes de datos. Los tokens caducan → implementar refresh.
+**App Review** para desbloquear scopes de datos. Los tokens caducan → de eso se encarga
+el refresh automático de `modules/accounts/tokens.ts`.
 
 ### TikTok — Display API (Login Kit)
 - **NO** confundir con Marketing API (ads) ni Research API (académica).

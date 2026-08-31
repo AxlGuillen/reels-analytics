@@ -5,7 +5,19 @@ plan **Hobby de Vercel**: máx. **2 crons** (1 disparo/día cada uno, hora impre
 **60 s** de `maxDuration`, y el rate limit de Instagram (~200 llamadas/usuario/hora,
 verificar). Regla general: ninguna corrida de ingesta debe exceder ~150 llamadas a IG.
 
-## Fase 0 — Sanear la ingesta (URGENTE: hay pérdida de datos activa)
+> **Estado (ago 2026): las fases 0–5 están implementadas.** Se conservan porque
+> documentan POR QUÉ cada pieza es como es (presupuestos de llamadas, sesgos que
+> se quisieron evitar, límites del plan Hobby) — eso sigue siendo la referencia al
+> tocarlas. Lo único pendiente de la fase 3 son las *features de caption*.
+>
+> Este roadmap cubre **solo la analítica**. Lo construido fuera de ese eje (servidor
+> MCP + OAuth 2.1, endpoints agent-ready, landing pública bilingüe, health check,
+> tours guiados) se documenta en `CLAUDE.md`.
+
+## Fase 0 — Sanear la ingesta ✅ HECHO
+
+> Implementado: rotación en `modules/ingestion/capture.ts` y visibilidad de última
+> captura vía `getCaptureStatus` (`modules/ingestion/status.ts`).
 
 **Problema:** `captureInstagram()` hereda `MAX_REELS = 90` del read del dashboard;
 los Reels fuera del top-90 dejaron de recibir snapshots (su curva se congela).
@@ -29,7 +41,10 @@ los Reels fuera del top-90 dejaron de recibir snapshots (su curva se congela).
 - Refresh de docs: CLAUDE.md (auto-refresh y snapshots ya existen; dashboard con
   sidebar) y README (env vars nuevas de Supabase).
 
-## Fase 1 — Motor de "vistas a edad N" (la base analítica)
+## Fase 1 — Motor de "vistas a edad N" ✅ HECHO
+
+> Implementado en `modules/analytics/timeseries.ts` (`viewsAtAge`, `initialVelocity`),
+> puro y con tests.
 
 **Problema que resuelve:** todo el análisis actual (mejor día/hora, hashtags, meses)
 usa vistas acumuladas de por vida → confunde rendimiento con antigüedad del video.
@@ -46,7 +61,10 @@ usa vistas acumuladas de por vida → confunde rendimiento con antigüedad del v
 - Limitación honesta: solo aplica a videos publicados después de que arrancó la
   ingesta; el corpus crece solo.
 
-## Fase 2 — Breakouts y benchmark por video
+## Fase 2 — Breakouts y benchmark por video ✅ HECHO
+
+> Implementado en `modules/analytics/breakouts.ts`. El benchmark acabó siendo por
+> **cohorte semanal**, no por mediana global — ver CLAUDE.md.
 
 Se apoya en la Fase 1.
 - Curva mediana por tipo de contenido (y por plataforma): "el video típico de
@@ -55,7 +73,11 @@ Se apoya en la Fase 1.
 - **Benchmark en el detalle** (`VideoGrowth`): superponer la curva mediana de su
   tipo y mostrar el múltiplo ("va 2.3× arriba del ritmo típico").
 
-## Fase 3 — Quick wins analíticos
+## Fase 3 — Quick wins analíticos ✅ HECHO (salvo caption)
+
+> Hechos: buckets de duración (`viewsByDuration`), momentum (`gainedByMonth`) y
+> engagement ponderado (`weightedEngagement` en `summarize`). **Pendiente: features
+> de caption.**
 
 Independientes entre sí; se pueden intercalar.
 - **Vistas por duración** (solo TikTok; `duration_s` ya está persistido): buckets
@@ -65,14 +87,19 @@ Independientes entre sí; se pueden intercalar.
 - **Engagement ponderado** además del promedio simple en `summarize`.
 - **Features de caption**: longitud, ¿lleva pregunta?, ¿emoji? → vistas promedio.
 
-## Fase 4 — Atribución de seguidores
+## Fase 4 — Atribución de seguidores ✅ HECHO
+
+> Implementado en `modules/analytics/attribution.ts` (`dailyFollowerDeltas`).
 
 - Deltas diarios de `ra_account_snapshots.followers` cruzados con fechas de
   publicación: qué videos coinciden con picos de seguidores.
 - Panel en `/growth`: "videos que trajeron seguidores" (correlación, no causalidad —
   decirlo en la UI).
 
-## Fase 5 — Digest semanal (usa el 2.º y último slot de cron)
+## Fase 5 — Digest semanal ✅ HECHO
+
+> Implementado en `modules/digest` + `core/lib/telegram.ts`, disparado por
+> `/api/cron/digest` los lunes. Canal elegido: **Telegram**.
 
 - Cron semanal (p. ej. lunes) → endpoint que arma el resumen: crecimiento de la
   semana, breakout de la semana (Fase 2), recordatorio de mejor día/hora (Fase 1).
@@ -87,8 +114,13 @@ Independientes entre sí; se pueden intercalar.
   (el "código" del creador). Retroactivo: el caption ya se persiste completo.
   Tabla `video_links` + página de comparativa con curvas superpuestas.
 - **OAuth de Instagram**: quitar el token manual de env; reconectar desde la UI.
+  (Sigue pendiente: `INSTAGRAM_ACCESS_TOKEN` continúa siendo un token de larga
+  duración en env, auto-extendido antes de usarse.)
 - **Publicar/agendar**: pospuesto (requiere salir del sandbox de TikTok, verificación,
   storage de videos y scheduler de hora exacta — fuera del alcance del plan Hobby).
+- **Tope de 90 Reels de IG en la ingesta**: la rotación de la fase 0 cubre el catálogo,
+  pero `MAX_REELS` sigue acotando cuántos Reels ve cada corrida. Subir el tope solo del
+  cron, o hacer un backfill por lotes.
 
 ## Experimento abierto: retest de `audioviral` (desde 24 jul 2026)
 

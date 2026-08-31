@@ -40,27 +40,29 @@ export interface LandingCopy {
   };
   collage: { snapshotLabel: string; snapshotMeta: string };
   bento: {
+    /** Etiqueta pequeña: la sección del panel a la que corresponde. */
     viewsTitle: string;
-    viewsValue: string;
-    viewsUnit: string;
-    /** Qué significa la card (la captura de abajo ya trae los datos reales). */
+    /** Frase grande: QUÉ ves ahí. Nada de métricas del creador — la captura
+     *  real de más abajo es la que trae los datos. */
+    viewsHeadline: string;
     viewsNote: string;
-    /** Etiquetas Lun→Dom de la gráfica de cápsulas (7). */
-    weekDays: readonly [string, string, string, string, string, string, string];
-    weekLeader: string;
     followersTitle: string;
-    followersValue: string;
-    followersMeta: string;
+    followersHeadline: string;
     followersNote: string;
     bestLabel: string;
+    /** Título real de un video del creador: es contenido suyo, no una métrica. */
     bestTitle: string;
-    bestViews: string;
+    /** Etiqueta descriptiva de la píldora (NO una acción: la landing es
+     *  estática y ahí no hay a dónde ir). */
+    bestPill: string;
     bestNote: string;
     chartTitle: string;
+    /** Qué mide el eje vertical de la curva. */
+    chartAxis: string;
+    /** Hitos marcados sobre la curva (3, de izquierda a derecha). */
+    chartPoints: readonly [string, string, string];
     chartNote: string;
     sectionsTitle: string;
-    /** Etiquetas de las barras horizontales (4, mismo orden que las anchuras). */
-    sectionLabels: readonly [string, string, string, string];
     sectionsNote: string;
     /** alt de la captura real del Overview (cierre del bento). */
     panelAlt: string;
@@ -124,30 +126,27 @@ const es: LandingCopy = {
     snapshotMeta: "captura #417 · 2 plataformas",
   },
   bento: {
-    viewsTitle: "Vistas de la semana",
-    viewsValue: "683,5",
-    viewsUnit: "mil · 57% TT",
+    viewsTitle: "Vistas por periodo",
+    viewsHeadline: "Una semana o un mes, de un vistazo",
     viewsNote:
       "TikTok e Instagram sumados en un solo pulso, con el split por plataforma siempre a la vista.",
-    weekDays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
-    weekLeader: "160,8 mil",
-    followersTitle: "Seguidores nuevos",
-    followersValue: "+1.951",
-    followersMeta: "en 7 días",
+    followersTitle: "Seguidores ganados",
+    followersHeadline: "Cada uno, en el día que llegó",
     followersNote:
-      "Cada delta se atribuye al día en que ocurrió, no al día en que el cron lo capturó.",
+      "El delta se atribuye al día en que ocurrió, no al día en que el cron lo capturó.",
     bestLabel: "MEJOR VIDEO",
     bestTitle: "Día 5 del SoloQ Challenge y todos estancados",
-    bestViews: "92,4 mil vistas",
+    bestPill: "Con su curva completa",
     bestNote:
       "El panel señala solo al que rompió su semana: benchmark contra su cohorte, no contra todo el catálogo.",
     chartTitle: "La curva que las APIs no te dan",
+    chartAxis: "VISTAS ACUMULADAS",
+    chartPoints: ["24 h", "Día 7", "Día 30"],
     chartNote:
-      "Reconstruida de snapshots diarios: las APIs solo devuelven el número de hoy, nunca el camino.",
-    sectionsTitle: "Secciones por hashtag",
-    sectionLabels: ["Narración", "SoloQ", "Noticias", "Audio viral"],
+      "Vas a encontrar la vida entera de cada video: cuánto llevaba el primer día, dónde se estabilizó y en qué momento despegó.",
+    sectionsTitle: "Cada formato, comparado",
     sectionsNote:
-      "Etiqueta con un hashtag y cada sección se mide sola — sin migraciones, sin hojas de cálculo.",
+      "Vas a encontrar tus tipos de video uno junto a otro, ordenados por vistas y engagement, para saber cuál repetir.",
     panelAlt:
       "Overview del panel: vistas y seguidores de la semana, mejor video, vistas por día y tipos de contenido.",
   },
@@ -240,30 +239,27 @@ const en: LandingCopy = {
     snapshotMeta: "capture #417 · 2 platforms",
   },
   bento: {
-    viewsTitle: "Views this week",
-    viewsValue: "683.5",
-    viewsUnit: "K · 57% TT",
+    viewsTitle: "Views by period",
+    viewsHeadline: "A week or a month, at a glance",
     viewsNote:
       "TikTok and Instagram summed into a single pulse, with the per-platform split always in sight.",
-    weekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    weekLeader: "160.8K",
-    followersTitle: "New followers",
-    followersValue: "+1,951",
-    followersMeta: "in 7 days",
+    followersTitle: "Followers gained",
+    followersHeadline: "Each one, on the day it landed",
     followersNote:
-      "Every delta is attributed to the day it happened, not the day the cron captured it.",
+      "The delta is attributed to the day it happened, not the day the cron captured it.",
     bestLabel: "BEST VIDEO",
     bestTitle: "Day 5 of the SoloQ Challenge and everyone's stuck",
-    bestViews: "92.4K views",
+    bestPill: "With its full curve",
     bestNote:
       "The panel flags only the one that beat its week: benchmarked against its cohort, not the whole catalog.",
     chartTitle: "The curve the APIs won't give you",
+    chartAxis: "CUMULATIVE VIEWS",
+    chartPoints: ["24 h", "Day 7", "Day 30"],
     chartNote:
-      "Rebuilt from daily snapshots: the APIs only return today's number, never the path.",
-    sectionsTitle: "Sections by hashtag",
-    sectionLabels: ["Narration", "SoloQ", "News", "Viral audio"],
+      "You'll find the whole life of every video: where it stood on day one, where it settled, and the moment it took off.",
+    sectionsTitle: "Every format, compared",
     sectionsNote:
-      "Tag with a hashtag and every section measures itself — no migrations, no spreadsheets.",
+      "You'll find your video types side by side, ranked by views and engagement, so you know which one to repeat.",
     panelAlt:
       "Dashboard overview: weekly views and followers, best video, views per day and content types.",
   },
