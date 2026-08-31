@@ -52,7 +52,9 @@ export interface LandingCopy {
     bestLabel: string;
     /** Título real de un video del creador: es contenido suyo, no una métrica. */
     bestTitle: string;
-    bestCta: string;
+    /** Etiqueta descriptiva de la píldora (NO una acción: la landing es
+     *  estática y ahí no hay a dónde ir). */
+    bestPill: string;
     bestNote: string;
     chartTitle: string;
     /** Qué mide el eje vertical de la curva. */
@@ -134,7 +136,7 @@ const es: LandingCopy = {
       "El delta se atribuye al día en que ocurrió, no al día en que el cron lo capturó.",
     bestLabel: "MEJOR VIDEO",
     bestTitle: "Día 5 del SoloQ Challenge y todos estancados",
-    bestCta: "Ver su curva",
+    bestPill: "Con su curva completa",
     bestNote:
       "El panel señala solo al que rompió su semana: benchmark contra su cohorte, no contra todo el catálogo.",
     chartTitle: "La curva que las APIs no te dan",
@@ -247,7 +249,7 @@ const en: LandingCopy = {
       "The delta is attributed to the day it happened, not the day the cron captured it.",
     bestLabel: "BEST VIDEO",
     bestTitle: "Day 5 of the SoloQ Challenge and everyone's stuck",
-    bestCta: "See its curve",
+    bestPill: "With its full curve",
     bestNote:
       "The panel flags only the one that beat its week: benchmarked against its cohort, not the whole catalog.",
     chartTitle: "The curve the APIs won't give you",

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
+import { ArrowUpRight, Eye, Sparkles, TrendingUp, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { CTA_OUTLINE, CTA_PRIMARY } from "@/components/landing/cta";
@@ -285,9 +285,11 @@ export function LandingPage({ lang }: { lang: Lang }) {
               {copy.bento.bestTitle}
             </p>
             <div className="bg-background text-foreground relative flex w-fit items-center gap-2.5 rounded-full py-2 pr-1.5 pl-[15px] text-[12.5px] font-medium">
-              {copy.bento.bestCta}
+              {copy.bento.bestPill}
+              {/* Icono descriptivo, no una flecha de navegación: la píldora
+                  etiqueta lo que trae la card, no lleva a ningún lado. */}
               <span className="bg-primary text-primary-foreground flex size-[22px] items-center justify-center rounded-full">
-                <ArrowUpRight className="size-3" strokeWidth={2} />
+                <TrendingUp className="size-3" strokeWidth={2} />
               </span>
             </div>
             <p className="text-background/60 relative pr-12 text-[12.5px] leading-[1.45]">
@@ -349,6 +351,7 @@ export function LandingPage({ lang }: { lang: Lang }) {
                   key={copy.bento.chartPoints[i]}
                   className="bg-foreground ring-card absolute size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full ring-[3px]"
                   style={{ left: point.x, top: point.y }}
+                  aria-hidden
                 />
               ))}
             </div>
