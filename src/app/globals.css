@@ -413,6 +413,12 @@
     .hero-item {
       animation: hero-rise 0.6s cubic-bezier(0.33, 1, 0.68, 1) both;
     }
+    /* El H1 desliza SIN fade: nacer en opacity 0 lo excluía como candidato
+       LCP (el cambio de opacidad es solo compositor, sin registro de paint) y
+       Lighthouse coronaba a un elemento menor con repintado tardío (~3,3 s). */
+    .hero-slide {
+      animation: hero-rise-solid 0.6s cubic-bezier(0.33, 1, 0.68, 1) both;
+    }
     .hero-piece {
       animation: hero-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
@@ -420,6 +426,11 @@
   @keyframes hero-rise {
     from {
       opacity: 0;
+      translate: 0 24px;
+    }
+  }
+  @keyframes hero-rise-solid {
+    from {
       translate: 0 24px;
     }
   }

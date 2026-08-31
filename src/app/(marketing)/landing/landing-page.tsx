@@ -2,9 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Eye, Sparkles, UserPlus } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { LandingNav } from "@/components/landing/landing-nav";
+import { CTA_OUTLINE, CTA_PRIMARY } from "@/components/landing/cta";
 import { BrandGlyph } from "@/components/brand-mark";
 import { WebMcp } from "@/components/landing/web-mcp";
-import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import {
   LandingIcon,
   type LandingIconName,
@@ -31,11 +32,6 @@ const GITHUB_URL = "https://github.com/AxlGuillen/reels-analytics";
  *  sería invisible. */
 const HATCH_INVERT =
   "bg-[repeating-linear-gradient(135deg,color-mix(in_oklab,var(--background)_14%,transparent)_0_7px,color-mix(in_oklab,var(--background)_6%,transparent)_7px_14px)]";
-
-const CTA_PRIMARY =
-  "bg-foreground text-background hover:bg-foreground/90 inline-flex items-center justify-center rounded-full font-medium transition-colors";
-const CTA_OUTLINE =
-  "border-border bg-card hover:bg-muted inline-flex items-center justify-center gap-1.5 rounded-full border transition-colors";
 
 /** Semana de muestra para la gráfica de cápsulas (alto total y segmento IG en
  *  %). Las etiquetas de día y el globo del líder vienen del copy. */
@@ -102,57 +98,19 @@ export function LandingPage({ lang }: { lang: Lang }) {
         lang={lang}
         className="mx-auto flex max-w-[1180px] flex-col gap-16 px-5 pt-7 pb-24 md:gap-[88px]"
       >
-      {/* Nav */}
-      <nav className="bg-card shadow-card flex items-center justify-between rounded-full py-2.5 pr-2.5 pl-3">
-        <div className="flex items-center gap-2.5">
-          <div className="group brand-glyph-intro bg-primary text-primary-foreground flex size-[38px] items-center justify-center rounded-[14px]">
-            <BrandGlyph className="size-[20px]" />
-          </div>
-          <span className="text-sm font-medium tracking-[-0.01em]">
-            Reels Analytics
-          </span>
-        </div>
-        <div className="text-muted-foreground hidden items-center gap-6 text-[13px] md:flex">
-          <a href="#producto" className="hover:text-foreground transition-colors">
-            {copy.nav.product}
-          </a>
-          <a
-            href="#como-funciona"
-            className="hover:text-foreground transition-colors"
-          >
-            {copy.nav.how}
-          </a>
-          <a href="#mcp" className="hover:text-foreground transition-colors">
-            {copy.nav.mcp}
-          </a>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle variant="pill" />
-          <Link
-            href={otherLang.href}
-            hrefLang={otherLang.hreflang}
-            aria-label={otherLang.full}
-            className={`${CTA_OUTLINE} px-3.5 py-2 font-mono text-[11px] tracking-[0.08em]`}
-          >
-            {otherLang.label}
-          </Link>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={`${CTA_OUTLINE} hidden px-4 py-2 text-[13px] sm:inline-flex`}
-          >
-            {copy.nav.code}
-            <ArrowUpRight className="size-[13px]" strokeWidth={2} />
-          </a>
-          <Link
-            href="/login"
-            className={`${CTA_PRIMARY} px-[18px] py-2.5 text-[13px]`}
-          >
-            {copy.nav.start}
-          </Link>
-        </div>
-      </nav>
+      {/* Nav (sticky; el menú móvil vive en el client component) */}
+      <LandingNav
+        brand="Reels Analytics"
+        links={[
+          { href: "#producto", label: copy.nav.product },
+          { href: "#como-funciona", label: copy.nav.how },
+          { href: "#mcp", label: copy.nav.mcp },
+        ]}
+        code={{ href: GITHUB_URL, label: copy.nav.code }}
+        start={{ href: "/login", label: copy.nav.start }}
+        otherLang={otherLang}
+        menuLabel={copy.nav.menu}
+      />
 
       {/* Hero */}
       <section className="relative flex items-center gap-14" data-plx-scope>
@@ -168,7 +126,7 @@ export function LandingPage({ lang }: { lang: Lang }) {
             {copy.hero.kicker}
           </p>
           <h1
-            className="hero-item text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
+            className="hero-slide text-[42px] leading-[1.06] font-medium tracking-[-0.025em] md:text-[64px]"
             style={{ animationDelay: "0.1s" }}
           >
             {copy.hero.h1a}{" "}
@@ -278,6 +236,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 />
               ))}
             </div>
+            <p className="text-muted-foreground text-[12.5px] leading-[1.45]">
+              {copy.bento.viewsNote}
+            </p>
           </div>
 
           <div className="bg-primary text-primary-foreground bg-halftone shadow-card flex flex-col gap-3.5 rounded-lg p-5">
@@ -319,6 +280,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 <ArrowUpRight className="size-3" strokeWidth={2} />
               </span>
             </div>
+            <p className="text-background/60 relative pr-12 text-[12.5px] leading-[1.45]">
+              {copy.bento.bestNote}
+            </p>
           </div>
         </div>
 
@@ -376,6 +340,9 @@ export function LandingPage({ lang }: { lang: Lang }) {
                 </div>
               ))}
             </div>
+            <p className="text-muted-foreground text-[12.5px] leading-[1.45]">
+              {copy.bento.chartNote}
+            </p>
           </div>
 
           <div className="bg-card shadow-card flex flex-col gap-3 rounded-lg p-[22px]">
@@ -633,46 +600,57 @@ export function LandingPage({ lang }: { lang: Lang }) {
         </Link>
       </section>
 
-      {/* Footer */}
-      <footer className="-mt-8 flex flex-col items-center justify-between gap-5 border-t pt-6 sm:flex-row">
-        <div className="flex items-center gap-2.5">
-          <div className="group bg-primary text-primary-foreground flex size-[26px] items-center justify-center rounded-[9px]">
-            <BrandGlyph className="size-[14px]" />
+      {/* Footer: banda oscura full-bleed (mismo breakout que la banda
+          parallax) — el cambio de color marca el final de la página. -mb-24
+          cancela el padding inferior del main para morir contra el borde. */}
+      <footer className="bg-foreground text-background relative -mx-[calc((100vw-100%)/2)] -mb-24 w-screen max-w-none overflow-hidden">
+        <div className="bg-halftone text-background absolute inset-0 opacity-60" aria-hidden />
+        <div className="relative mx-auto flex w-full max-w-[1180px] flex-col items-center justify-between gap-7 px-5 py-12 sm:flex-row sm:gap-6">
+          <div className="flex items-center gap-2.5">
+            <div className="group bg-primary text-primary-foreground flex size-[26px] items-center justify-center rounded-[9px]">
+              <BrandGlyph className="size-[14px]" />
+            </div>
+            <span className="text-[13px] font-medium">Reels Analytics</span>
           </div>
-          <span className="text-[13px] font-medium">Reels Analytics</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 font-mono text-[11px] tracking-[0.12em]">
+            <a
+              href="#producto"
+              className="text-background/60 hover:text-background whitespace-nowrap transition-colors"
+            >
+              {copy.footer.product}
+            </a>
+            <a
+              href="#como-funciona"
+              className="text-background/60 hover:text-background whitespace-nowrap transition-colors"
+            >
+              {copy.footer.how}
+            </a>
+            <a
+              href="#mcp"
+              className="text-background/60 hover:text-background whitespace-nowrap transition-colors"
+            >
+              {copy.footer.mcp}
+            </a>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-background/60 hover:text-background whitespace-nowrap transition-colors"
+            >
+              {copy.footer.github}
+            </a>
+            <Link
+              href={otherLang.href}
+              hrefLang={otherLang.hreflang}
+              className="text-background/60 hover:text-background whitespace-nowrap uppercase transition-colors"
+            >
+              {otherLang.full}
+            </Link>
+          </div>
+          <span className="text-background/40 text-center font-mono text-[11px] tracking-[0.12em]">
+            {copy.footer.rights}
+          </span>
         </div>
-        <div className="text-muted-foreground flex items-center gap-6 font-mono text-[11px] tracking-[0.12em]">
-          <a href="#producto" className="hover:text-foreground transition-colors">
-            {copy.footer.product}
-          </a>
-          <a
-            href="#como-funciona"
-            className="hover:text-foreground transition-colors"
-          >
-            {copy.footer.how}
-          </a>
-          <a href="#mcp" className="hover:text-foreground transition-colors">
-            {copy.footer.mcp}
-          </a>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground transition-colors"
-          >
-            {copy.footer.github}
-          </a>
-          <Link
-            href={otherLang.href}
-            hrefLang={otherLang.hreflang}
-            className="hover:text-foreground transition-colors uppercase"
-          >
-            {otherLang.full}
-          </Link>
-        </div>
-        <span className="text-muted-foreground font-mono text-[11px] tracking-[0.12em]">
-          {copy.footer.rights}
-        </span>
       </footer>
 
       {/* Indicador de progreso de scroll: cápsula lima creciendo sobre un riel

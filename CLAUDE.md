@@ -148,12 +148,12 @@ de marketing en Acid Grid, portada del diseño elegido en Claude Design (hero + 
 texturizado, bento del producto, banda parallax "Cada día, una capa más de historia", cómo
 funciona, features, cierre y footer). El proxy deja pasar ambas variantes sin sesión y manda
 `/` anónimo → `/landing` (el resto sigue yendo a `/login?next=`). Server Component con datos
-de muestra reales; el movimiento vive en
-`src/components/landing/landing-motion.tsx` (client, **wrapper con `useGSAP` de
-`@gsap/react`**): **único punto de entrada de GSAP en la app** — import estático en el chunk
-de la ruta (verificado: solo el manifest de `/landing` lo referencia; el dashboard no lo
-descarga). Envuelve el `<main>` como scope: selectores acotados y cleanup automático de
-tweens/ScrollTriggers/splits al desmontar. La **intro del hero es CSS puro**
+de muestra reales; el movimiento vive en `src/components/landing/landing-motion.tsx`
+(client, cáscara SIN gsap) + `landing-effects.ts` (**único punto de entrada de GSAP en la
+app**, en un chunk ASYNC: la cáscara lo importa dinámico en `requestIdleCallback` con timeout
+1.5 s — sus ~70 KB fuera del chunk crítico eran el task largo que dominaba el TBT móvil; los
+efectos son todos de scroll y llegar ~1 s tarde es imperceptible). `gsap.context` acota los
+selectores al scope y revierte todo al desmontar. La **intro del hero es CSS puro**
 (`.hero-item`/`.hero-piece` en globals, cascada por `animation-delay` inline): el H1 es el
 elemento LCP y esperar al chunk de GSAP lo retrasaba ~2,5 s en móvil (PageSpeed) — GSAP se
 queda solo con lo ligado al scroll. Contrato por atributos en el markup del server:
@@ -178,7 +178,15 @@ vuelve a la retícula con un contenedor interno de 1180px); textura `.bg-rings` 
 concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="slow"` detrás de
 "Cómo funciona" y features, y **`.bg-graph`** (papel milimétrico: cuadrícula fina + dos cruces
 de acento, una lima) detrás del hero — con `mask-image` de desvanecido para morir antes del
-bento y NO repetir los anillos de abajo; **indicador de scroll** en el borde derecho
+bento y NO repetir los anillos de abajo; **nav sticky con menú móvil**
+(`src/components/landing/landing-nav.tsx`, client solo por el estado del hamburguesa; copy por
+props — no conoce content.ts; en móvil los links/toggles viven en un panel desplegable que
+cierra al elegir, con Escape —devolviendo el foco al botón— o tocando fuera, y el botón lo
+enlaza con `aria-controls`);
+**footer como banda oscura full-bleed** (`bg-foreground` + halftone, `-mb-24` para morir contra
+el borde: el cambio de color marca el final de la página); las **cards del bento llevan nota
+informativa** (`viewsNote`/`bestNote`/`chartNote` en content.ts) — explican la capacidad, la
+captura real de abajo ya trae los datos; **indicador de scroll** en el borde derecho
 (riel `bg-border` de 5px fijo y centrado, cápsula `bg-primary` que crece con el avance total de
 la página vía `data-scroll-progress`, scaleY con scrub; decorativo puro: `aria-hidden` +
 `pointer-events-none`, solo desktop, `motion-reduce:hidden`, y `scale-y-0` en CSS para que sin
@@ -214,17 +222,31 @@ el header `Link` de next.config cubre las tres entradas públicas.
 
 **Assets reales de la landing (`public/assets/`):** frame 9:16 de un Reel
 (`video-single.png`, en el collage del hero vía `next/image` + `fill`) y capturas del Overview
-(`dashboard-{light,dark}.webp`, cierre del bento `#producto`; la variante sigue al tema con
+(`dashboard-{light,dark}.webp` a 3796×1864 — DPR 2, nítidas en retina; regenerables con
+playwright-core + Edge del sistema contra un build local con bypass de auth TEMPORAL que se
+revierte antes de commitear, sembrando `rail-collapsed=0` y `tour-seen:/:v1` en localStorage
+para que no salgan ni el rail colapsado ni el popover del tour; cierre del bento `#producto`;
+la variante sigue al tema con
 `dark:hidden`/`dark:block` y la oculta NO se descarga gracias a `loading="lazy"`).
 `videos-collection.png` (tira de 3 frames con vistas) está en assets pero aún sin usar.
 Nada de ilustraciones/fotos IA decorativas: solo producto y contenido reales.
 
-**Performance (PageSpeed ~91 → objetivo 95+):** además de la intro CSS del hero (ver arriba),
-`browserslist` en package.json fija Baseline (Chrome/Edge/Firefox 111+, Safari 16.4+) para no
-transpilar ni polyfilear de más (~14 KiB), y `experimental.inlineCss` en next.config mete el
-CSS global en el HTML (el único request que bloqueaba el primer render, ~300 ms). El resto de
-avisos del reporte (reflow forzado de ScrollTrigger, chunk de gsap como "JS sin usar") son el
-costo aceptado del motor de scroll.
+**Performance (auditada con Lighthouse local, 87→94 con throttling real):** herramienta en el
+scratchpad (`bun add lighthouse` + `node …/lighthouse/cli http://localhost:3100/landing
+--throttling-method=devtools --chrome-flags="--headless=new"` con `CHROME_PATH` al Edge del
+sistema; `--throttling-method=devtools` da métricas observadas de verdad — la simulación
+Lantern con tiempos de localhost infla el LCP por artefacto). Decisiones vigentes:
+- Intro CSS del hero (ver arriba) y **H1 con `.hero-slide` (desliza SIN fade)**: nacer en
+  `opacity: 0` excluye al elemento como candidato LCP (la opacidad es solo compositor, sin
+  registro de paint) y Lighthouse coronaba a un elemento menor con repintado tardío.
+- **Fuentes `display: "optional"`** (next/font): sin repintado por swap — ese repintado
+  re-registraba el LCP en 4G lento; con la precarga self-hosted, en conexiones normales la
+  fuente sí entra desde el primer frame.
+- **GSAP diferido a idle** (ver landing-motion arriba): TBT 490→280 ms.
+- `browserslist` Baseline en package.json (menos transpile/polyfills) y
+  `experimental.inlineCss` (el CSS global era el único request render-blocking, ~300 ms).
+- Costo aceptado: el task de hidratación del documento (~335 ms throttled) y los polyfills
+  que Next incluye incondicionalmente (~13 KiB).
 
 **Favicon y metadatos:** el icono de la app es `src/app/icon.svg` (marca "4XL", lima sobre tinta;
 Next lo inyecta por convención de archivo — no declarar `icons` a mano). El mismo trazo vive como
