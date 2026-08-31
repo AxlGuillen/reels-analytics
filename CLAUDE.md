@@ -180,7 +180,9 @@ concéntricos tenues, tokens + alpha) como capas `aria-hidden` con `data-plx="sl
 de acento, una lima) detrás del hero — con `mask-image` de desvanecido para morir antes del
 bento y NO repetir los anillos de abajo; **nav sticky con menú móvil**
 (`src/components/landing/landing-nav.tsx`, client solo por el estado del hamburguesa; copy por
-props — no conoce content.ts; en móvil los links/toggles viven en un panel desplegable);
+props — no conoce content.ts; en móvil los links/toggles viven en un panel desplegable que
+cierra al elegir, con Escape —devolviendo el foco al botón— o tocando fuera, y el botón lo
+enlaza con `aria-controls`);
 **footer como banda oscura full-bleed** (`bg-foreground` + halftone, `-mb-24` para morir contra
 el borde: el cambio de color marca el final de la página); las **cards del bento llevan nota
 informativa** (`viewsNote`/`bestNote`/`chartNote` en content.ts) — explican la capacidad, la

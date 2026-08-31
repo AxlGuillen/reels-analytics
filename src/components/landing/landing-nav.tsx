@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { BrandGlyph } from "@/components/brand-mark";
@@ -14,7 +14,9 @@ import { CTA_OUTLINE, CTA_PRIMARY } from "./cta";
  *
  * Desktop (md+): igual que siempre — links inline + toggles + CTAs.
  * Móvil: marca + CTA + hamburguesa; los links, "ver el código" y los toggles
- * de tema/idioma viven en un panel desplegable (se cierra al elegir).
+ * de tema/idioma viven en un panel desplegable que se cierra al elegir, con
+ * Escape (devolviendo el foco al botón) o tocando fuera — sin esas dos salidas
+ * la única forma de cerrarlo era volver a tocar el hamburguesa.
  */
 
 export interface LandingNavProps {
@@ -26,6 +28,9 @@ export interface LandingNavProps {
   menuLabel: string;
 }
 
+/** Enlaza el botón con el panel (aria-controls). */
+const MENU_PANEL_ID = "landing-nav-menu";
+
 export function LandingNav({
   brand,
   links,
@@ -35,9 +40,38 @@ export function LandingNav({
   menuLabel,
 }: LandingNavProps) {
   const [open, setOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Salidas estándar del menú abierto: Escape (con el foco de vuelta en el
+  // botón) y un toque fuera del nav. Los listeners solo viven mientras está
+  // abierto. `pointerdown` y no `click`: cierra antes de que el toque llegue a
+  // lo que hay debajo.
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!navRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
 
   return (
-    <nav className="bg-card shadow-card sticky top-3 z-50 rounded-full py-2.5 pr-2.5 pl-3">
+    <nav
+      ref={navRef}
+      className="bg-card shadow-card sticky top-3 z-50 rounded-full py-2.5 pr-2.5 pl-3"
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="group brand-glyph-intro bg-primary text-primary-foreground flex size-[38px] shrink-0 items-center justify-center rounded-[14px]">
@@ -97,9 +131,11 @@ export function LandingNav({
             {start.label}
           </Link>
           <button
+            ref={buttonRef}
             type="button"
             aria-label={menuLabel}
             aria-expanded={open}
+            aria-controls={MENU_PANEL_ID}
             onClick={() => setOpen((value) => !value)}
             className={`${CTA_OUTLINE} size-[38px]`}
           >
@@ -114,7 +150,10 @@ export function LandingNav({
 
       {/* Panel móvil: card flotante bajo la píldora. */}
       {open && (
-        <div className="bg-card shadow-lift absolute inset-x-0 top-[calc(100%+8px)] flex flex-col gap-1 rounded-[22px] p-3 md:hidden">
+        <div
+          id={MENU_PANEL_ID}
+          className="bg-card shadow-lift absolute inset-x-0 top-[calc(100%+8px)] flex flex-col gap-1 rounded-[22px] p-3 md:hidden"
+        >
           {links.map((link) => (
             <a
               key={link.href}
