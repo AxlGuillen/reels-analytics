@@ -188,8 +188,11 @@ la píldora; solo entrada: animar la salida exigiría máquina de estados—);
 el borde: el cambio de color marca el final de la página); las **cards del bento NO muestran métricas
 del creador**: la captura real del panel (más abajo en la misma sección) es la que trae los
 datos, así que las cards dicen QUÉ se ve — etiqueta pequeña + frase de capacidad
-(`viewsHeadline`/`followersHeadline`) + nota (`viewsNote`/`bestNote`/`chartNote`); el globo de
-la gráfica es una etiqueta (`chartLeader`, "MEJOR DÍA"), no una cifra. Duplicar stats aquí
+(`viewsHeadline`/`followersHeadline`) + nota (`viewsNote`/`bestNote`/`chartNote`); la card de la curva
+DIBUJA una curva (SVG con área lima, hitos 24 h / día 7 / día 30 y eje `chartAxis`) en vez de
+las barras semanales que contradecían su propio título, y la de formatos ordena un ranking
+ANÓNIMO (01…04, no los tipos reales del creador). Las notas dicen QUÉ vas a encontrar, no cómo
+está hecho: el mecanismo ya lo cuenta "Cómo funciona". Duplicar stats aquí
 además las contradecía con la captura. La **marca de agua del glifo 4XL** (`-z-10` bajo
 `isolate`, `data-plx="slow"`, `xl:` en adelante) es la textura secundaria de la zona: asoma por
 el margen derecho porque las cards cubren el ancho útil; **indicador de scroll** en el borde derecho

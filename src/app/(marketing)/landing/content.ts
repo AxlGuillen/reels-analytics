@@ -46,8 +46,6 @@ export interface LandingCopy {
      *  real de más abajo es la que trae los datos. */
     viewsHeadline: string;
     viewsNote: string;
-    /** Etiquetas Lun→Dom de la gráfica de cápsulas (7). */
-    weekDays: readonly [string, string, string, string, string, string, string];
     followersTitle: string;
     followersHeadline: string;
     followersNote: string;
@@ -57,12 +55,12 @@ export interface LandingCopy {
     bestCta: string;
     bestNote: string;
     chartTitle: string;
-    /** Etiqueta del día destacado en la gráfica (no una cifra inventada). */
-    chartLeader: string;
+    /** Qué mide el eje vertical de la curva. */
+    chartAxis: string;
+    /** Hitos marcados sobre la curva (3, de izquierda a derecha). */
+    chartPoints: readonly [string, string, string];
     chartNote: string;
     sectionsTitle: string;
-    /** Etiquetas de las barras horizontales (4, mismo orden que las anchuras). */
-    sectionLabels: readonly [string, string, string, string];
     sectionsNote: string;
     /** alt de la captura real del Overview (cierre del bento). */
     panelAlt: string;
@@ -130,7 +128,6 @@ const es: LandingCopy = {
     viewsHeadline: "Una semana o un mes, de un vistazo",
     viewsNote:
       "TikTok e Instagram sumados en un solo pulso, con el split por plataforma siempre a la vista.",
-    weekDays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
     followersTitle: "Seguidores ganados",
     followersHeadline: "Cada uno, en el día que llegó",
     followersNote:
@@ -141,13 +138,13 @@ const es: LandingCopy = {
     bestNote:
       "El panel señala solo al que rompió su semana: benchmark contra su cohorte, no contra todo el catálogo.",
     chartTitle: "La curva que las APIs no te dan",
-    chartLeader: "MEJOR DÍA",
+    chartAxis: "VISTAS ACUMULADAS",
+    chartPoints: ["24 h", "Día 7", "Día 30"],
     chartNote:
-      "Reconstruida de snapshots diarios: las APIs solo devuelven el número de hoy, nunca el camino.",
-    sectionsTitle: "Secciones por hashtag",
-    sectionLabels: ["Narración", "SoloQ", "Noticias", "Audio viral"],
+      "Vas a encontrar la vida entera de cada video: cuánto llevaba el primer día, dónde se estabilizó y en qué momento despegó.",
+    sectionsTitle: "Cada formato, comparado",
     sectionsNote:
-      "Etiqueta con un hashtag y cada sección se mide sola — sin migraciones, sin hojas de cálculo.",
+      "Vas a encontrar tus tipos de video uno junto a otro, ordenados por vistas y engagement, para saber cuál repetir.",
     panelAlt:
       "Overview del panel: vistas y seguidores de la semana, mejor video, vistas por día y tipos de contenido.",
   },
@@ -244,7 +241,6 @@ const en: LandingCopy = {
     viewsHeadline: "A week or a month, at a glance",
     viewsNote:
       "TikTok and Instagram summed into a single pulse, with the per-platform split always in sight.",
-    weekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     followersTitle: "Followers gained",
     followersHeadline: "Each one, on the day it landed",
     followersNote:
@@ -255,13 +251,13 @@ const en: LandingCopy = {
     bestNote:
       "The panel flags only the one that beat its week: benchmarked against its cohort, not the whole catalog.",
     chartTitle: "The curve the APIs won't give you",
-    chartLeader: "BEST DAY",
+    chartAxis: "CUMULATIVE VIEWS",
+    chartPoints: ["24 h", "Day 7", "Day 30"],
     chartNote:
-      "Rebuilt from daily snapshots: the APIs only return today's number, never the path.",
-    sectionsTitle: "Sections by hashtag",
-    sectionLabels: ["Narration", "SoloQ", "News", "Viral audio"],
+      "You'll find the whole life of every video: where it stood on day one, where it settled, and the moment it took off.",
+    sectionsTitle: "Every format, compared",
     sectionsNote:
-      "Tag with a hashtag and every section measures itself — no migrations, no spreadsheets.",
+      "You'll find your video types side by side, ranked by views and engagement, so you know which one to repeat.",
     panelAlt:
       "Dashboard overview: weekly views and followers, best video, views per day and content types.",
   },
