@@ -20,6 +20,7 @@ import {
   type VideoWithMetrics,
 } from "./insights";
 import {
+  periodProgress,
   resolvePeriod,
   sumOverPeriod,
   type Period,
@@ -59,6 +60,11 @@ export interface OverviewSummary {
     prevAnchor: string;
     nextAnchor: string | null;
     subGranularity: "day" | "week";
+    /** true si el periodo mostrado contiene a hoy. */
+    isCurrent: boolean;
+    /** días del periodo ya transcurridos (incluye hoy) y total. */
+    daysElapsed: number;
+    daysTotal: number;
   };
   combined: PeriodMetrics & { followersGained: number | null };
   byPlatform: Record<Platform, PeriodMetrics>;
@@ -222,6 +228,7 @@ export async function readOverviewSummary(opts: {
       prevAnchor: period.prevAnchor,
       nextAnchor: period.nextAnchor,
       subGranularity: period.sub.granularity,
+      ...periodProgress(period, today),
     },
     combined: { ...addMetrics(tk.total, ig.total), followersGained },
     byPlatform: { tiktok: tk.total, instagram: ig.total },

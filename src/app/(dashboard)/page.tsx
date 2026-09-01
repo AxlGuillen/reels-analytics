@@ -18,6 +18,7 @@ import { dayKey } from "@/core/lib/datetime";
 import { CREATOR_TIMEZONE } from "@/modules/analytics/insights";
 import { resolvePeriod } from "@/modules/analytics/period";
 import { OverviewBodySkeleton } from "./overview-skeleton";
+import { FreshPeriodNotice } from "./fresh-period-notice";
 import { formatCount } from "@/core/lib/format";
 import { contentHref, type ContentTypeKey } from "@/core/lib/content-type";
 import {
@@ -320,9 +321,24 @@ async function OverviewBody({
     combined.views > 0
       ? Math.round((byPlatform.tiktok.views / combined.views) * 100)
       : null;
+  // "Recién empezado" = periodo actual sin UN SOLO delta observado (solo hay
+  // una captura del cron). `videosPublished` no entra: puede ser >0 con una
+  // sola captura y el aviso seguiría siendo el correcto.
+  const freshPeriod =
+    period.isCurrent &&
+    combined.views === 0 &&
+    combined.likes === 0 &&
+    combined.comments === 0 &&
+    combined.followersGained === null;
 
   return (
     <>
+      {freshPeriod && (
+        <FreshPeriodNotice
+          granularity={period.granularity}
+          prevAnchor={period.prevAnchor}
+        />
+      )}
       <div className="flex flex-col gap-3.5 xl:flex-row">
         {/* Columna principal */}
         <div className="min-w-0 flex-1">

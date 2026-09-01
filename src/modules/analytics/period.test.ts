@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolvePeriod, sumOverPeriod } from "./period";
+import { periodProgress, resolvePeriod, sumOverPeriod } from "./period";
 
 // 2026-07-13 = lunes, 07-14 martes, 07-15 miércoles (referencia del proyecto).
 const TODAY = "2026-07-15";
@@ -72,5 +72,53 @@ describe("sumOverPeriod", () => {
     const { total, perBucket } = sumOverPeriod(p, map);
     expect(total).toBe(17);
     expect(perBucket).toEqual([10, 5, 0, 0, 0, 0, 2]);
+  });
+});
+
+describe("periodProgress", () => {
+  test("semana actual a mitad: isCurrent y días transcurridos", () => {
+    const p = resolvePeriod("week", undefined, TODAY); // lunes 13 – domingo 19
+    expect(periodProgress(p, TODAY)).toEqual({
+      isCurrent: true,
+      daysElapsed: 3, // 13, 14 y 15 (hoy inclusive)
+      daysTotal: 7,
+    });
+  });
+
+  test("lunes recién empezado: 1 solo día transcurrido", () => {
+    const monday = "2026-07-13";
+    const p = resolvePeriod("week", monday, monday);
+    expect(periodProgress(p, monday)).toEqual({
+      isCurrent: true,
+      daysElapsed: 1,
+      daysTotal: 7,
+    });
+  });
+
+  test("semana pasada: no es actual y está completa", () => {
+    const p = resolvePeriod("week", "2026-07-06", TODAY);
+    expect(periodProgress(p, TODAY)).toEqual({
+      isCurrent: false,
+      daysElapsed: 7,
+      daysTotal: 7,
+    });
+  });
+
+  test("mes actual: cuenta días hasta hoy", () => {
+    const p = resolvePeriod("month", undefined, TODAY); // julio 2026
+    expect(periodProgress(p, TODAY)).toEqual({
+      isCurrent: true,
+      daysElapsed: 15,
+      daysTotal: 31,
+    });
+  });
+
+  test("mes pasado: completo y no actual", () => {
+    const p = resolvePeriod("month", "2026-06-10", TODAY);
+    expect(periodProgress(p, TODAY)).toEqual({
+      isCurrent: false,
+      daysElapsed: 30,
+      daysTotal: 30,
+    });
   });
 });
