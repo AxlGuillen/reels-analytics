@@ -1,15 +1,20 @@
-import { Loader } from "@/components/ui/loader";
+import {
+  OverviewBodySkeleton,
+  OverviewHeaderSkeleton,
+} from "./overview-skeleton";
 
+/**
+ * Loading del segmento raíz (Overview) — se muestra al NAVEGAR a `/` desde otra
+ * ruta. Usa el mismo shell y skeleton que el `<Suspense>` de la page para que
+ * el swap no salte (el loading.tsx anterior usaba otro shell y otro h1).
+ * OJO: los cambios de searchParams (?period=&anchor=) NO pasan por aquí; de
+ * esos se encarga el Suspense-con-key dentro de page.tsx.
+ */
 export default function Loading() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
-      <header>
-        <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Overview</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Rendimiento y crecimiento de tus videos.
-        </p>
-      </header>
-      <Loader label="Cargando métricas…" />
+    <div className="w-full px-4 py-6 md:px-1">
+      <OverviewHeaderSkeleton />
+      <OverviewBodySkeleton />
     </div>
   );
 }
