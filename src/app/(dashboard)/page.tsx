@@ -12,7 +12,12 @@ import {
 // lucide v1 quitó los iconos de marca; el de Instagram vive en animateicons.
 import { InstagramIcon } from "@animateicons/react/lucide";
 import { PeriodNav } from "@/components/dashboard/period-nav";
+import { Suspense } from "react";
 import { PageTour } from "@/components/tour/page-tour";
+import { dayKey } from "@/core/lib/datetime";
+import { CREATOR_TIMEZONE } from "@/modules/analytics/insights";
+import { resolvePeriod } from "@/modules/analytics/period";
+import { OverviewBodySkeleton } from "./overview-skeleton";
 import { formatCount } from "@/core/lib/format";
 import { contentHref, type ContentTypeKey } from "@/core/lib/content-type";
 import {
@@ -234,33 +239,16 @@ export default async function OverviewPage({
 }) {
   const sp = await searchParams;
   const granularity = sp.period === "month" ? "month" : "week";
-
-  let summary: OverviewSummary;
-  try {
-    summary = await readOverviewSummary({ granularity, anchor: sp.anchor });
-  } catch (err) {
-    return (
-      <PageShell>
-        <h1 className="text-3xl font-medium tracking-tight">Overview</h1>
-        <div className="bg-card shadow-card mt-4 rounded-lg p-5">
-          <p className="text-destructive text-sm">
-            No se pudo leer el resumen:{" "}
-            {err instanceof Error ? err.message : "error desconocido"}
-          </p>
-        </div>
-      </PageShell>
-    );
-  }
-
-  const { period, combined, byPlatform, subBuckets, contentTypes, bestVideo } =
-    summary;
+  // Resolución PURA del periodo (sin BD): el header y el PeriodNav se pintan
+  // al instante; solo el cuerpo (datos) suspende. readOverviewSummary vuelve a
+  // resolver internamente con los mismos helpers — duplicación aceptada.
+  const period = resolvePeriod(
+    granularity,
+    sp.anchor,
+    dayKey(new Date(), CREATOR_TIMEZONE),
+  );
   const currentAnchor =
-    period.granularity === "month" ? `${period.key}-01` : period.key;
-  const unit = period.subGranularity === "day" ? "día" : "semana";
-  const tkShare =
-    combined.views > 0
-      ? Math.round((byPlatform.tiktok.views / combined.views) * 100)
-      : null;
+    granularity === "month" ? `${period.key}-01` : period.key;
 
   return (
     <PageShell>
@@ -285,6 +273,56 @@ export default async function OverviewPage({
         />
       </header>
 
+      {/* key = periodo RESUELTO: cambiar de periodo remonta el Suspense y
+          muestra el skeleton (los cambios de searchParams NO pasan por
+          loading.tsx; esta capa cubre esa transición y el streaming de la
+          primera carga). */}
+      <Suspense
+        key={`${granularity}:${period.key}`}
+        fallback={<OverviewBodySkeleton />}
+      >
+        <OverviewBody granularity={granularity} anchor={sp.anchor} />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+/**
+ * Cuerpo con datos: aquí vive el await pesado. El tour viaja con el cuerpo
+ * porque sus targets (kpis/chart/tipos/plataformas) se montan aquí; fuera del
+ * Suspense podría arrancar sin ellos.
+ */
+async function OverviewBody({
+  granularity,
+  anchor,
+}: {
+  granularity: "week" | "month";
+  anchor?: string;
+}) {
+  let summary: OverviewSummary;
+  try {
+    summary = await readOverviewSummary({ granularity, anchor });
+  } catch (err) {
+    return (
+      <div className="bg-card shadow-card rounded-lg p-5">
+        <p className="text-destructive text-sm">
+          No se pudo leer el resumen:{" "}
+          {err instanceof Error ? err.message : "error desconocido"}
+        </p>
+      </div>
+    );
+  }
+
+  const { period, combined, byPlatform, subBuckets, contentTypes, bestVideo } =
+    summary;
+  const unit = period.subGranularity === "day" ? "día" : "semana";
+  const tkShare =
+    combined.views > 0
+      ? Math.round((byPlatform.tiktok.views / combined.views) * 100)
+      : null;
+
+  return (
+    <>
       <div className="flex flex-col gap-3.5 xl:flex-row">
         {/* Columna principal */}
         <div className="min-w-0 flex-1">
@@ -477,6 +515,6 @@ export default async function OverviewPage({
 
       {/* Tour de primera visita (auto-start una vez; ver components/tour). */}
       <PageTour route="/" />
-    </PageShell>
+    </>
   );
 }
