@@ -8,7 +8,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { Suspense } from "react";
 import { PageTour } from "@/components/tour/page-tour";
+import {
+  ContentDrilldownSkeleton,
+  ContentSummarySkeleton,
+} from "./content-skeleton";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { VideoListTable } from "@/components/dashboard/video-list-table";
 import { readGrowth } from "@/modules/analytics/history";
@@ -50,14 +55,7 @@ export default async function ContentPage({
       ? platformParam
       : undefined;
   const type = parseTypeParam(typeParam);
-
-  const { videos } = await readGrowth({ platform });
-  const byType = groupByContentType(videos);
-
   const inDrilldown = type !== undefined;
-  const drillRows: VideoWithMetrics[] = inDrilldown
-    ? videos.filter((v) => classifyContentType(v.video.hashtags) === type)
-    : [];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
@@ -90,6 +88,39 @@ export default async function ContentPage({
         />
       </header>
 
+      {/* Los cambios de searchParams no pasan por loading.tsx: el Suspense
+          (key = filtros) cubre esa transición y el streaming inicial. La
+          variante del fallback la decide `type`, que es síncrono. */}
+      <Suspense
+        key={`${typeParam ?? ""}:${platform ?? "all"}`}
+        fallback={
+          inDrilldown ? <ContentDrilldownSkeleton /> : <ContentSummarySkeleton />
+        }
+      >
+        <ContentBody platform={platform} type={type} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Cuerpo con datos: la única lectura (readGrowth) vive aquí. */
+async function ContentBody({
+  platform,
+  type,
+}: {
+  platform: Platform | undefined;
+  type: ContentTypeKey | null | undefined;
+}) {
+  const { videos } = await readGrowth({ platform });
+  const byType = groupByContentType(videos);
+
+  const inDrilldown = type !== undefined;
+  const drillRows: VideoWithMetrics[] = inDrilldown
+    ? videos.filter((v) => classifyContentType(v.video.hashtags) === type)
+    : [];
+
+  return (
+    <>
       {videos.length === 0 ? (
         <Card>
           <CardHeader>
@@ -183,8 +214,9 @@ export default async function ContentPage({
         /* ── Drill-down: overview del grupo + listado ── */
         <DrilldownContent rows={drillRows} />
       )}
+      {/* Tour dentro del body: sus targets se montan aquí. */}
       <PageTour route="/content" />
-    </div>
+    </>
   );
 }
 
