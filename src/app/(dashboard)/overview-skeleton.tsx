@@ -40,10 +40,18 @@ function KpiSkeleton({ tone }: { tone: "plain" | "accent" | "dark" }) {
   );
 }
 
-/** Solo el cuerpo (lo que envuelve el Suspense de la page). */
+/** Solo el cuerpo (lo que envuelve el Suspense de la page). Anuncia el
+ *  estado de carga (role=status): los bloques individuales son aria-hidden y
+ *  con reduced-motion el pulso se apaga — sin esto el lector de pantalla no
+ *  se entera de que hay una carga en curso. */
 export function OverviewBodySkeleton() {
   return (
-    <div className="flex flex-col gap-3.5 xl:flex-row">
+    <div
+      role="status"
+      aria-busy="true"
+      className="flex flex-col gap-3.5 xl:flex-row"
+    >
+      <span className="sr-only">Cargando…</span>
       {/* Columna principal */}
       <div className="min-w-0 flex-1">
         <section className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">

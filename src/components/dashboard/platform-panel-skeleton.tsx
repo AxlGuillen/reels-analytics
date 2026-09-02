@@ -12,7 +12,8 @@ import {
  */
 export function PlatformPanelSkeleton() {
   return (
-    <div className="space-y-8">
+    <div role="status" aria-busy="true" className="space-y-8">
+      <span className="sr-only">Cargando…</span>
       {/* Header de cuenta */}
       <div className="space-y-4">
         <div className="flex items-center gap-4">

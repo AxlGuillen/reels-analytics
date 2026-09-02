@@ -9,7 +9,12 @@ import { SkeletonStatCard } from "@/components/dashboard/skeletons";
  */
 export function VideoDetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 md:px-8">
+    <div
+      role="status"
+      aria-busy="true"
+      className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 md:px-8"
+    >
+      <span className="sr-only">Cargando…</span>
       <Skeleton className="h-4 w-40 rounded-full" />
 
       <div className="flex flex-col gap-6 sm:flex-row">

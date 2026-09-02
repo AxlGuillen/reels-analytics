@@ -12,7 +12,8 @@ import {
  */
 export function GrowthBodySkeleton() {
   return (
-    <>
+    <div role="status" aria-busy="true" className="space-y-6">
+      <span className="sr-only">Cargando…</span>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SkeletonStatCard tone="accent" />
         <SkeletonStatCard />
@@ -37,7 +38,7 @@ export function GrowthBodySkeleton() {
         <SkeletonCard bodyClassName="h-52" />
         <SkeletonCard bodyClassName="h-52" />
       </div>
-    </>
+    </div>
   );
 }
 

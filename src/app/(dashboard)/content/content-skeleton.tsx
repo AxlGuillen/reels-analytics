@@ -12,7 +12,12 @@ import {
 
 export function ContentSummarySkeleton() {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <section
+      role="status"
+      aria-busy="true"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <span className="sr-only">Cargando…</span>
       {[0, 1, 2, 3, 4, 5].map((i) => {
         const lead = i === 0;
         const block = lead ? "bg-primary-foreground/15" : undefined;
@@ -44,7 +49,8 @@ export function ContentSummarySkeleton() {
 
 export function ContentDrilldownSkeleton() {
   return (
-    <div className="space-y-6">
+    <div role="status" aria-busy="true" className="space-y-6">
+      <span className="sr-only">Cargando…</span>
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SkeletonStatCard tone="accent" hint={false} />
         <SkeletonStatCard hint={false} />
