@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { CaptureButton } from "@/components/dashboard/capture-button";
+import { PlatformPanelSkeleton } from "@/components/dashboard/platform-panel-skeleton";
 import { RangeSelect } from "@/components/dashboard/range-select";
 import { PageTour } from "@/components/tour/page-tour";
 import { TikTokPanel } from "@/components/tiktok-panel";
@@ -14,12 +16,6 @@ export default async function TikTokPage({
 }) {
   const { range: rangeParam, connected, error } = await searchParams;
   const range = resolveRange(rangeParam);
-  const session = await getSession();
-  const [result, breakouts] = await Promise.all([
-    readTikTokOverview(session, { since: sinceForRange(range) }),
-    // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
-    readBreakoutIds("tiktok").catch(() => new Set<string>()),
-  ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
@@ -50,8 +46,28 @@ export default async function TikTokPage({
         </div>
       )}
 
+      {/* El cambio de rango no pasa por loading.tsx: el Suspense (key=range)
+          muestra el skeleton mientras la Display API responde. */}
+      <Suspense key={range} fallback={<PlatformPanelSkeleton />}>
+        <TikTokBody range={range} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Cuerpo con datos (API viva + breakouts); el tour viaja aquí. */
+async function TikTokBody({ range }: { range: ReturnType<typeof resolveRange> }) {
+  const session = await getSession();
+  const [result, breakouts] = await Promise.all([
+    readTikTokOverview(session, { since: sinceForRange(range) }),
+    // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
+    readBreakoutIds("tiktok").catch(() => new Set<string>()),
+  ]);
+
+  return (
+    <>
       <TikTokPanel result={result} breakouts={breakouts} />
       <PageTour route="/tiktok" />
-    </div>
+    </>
   );
 }

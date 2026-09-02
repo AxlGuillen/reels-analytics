@@ -132,6 +132,23 @@ function monthPeriod(monthKey: string, today: string): Period {
 }
 
 /**
+ * Progreso del periodo respecto a `today` (day key en la zona del creador).
+ * `isCurrent` es exacto por construcción: `nextAnchor === null` solo cuando el
+ * periodo siguiente caería en el futuro. Los day keys son YYYY-MM-DD, así que
+ * la comparación lexicográfica equivale a la cronológica.
+ */
+export function periodProgress(
+  period: Period,
+  today: string,
+): { isCurrent: boolean; daysElapsed: number; daysTotal: number } {
+  return {
+    isCurrent: period.nextAnchor === null,
+    daysElapsed: period.dayKeys.filter((d) => d <= today).length,
+    daysTotal: period.dayKeys.length,
+  };
+}
+
+/**
  * Resuelve el periodo a mostrar. `anchor` es un day key dentro del periodo
  * deseado (o `undefined` = el periodo que contiene a `today`). `today` es el day
  * key de hoy en la zona del creador — se inyecta para mantener la función pura.

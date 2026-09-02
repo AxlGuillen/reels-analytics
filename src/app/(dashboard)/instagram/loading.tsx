@@ -1,4 +1,4 @@
-import { Loader } from "@/components/ui/loader";
+import { PlatformPanelSkeleton } from "@/components/dashboard/platform-panel-skeleton";
 
 export default function Loading() {
   return (
@@ -9,7 +9,7 @@ export default function Loading() {
           Graph API (Instagram Login) · Reels del periodo.
         </p>
       </header>
-      <Loader label="Cargando Reels e insights de Instagram…" />
+      <PlatformPanelSkeleton />
     </div>
   );
 }

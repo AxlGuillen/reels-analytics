@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { CaptureButton } from "@/components/dashboard/capture-button";
+import { PlatformPanelSkeleton } from "@/components/dashboard/platform-panel-skeleton";
 import { RangeSelect } from "@/components/dashboard/range-select";
 import { PageTour } from "@/components/tour/page-tour";
 import { InstagramPanel } from "@/components/instagram-panel";
@@ -13,11 +15,6 @@ export default async function InstagramPage({
 }) {
   const { range: rangeParam } = await searchParams;
   const range = resolveRange(rangeParam);
-  const [result, breakouts] = await Promise.all([
-    readInstagramOverview({ since: sinceForRange(range) }),
-    // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
-    readBreakoutIds("instagram").catch(() => new Set<string>()),
-  ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
@@ -37,8 +34,31 @@ export default async function InstagramPage({
         </div>
       </header>
 
+      {/* El cambio de rango no pasa por loading.tsx: el Suspense (key=range)
+          muestra el skeleton mientras la Graph API responde. */}
+      <Suspense key={range} fallback={<PlatformPanelSkeleton />}>
+        <InstagramBody range={range} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Cuerpo con datos (API viva + breakouts); el tour viaja aquí. */
+async function InstagramBody({
+  range,
+}: {
+  range: ReturnType<typeof resolveRange>;
+}) {
+  const [result, breakouts] = await Promise.all([
+    readInstagramOverview({ since: sinceForRange(range) }),
+    // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
+    readBreakoutIds("instagram").catch(() => new Set<string>()),
+  ]);
+
+  return (
+    <>
       <InstagramPanel result={result} breakouts={breakouts} />
       <PageTour route="/instagram" />
-    </div>
+    </>
   );
 }

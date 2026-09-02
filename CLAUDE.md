@@ -146,6 +146,25 @@ paso a paso sobre los elementos reales para que alguien nuevo entienda cada pág
   "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
   con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
 
+**Estados de carga del dashboard (skeletons, dos capas):** los cambios de searchParams
+(periodo del Overview, filtros de growth/content, rango de tiktok/instagram) **NO disparan
+`loading.tsx`** — App Router mantiene la vista anterior hasta que llega el RSC payload. Por
+eso cada page con searchParams pinta su header/filtros de forma síncrona (en el Overview,
+`resolvePeriod` es puro y no toca BD) y mueve los awaits a un `<XxxBody>` async envuelto en
+`<Suspense key={filtros resueltos}>` con un skeleton fiel como fallback; el `loading.tsx` del
+segmento cubre la navegación ENTRE rutas con el mismo skeleton. Primitivo en
+`ui/skeleton.tsx`; composites en `components/dashboard/skeletons.tsx`; ensamblajes por
+pantalla colocados junto a su ruta (`overview-skeleton.tsx`, `growth/growth-skeleton.tsx`,
+`content/content-skeleton.tsx`, `video/video-detail-skeleton.tsx`) y
+`platform-panel-skeleton.tsx` compartido por tiktok/instagram. Reglas: los skeletons NO
+llevan `data-tour` (anchors.test.ts rechaza anclas muertas); `PageTour` vive DENTRO de cada
+body async (fuera del Suspense arrancaría sin sus targets); los `<Link>` de PeriodNav y
+PlatformFilter envuelven su contenido en `LinkPending` (`useLinkStatus`, atenúa mientras la
+navegación está pendiente — el hueco pre-RTT). El Overview además muestra
+`FreshPeriodNotice` cuando el periodo actual aún no tiene deltas (una sola captura del cron):
+`periodProgress` en `period.ts` (puro, testeado) expone `isCurrent/daysElapsed/daysTotal`
+vía `OverviewSummary.period`.
+
 **Landing pública (`/landing` es + `/en/landing` en, grupo `(marketing)`):** puerta de entrada
 de marketing en Acid Grid, portada del diseño elegido en Claude Design (hero + collage
 texturizado, bento del producto, banda parallax "Cada día, una capa más de historia", cómo

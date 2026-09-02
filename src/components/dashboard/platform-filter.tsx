@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Platform } from "@/core/domain";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LinkPending } from "@/components/dashboard/link-pending";
 
 const FILTERS: { label: string; value?: Platform }[] = [
   { label: "Todas" },
@@ -45,7 +46,7 @@ export function PlatformFilter({
             }),
           )}
         >
-          {f.label}
+          <LinkPending>{f.label}</LinkPending>
         </Link>
       ))}
     </div>

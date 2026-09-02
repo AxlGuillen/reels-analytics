@@ -1,4 +1,4 @@
-import { Loader } from "@/components/ui/loader";
+import { PlatformPanelSkeleton } from "@/components/dashboard/platform-panel-skeleton";
 
 export default function Loading() {
   return (
@@ -9,7 +9,7 @@ export default function Loading() {
           Display API (Login Kit) · todos los videos del periodo.
         </p>
       </header>
-      <Loader label="Cargando videos de TikTok…" />
+      <PlatformPanelSkeleton />
     </div>
   );
 }

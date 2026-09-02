@@ -29,7 +29,9 @@ import {
   type MetricMode,
 } from "@/components/dashboard/metric-toggle";
 import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { Suspense } from "react";
 import { PageTour } from "@/components/tour/page-tour";
+import { GrowthBodySkeleton } from "./growth-skeleton";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
   readGrowth,
@@ -146,6 +148,51 @@ export default async function GrowthPage({
       ? platformParam
       : undefined;
 
+  // Header + filtros al instante; el cuerpo (3 lecturas de Supabase) suspende.
+  // Los cambios de searchParams no pasan por loading.tsx: esta capa cubre esa
+  // transición (key = filtros resueltos) y el streaming de la primera carga.
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
+      <header
+        data-tour="growth-filtros"
+        className="flex flex-wrap items-end justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Crecimiento</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Historia acumulada desde los snapshots guardados.
+          </p>
+        </div>
+        <PlatformFilter
+          active={platform}
+          basePath="/growth"
+          extraQuery={{ month: monthParam, metric: metricParam }}
+        />
+      </header>
+      <Suspense
+        key={`${platform ?? "all"}:${monthParam ?? ""}:${metric}`}
+        fallback={<GrowthBodySkeleton />}
+      >
+        <GrowthBody
+          platform={platform}
+          monthParam={monthParam}
+          metric={metric}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Cuerpo con datos (el tour viaja aquí: sus targets se montan en el body). */
+async function GrowthBody({
+  platform,
+  monthParam,
+  metric,
+}: {
+  platform: Platform | undefined;
+  monthParam?: string;
+  metric: MetricMode;
+}) {
   const { videos, accountSeries } = await readGrowth({ platform });
   const { data: growthData, series: growthSeries } = mergeSeries(accountSeries);
 
@@ -245,24 +292,7 @@ export default async function GrowthPage({
   const empty = videos.length === 0 && growthData.length === 0;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
-      <header
-        data-tour="growth-filtros"
-        className="flex flex-wrap items-end justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">Crecimiento</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Historia acumulada desde los snapshots guardados.
-          </p>
-        </div>
-        <PlatformFilter
-          active={platform}
-          basePath="/growth"
-          extraQuery={{ month: monthParam, metric: metricParam }}
-        />
-      </header>
-
+    <>
       {empty ? (
         <Card>
           <CardHeader>
@@ -651,6 +681,6 @@ export default async function GrowthPage({
         </>
       )}
       <PageTour route="/growth" />
-    </div>
+    </>
   );
 }

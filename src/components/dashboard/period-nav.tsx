@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LinkPending } from "@/components/dashboard/link-pending";
 
 type Granularity = "week" | "month";
 
@@ -48,7 +49,7 @@ export function PeriodNav({
                 : "bg-card text-muted-foreground hover:text-foreground shadow-card",
             )}
           >
-            {g === "week" ? "Semana" : "Mes"}
+            <LinkPending>{g === "week" ? "Semana" : "Mes"}</LinkPending>
           </Link>
         ))}
       </div>
@@ -59,7 +60,9 @@ export function PeriodNav({
           aria-label="Periodo anterior"
           className={arrowClass}
         >
-          <ChevronLeft className="size-4" />
+          <LinkPending>
+            <ChevronLeft className="size-4" />
+          </LinkPending>
         </Link>
         <span className="min-w-[7.5rem] text-center text-sm font-medium">
           {label}
@@ -70,7 +73,9 @@ export function PeriodNav({
             aria-label="Periodo siguiente"
             className={arrowClass}
           >
-            <ChevronRight className="size-4" />
+            <LinkPending>
+              <ChevronRight className="size-4" />
+            </LinkPending>
           </Link>
         ) : (
           <span
