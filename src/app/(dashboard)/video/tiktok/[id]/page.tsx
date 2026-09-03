@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MoveLeftIcon } from "@animateicons/react/lucide";
 import { Badge } from "@/components/ui/badge";
@@ -68,13 +69,8 @@ export default async function VideoDetailPage({
     );
   }
 
-  if (!raw) {
-    return (
-      <PageShell>
-        <p className="text-muted-foreground text-sm">Video no encontrado.</p>
-      </PageShell>
-    );
-  }
+  // 404 real (status + página con marca) en vez de un 200 con mensaje plano.
+  if (!raw) notFound();
 
   const video = toVideo(raw);
   const metrics = toVideoMetrics(raw);

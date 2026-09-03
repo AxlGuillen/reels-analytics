@@ -312,6 +312,17 @@ ignora RLS). Capa de ingesta (`modules/ingestion/{persist,capture}.ts`) escribe 
 tokens en `ra_connections` con refresh (`modules/accounts/tokens.ts`). **Cron diario** a las
 08:00 CDMX (`app/api/cron/ingest`, `vercel.json`, protegido con `CRON_SECRET`).
 
+**Hardening del perímetro (auditado en producción, sep 2026):** toda ruta anónima responde
+como debe — páginas privadas 307→/login (incluidas rutas desconocidas: el proxy no filtra
+qué paths existen), `api/mcp` y `api/cron/*` 401 fail-closed, OAuth de TikTok solo con
+sesión, y las públicas (landing es/en, login, health básico, .md, well-known) 200. Headers
+globales en next.config: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`
+(obligatorio para la pantalla de consentimiento OAuth), `Referrer-Policy:
+strict-origin-when-cross-origin` y `Permissions-Policy` mínima; sin CSP completa a propósito
+(exigiría nonces en cada inline de Next). 404 con marca en `src/app/not-found.tsx` — solo lo
+ve el creador logueado (el proxy manda lo anónimo a login); el detalle de video usa
+`notFound()` para IDs inexistentes en vez de un 200 con mensaje plano.
+
 **Auth (login single-user, implementado):** Supabase Auth email+password para el único usuario
 (el creador); registros deshabilitados en el Dashboard. Clientes `@supabase/ssr`:
 `src/core/supabase/server.ts` (publishable key, cookies vía `next/headers`). La compuerta vive
