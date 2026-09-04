@@ -146,6 +146,19 @@ paso a paso sobre los elementos reales para que alguien nuevo entienda cada pág
   "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
   con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
 
+**Página Historia (`/historia`, línea de tiempo del proyecto):** la historia del repo como
+pantalla del panel. Los hitos NO se leen del git en vivo (en Vercel no hay `.git` en runtime
+y los commits crudos no narran): viven **curados** en
+`(dashboard)/historia/timeline-data.ts` (puro, testeado por `timeline-data.test.ts`) —
+capítulos con hitos `{date, title, description, sha?, tag?}` donde `sha` es el hash corto
+REAL (cada hito enlaza a su commit en GitHub, el repo es público) y `tag` pinta el chip/punto
+lima (jerarquía por tono: el test falla si más de ⅓ llevan chip). La banda de stats se deriva
+de los propios datos (`timelineStats`) + `MCP_TOOLS.length`; nada hardcodeado que caduque.
+Página estática (sin BD, sin loading.tsx), entrada "Historia" en el rail
+(`GitCommitVerticalIcon`) y tour propio. **Regla de mantenimiento: al estrenar una feature
+grande se agrega su hito en `timeline-data.ts` (un objeto, con el sha del commit que la
+estrenó).**
+
 **Estados de carga del dashboard (skeletons, dos capas):** los cambios de searchParams
 (periodo del Overview, filtros de growth/content, rango de tiktok/instagram) **NO disparan
 `loading.tsx`** — App Router mantiene la vista anterior hasta que llega el RSC payload. Por

@@ -200,6 +200,29 @@ export const TOURS: Record<string, Tour> = {
       },
     ],
   },
+  "/historia": {
+    version: 1,
+    steps: [
+      {
+        target: '[data-tour="historia-header"]',
+        title: "La bitácora del proyecto",
+        description:
+          "Cada hito sale de un commit real del repo: aquí ves cómo nació la idea y en qué orden se estrenó cada pieza.",
+      },
+      {
+        target: '[data-tour="historia-stats"]',
+        title: "La aventura en números",
+        description:
+          "Cuánto tiempo de construcción llevan estas pantallas y qué tamaño tiene ya el sistema — útil para contar el proyecto en corto.",
+      },
+      {
+        target: '[data-tour="historia-linea"]',
+        title: "Hito por hito",
+        description:
+          "Los puntos lima marcan los momentos que definieron el producto. Toca el chip de un commit para ver ese cambio exacto en GitHub.",
+      },
+    ],
+  },
   "/settings/connections": {
     version: 1,
     steps: [
