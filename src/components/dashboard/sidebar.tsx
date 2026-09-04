@@ -14,6 +14,7 @@ import {
   BlocksIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  GitCommitVerticalIcon,
   InstagramIcon,
   LayersIcon,
   LayoutGridIcon,
@@ -85,6 +86,7 @@ const NAV: NavItem[] = [
     icon: InstagramIcon,
     status: "instagram",
   },
+  { label: "Historia", href: "/historia", icon: GitCommitVerticalIcon },
 ];
 
 /** Enlaces de ajustes, al pie del rail. */

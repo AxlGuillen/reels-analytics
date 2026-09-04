@@ -12,11 +12,22 @@ on:
 
 jobs:
   claude:
+    # Repo público: los triggers de comentario corren en el repo base CON
+    # secretos, así que solo OWNER/COLLABORATOR pueden invocar @claude (si no,
+    # cualquier desconocido quema cuota de Opus comentando). Los PRs de forks
+    # se saltan limpio: sin secretos el action solo fallaría con ruido.
     if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "COLLABORATOR", "MEMBER"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "COLLABORATOR", "MEMBER"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        contains(fromJSON('["OWNER", "COLLABORATOR", "MEMBER"]'), github.event.review.author_association))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,9 +51,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
-          # Temporal para depurar: muestra el error real de la sesión en el log.
-          # Quitar cuando el review funcione (el repo es público).
-          show_full_output: true
 
           additional_permissions: |
             actions: read
@@ -66,7 +74,7 @@ jobs:
             ## Stack
             - Next.js 16 (App Router, Server Components) + TypeScript estricto
             - Tailwind CSS 4 + shadcn/ui sobre Base UI (@base-ui/react), iconos Lucide
-            - Supabase (Postgres, Auth, RLS) — PLANIFICADO, aún sin migración ni conexión
+            - Supabase (Postgres, Auth, RLS) — en producción: esquema `ra_*`, ingesta por cron y auth single-user
             - Bun como runtime y package manager (nunca npm/pnpm/yarn)
 
             ## Arquitectura — ports & adapters (verifica que ningún cambio la viole)

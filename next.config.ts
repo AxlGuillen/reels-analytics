@@ -8,6 +8,26 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Hardening global: el proyecto es público en redes, así que el
+      // perímetro conviene endurecido. Sin CSP completa a propósito (con Next
+      // exigiría nonces en cada inline; el costo/beneficio no da hoy).
+      {
+        source: "/(.*)",
+        headers: [
+          // El navegador no debe adivinar content-types (sniffing).
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Nadie puede meternos en un iframe (clickjacking; obligatorio para
+          // la pantalla de consentimiento OAuth).
+          { key: "X-Frame-Options", value: "DENY" },
+          // Al salir hacia otros orígenes solo viaja el origen, no el path.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Capacidades del navegador que esta app jamás usa.
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
+          },
+        ],
+      },
       // Descubrimiento para agentes (RFC 8288) en las entradas públicas.
       ...["/", "/landing", "/en/landing"].map((source) => ({
         source,

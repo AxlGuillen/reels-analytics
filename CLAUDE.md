@@ -146,6 +146,19 @@ paso a paso sobre los elementos reales para que alguien nuevo entienda cada pág
   "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
   con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
 
+**Página Historia (`/historia`, línea de tiempo del proyecto):** la historia del repo como
+pantalla del panel. Los hitos NO se leen del git en vivo (en Vercel no hay `.git` en runtime
+y los commits crudos no narran): viven **curados** en
+`(dashboard)/historia/timeline-data.ts` (puro, testeado por `timeline-data.test.ts`) —
+capítulos con hitos `{date, title, description, sha?, tag?}` donde `sha` es el hash corto
+REAL (cada hito enlaza a su commit en GitHub, el repo es público) y `tag` pinta el chip/punto
+lima (jerarquía por tono: el test falla si más de ⅓ llevan chip). La banda de stats se deriva
+de los propios datos (`timelineStats`) + `MCP_TOOLS.length`; nada hardcodeado que caduque.
+Página estática (sin BD, sin loading.tsx), entrada "Historia" en el rail
+(`GitCommitVerticalIcon`) y tour propio. **Regla de mantenimiento: al estrenar una feature
+grande se agrega su hito en `timeline-data.ts` (un objeto, con el sha del commit que la
+estrenó).**
+
 **Estados de carga del dashboard (skeletons, dos capas):** los cambios de searchParams
 (periodo del Overview, filtros de growth/content, rango de tiktok/instagram) **NO disparan
 `loading.tsx`** — App Router mantiene la vista anterior hasta que llega el RSC payload. Por
@@ -311,6 +324,17 @@ políticas** (acceso solo server-side vía service role). Tipos en
 ignora RLS). Capa de ingesta (`modules/ingestion/{persist,capture}.ts`) escribe snapshots;
 tokens en `ra_connections` con refresh (`modules/accounts/tokens.ts`). **Cron diario** a las
 08:00 CDMX (`app/api/cron/ingest`, `vercel.json`, protegido con `CRON_SECRET`).
+
+**Hardening del perímetro (auditado en producción, sep 2026):** toda ruta anónima responde
+como debe — páginas privadas 307→/login (incluidas rutas desconocidas: el proxy no filtra
+qué paths existen), `api/mcp` y `api/cron/*` 401 fail-closed, OAuth de TikTok solo con
+sesión, y las públicas (landing es/en, login, health básico, .md, well-known) 200. Headers
+globales en next.config: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`
+(obligatorio para la pantalla de consentimiento OAuth), `Referrer-Policy:
+strict-origin-when-cross-origin` y `Permissions-Policy` mínima; sin CSP completa a propósito
+(exigiría nonces en cada inline de Next). 404 con marca en `src/app/not-found.tsx` — solo lo
+ve el creador logueado (el proxy manda lo anónimo a login); el detalle de video usa
+`notFound()` para IDs inexistentes en vez de un 200 con mensaje plano.
 
 **Auth (login single-user, implementado):** Supabase Auth email+password para el único usuario
 (el creador); registros deshabilitados en el Dashboard. Clientes `@supabase/ssr`:
