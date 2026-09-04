@@ -221,6 +221,7 @@ export const TIMELINE: Chapter[] = [
         title: "Esta línea de tiempo",
         description:
           "La historia se volvió una pantalla del propio panel: cada hito enlaza a su commit real en el repo, que ahora es público.",
+        sha: "9464931",
         tag: "Estás aquí",
       },
     ],
