@@ -388,13 +388,14 @@ publicados con link a `/content`.
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
 **`mundial2026`**, **`cumpleaneros`** (canónico vigente `#cumplelolero`; las grafías viejas
 `cumpleañeros/cumpleaños/cumpleanos` son alias), **`soloqchallenge2026`** (tipo de EVENTO, con
-fecha de fin ~mediados de ago 2026) y **`debatelolero`** (cierre del formato
-concepto → explicación → debate). Los tipos de evento van ANTES que los de formato en la
+fecha de fin ~mediados de ago 2026), **`debatelolero`** (cierre del formato
+concepto → explicación → debate), **`worlds2026`** (EVENTO, sep 2026), **`lorelol`** y
+**`relatolero`** (formatos de sep 2026). Los tipos de evento van ANTES que los de formato en la
 precedencia: si un video cubre el evento, esa es su identidad aunque además sea narración. Cada tipo puede matchear **varios hashtags (alias)**:
 `ContentTypeDef.tags[]` (el primero es el canónico) — p. ej. `mundial2026` cuenta tanto `#mundial`
 como `#mundial2026`. Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya
 guardado con `classifyContentType` (`src/core/lib/content-type.ts`, precedencia
-`duiyhal > soloqchallenge2026 > dui > news > mundial2026 > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
+`duiyhal > soloqchallenge2026 > worlds2026 > dui > news > mundial2026 > debatelolero > lorelol > relatolero > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
 un alias = editar ese diccionario, sin migración. Los tags reservados (todos los alias) se excluyen
 del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`). `#humor` es el más usado
 (~294 videos) pero se trata como **temático**, no como tipo, por decisión del creador.

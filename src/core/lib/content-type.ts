@@ -16,7 +16,10 @@ export type ContentTypeKey =
   | "mundial2026"
   | "cumpleaneros"
   | "soloqchallenge2026"
-  | "debatelolero";
+  | "debatelolero"
+  | "worlds2026"
+  | "lorelol"
+  | "relatolero";
 
 export interface ContentTypeDef {
   /**
@@ -51,6 +54,12 @@ export const CONTENT_TYPES: Record<ContentTypeKey, ContentTypeDef> = {
   },
   // Cierre del formato concepto → explicación → debate (ago 2026).
   debatelolero: { tags: ["debatelolero"], label: "Debate lolero" },
+  // Cobertura de Worlds 2026 (sep 2026): tipo de EVENTO como el SoloQ
+  // Challenge — deja de recibir videos cuando termine el torneo.
+  worlds2026: { tags: ["worlds2026"], label: "Worlds 2026" },
+  // Formatos nuevos de sep 2026: historia/lore de LoL y relatos.
+  lorelol: { tags: ["lorelol"], label: "Lore lol" },
+  relatolero: { tags: ["relatolero"], label: "Relato lolero" },
 };
 
 /** Etiqueta para los videos sin ningún tag de tipo. */
@@ -66,10 +75,13 @@ const PRECEDENCE: ContentTypeKey[] = [
   // Los tipos de EVENTO van antes que los de formato: si un video cubre el
   // SoloQ Challenge, esa es su identidad aunque además sea narración o audio.
   "soloqchallenge2026",
+  "worlds2026",
   "dui",
   "news",
   "mundial2026",
   "debatelolero",
+  "lorelol",
+  "relatolero",
   "cumpleaneros",
   "audioviral",
 ];
