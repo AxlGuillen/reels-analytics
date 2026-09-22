@@ -146,6 +146,27 @@ paso a paso sobre los elementos reales para que alguien nuevo entienda cada pág
   "Siguiente" en tinta, contador como chip lima, overlay `var(--foreground)` (se invierte
   con el tema). Especificidad doblada a propósito para ganar a driver.css sin `!important`.
 
+**Captura manual ("Capturar ahora", acción global):** botón en el rail (desktop) y en la
+barra superior móvil — `components/dashboard/capture-now-button.tsx` — que dispara
+`captureAllAction` (`app/actions/capture.ts`): ambas plataformas **en paralelo con
+`allSettled`** como el cron, así que si una falla la otra guarda, y el paralelo mantiene el
+tiempo de pared cerca del de una sola captura. Al terminar hace `router.refresh()` (la prueba
+de que funcionó es que la pantalla se repinta) y muestra un toast fijo: éxito se auto-cierra a
+los 6 s, los fallos se quedan hasta cerrarlos (piden acción). Caso de uso: un periodo recién
+empezado necesita una 2.ª captura para tener deltas — antes había que esperar al cron de las
+08:00. **Capturar de más es seguro**: los deltas de video se atribuyen a la ventana donde
+INICIAN (`timeline.ts`), así que una captura extra parte la ventana del día sin duplicar; los
+de seguidores se quedan con la última lectura de cada día (`attribution.ts`); y los snapshots
+son inserts inmutables sin constraint por día. Dos trampas resueltas que hay que respetar al
+tocarlo: (1) `export const maxDuration = 60` vive en `(dashboard)/layout.tsx` porque un server
+action corre con el `maxDuration` de la ruta que lo invoca y la ingesta de IG hace una llamada
+por Reel — sin eso la captura manual moriría por timeout; (2) el toast lleva `text-foreground`
+explícito porque es descendiente del rail (`text-sidebar-foreground`, crema) y `position:
+fixed` NO rompe la herencia de color. El botón **no** se condiciona a los puntos de conexión
+del rail: esos reflejan la sesión en cookie de TikTok, mientras que la captura corre con los
+tokens persistidos en `ra_connections`. El `CaptureButton` por plataforma sigue en `/tiktok` y
+`/instagram` para capturas dirigidas.
+
 **Página Historia (`/historia`, línea de tiempo del proyecto):** la historia del repo como
 pantalla del panel. Los hitos NO se leen del git en vivo (en Vercel no hay `.git` en runtime
 y los commits crudos no narran): viven **curados** en
@@ -367,13 +388,14 @@ publicados con link a `/content`.
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
 **`mundial2026`**, **`cumpleaneros`** (canónico vigente `#cumplelolero`; las grafías viejas
 `cumpleañeros/cumpleaños/cumpleanos` son alias), **`soloqchallenge2026`** (tipo de EVENTO, con
-fecha de fin ~mediados de ago 2026) y **`debatelolero`** (cierre del formato
-concepto → explicación → debate). Los tipos de evento van ANTES que los de formato en la
+fecha de fin ~mediados de ago 2026), **`debatelolero`** (cierre del formato
+concepto → explicación → debate), **`worlds2026`** (EVENTO, sep 2026), **`lorelol`** y
+**`relatolero`** (formatos de sep 2026). Los tipos de evento van ANTES que los de formato en la
 precedencia: si un video cubre el evento, esa es su identidad aunque además sea narración. Cada tipo puede matchear **varios hashtags (alias)**:
 `ContentTypeDef.tags[]` (el primero es el canónico) — p. ej. `mundial2026` cuenta tanto `#mundial`
 como `#mundial2026`. Supabase guarda solo datos crudos; el tipo se deriva del `hashtags[]` ya
 guardado con `classifyContentType` (`src/core/lib/content-type.ts`, precedencia
-`duiyhal > soloqchallenge2026 > dui > news > mundial2026 > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
+`duiyhal > soloqchallenge2026 > worlds2026 > dui > news > mundial2026 > debatelolero > lorelol > relatolero > cumpleaneros > audioviral`). Cambiar reglas, sumar un tipo o
 un alias = editar ese diccionario, sin migración. Los tags reservados (todos los alias) se excluyen
 del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`). `#humor` es el más usado
 (~294 videos) pero se trata como **temático**, no como tipo, por decisión del creador.

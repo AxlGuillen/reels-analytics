@@ -5,6 +5,15 @@ import { createServerSupabase } from "@/core/supabase/server";
 import { getSession, isExpired } from "@/modules/tiktok/session";
 
 /**
+ * Un server action corre con el `maxDuration` de la ruta que lo invoca, y el
+ * botón "Capturar ahora" del rail vive en TODAS las pantallas del dashboard.
+ * La ingesta de IG hace una llamada de insights por Reel — el mismo motivo por
+ * el que `api/cron/ingest` pide 60 s. Sin esto, la captura manual moriría por
+ * timeout antes de guardar. La config de segmento se hereda hacia los hijos.
+ */
+export const maxDuration = 60;
+
+/**
  * Shell del dashboard: sidebar persistente (desktop) / drawer (móvil) + área de
  * contenido. Calcula el estado de conexión por plataforma para los puntos del nav.
  */

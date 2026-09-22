@@ -29,8 +29,9 @@ export function LoginForm({ next = "/" }: { next?: string }) {
           name="email"
           type="email"
           autoComplete="email"
+          placeholder="tu@correo.com"
           required
-          className="bg-muted focus-visible:ring-ring/30 h-11 rounded-full px-4 text-sm transition-shadow outline-none focus-visible:ring-2"
+          className="bg-muted focus-visible:ring-ring/30 placeholder:text-muted-foreground h-11 rounded-full px-4 text-sm transition-shadow outline-none focus-visible:ring-2"
         />
       </div>
 
@@ -47,8 +48,9 @@ export function LoginForm({ next = "/" }: { next?: string }) {
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
+            placeholder="Tu contraseña"
             required
-            className="bg-muted focus-visible:ring-ring/30 h-11 w-full rounded-full pr-11 pl-4 text-sm transition-shadow outline-none focus-visible:ring-2"
+            className="bg-muted focus-visible:ring-ring/30 placeholder:text-muted-foreground h-11 w-full rounded-full pr-11 pl-4 text-sm transition-shadow outline-none focus-visible:ring-2"
           />
           <button
             type="button"

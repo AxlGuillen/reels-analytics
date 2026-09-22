@@ -48,6 +48,17 @@ describe("classifyContentType", () => {
     );
   });
 
+  test("clasifica Worlds, Lore lol y Relato lolero (sep 2026)", () => {
+    expect(classifyContentType(["worlds2026", "leagueoflegends"])).toBe("worlds2026");
+    expect(classifyContentType(["lorelol"])).toBe("lorelol");
+    expect(classifyContentType(["relatolero", "humor"])).toBe("relatolero");
+  });
+
+  test("Worlds es evento: gana a los formatos como el SoloQ Challenge", () => {
+    expect(classifyContentType(["relatolero", "worlds2026"])).toBe("worlds2026");
+    expect(classifyContentType(["dui", "worlds2026"])).toBe("worlds2026");
+  });
+
   test("devuelve null sin ningún tag de tipo (temáticos no clasifican)", () => {
     expect(classifyContentType(["humor", "leagueoflegends", "axelsine"])).toBeNull();
     expect(classifyContentType([])).toBeNull();
@@ -66,6 +77,9 @@ describe("RESERVED_TAGS", () => {
       "cumpleaños",
       "soloqchallenge2026",
       "debatelolero",
+      "worlds2026",
+      "lorelol",
+      "relatolero",
     ]) {
       expect(RESERVED_TAGS.has(t)).toBe(true);
     }

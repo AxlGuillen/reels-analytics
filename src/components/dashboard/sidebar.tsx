@@ -27,6 +27,7 @@ import { BrandGlyph } from "@/components/brand-mark";
 import { cn } from "@/lib/utils";
 import { runTour } from "@/components/tour/run-tour";
 import { tourRouteFor } from "@/components/tour/steps";
+import { CaptureNowButton } from "./capture-now-button";
 import { LogoutButton } from "./logout-button";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -287,6 +288,7 @@ export function DesktopSidebar({
           />
         ))}
 
+        <CaptureNowButton expanded={!collapsed} />
         <TourButton expanded={!collapsed} />
         <ThemeToggle variant="rail" expanded={!collapsed} />
         <LogoutButton variant="rail" expanded={!collapsed} />
@@ -367,6 +369,9 @@ export function MobileNav({
           <BrandGlyph className="size-[16px]" />
         </span>
         <span className="text-sm font-medium tracking-tight">Reels Analytics</span>
+        <div className="ml-auto">
+          <CaptureNowButton variant="topbar" />
+        </div>
       </header>
 
       {open && (
