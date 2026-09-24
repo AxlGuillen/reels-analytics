@@ -1,6 +1,7 @@
 import "server-only";
 import type { Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
+import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
 import type { VideoWithMetrics } from "./insights";
 import { toAgePoints, type AgePoint } from "./timeseries";
 
@@ -57,12 +58,18 @@ export async function readGrowth(
   const accountIds = accounts.map((a) => a.id);
 
   // 2. Serie de crecimiento de cuenta (tabla chica: ~1-2 filas/día).
-  const { data: accSnaps, error: accSnapErr } = await supabase
-    .from("ra_account_snapshots")
-    .select("account_id, captured_at, followers, total_views, total_likes")
-    .in("account_id", accountIds)
-    .order("captured_at", { ascending: true });
-  if (accSnapErr) throw new Error(`ra_account_snapshots: ${accSnapErr.message}`);
+  const accSnaps = await fetchByIds(
+    "ra_account_snapshots",
+    accountIds,
+    (chunk, from, to) =>
+      supabase
+        .from("ra_account_snapshots")
+        .select("account_id, captured_at, followers, total_views, total_likes")
+        .in("account_id", chunk)
+        .order("captured_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+  );
 
   const seriesByAccount = new Map<string, AccountSeries>();
   for (const acc of accounts) {
@@ -72,7 +79,7 @@ export async function readGrowth(
       points: [],
     });
   }
-  for (const snap of accSnaps ?? []) {
+  for (const snap of accSnaps) {
     seriesByAccount.get(snap.account_id)?.points.push({
       capturedAt: snap.captured_at,
       followers: snap.followers,
@@ -82,45 +89,60 @@ export async function readGrowth(
   }
 
   // 3. Videos (metadata) de esas cuentas.
-  const { data: videoRows, error: vidErr } = await supabase
-    .from("ra_videos")
-    .select(
-      "id, platform, external_id, caption, hashtags, published_at, url, duration_s, thumbnail_url",
-    )
-    .in("account_id", accountIds);
-  if (vidErr) throw new Error(`ra_videos: ${vidErr.message}`);
-  if (!videoRows || videoRows.length === 0) {
+  const videoRows = await fetchByIds("ra_videos", accountIds, (chunk, from, to) =>
+    supabase
+      .from("ra_videos")
+      .select(
+        "id, platform, external_id, caption, hashtags, published_at, url, duration_s, thumbnail_url",
+      )
+      .in("account_id", chunk)
+      .order("id")
+      .range(from, to),
+  );
+  if (videoRows.length === 0) {
     return { videos: [], accountSeries: [...seriesByAccount.values()] };
   }
   const videoIds = videoRows.map((v) => v.id);
 
   // 4. Métrica vigente por video: última captura, ventana hacia atrás, dedupe en TS.
-  const { data: maxRow } = await supabase
-    .from("ra_video_snapshots")
-    .select("captured_at")
-    .in("video_id", videoIds)
-    .order("captured_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!maxRow) {
+  // Máximo por lote (limit 1 → una sola página) y luego el global.
+  const maxRows = await fetchByIds("ra_video_snapshots", videoIds, (chunk) =>
+    supabase
+      .from("ra_video_snapshots")
+      .select("captured_at")
+      .in("video_id", chunk)
+      .order("captured_at", { ascending: false })
+      .limit(1),
+  );
+  const latestCapture = Math.max(...maxRows.map((r) => Date.parse(r.captured_at)));
+  if (!Number.isFinite(latestCapture)) {
     return { videos: [], accountSeries: [...seriesByAccount.values()] };
   }
   const sinceIso = new Date(
-    new Date(maxRow.captured_at).getTime() - LATEST_WINDOW_DAYS * 86_400_000,
+    latestCapture - LATEST_WINDOW_DAYS * 86_400_000,
   ).toISOString();
 
-  const { data: recentSnaps, error: snapErr } = await supabase
-    .from("ra_video_snapshots")
-    .select("video_id, captured_at, views, likes, comments, shares, saved")
-    .in("video_id", videoIds)
-    .gte("captured_at", sinceIso)
-    .order("captured_at", { ascending: false });
-  if (snapErr) throw new Error(`ra_video_snapshots: ${snapErr.message}`);
+  const recentSnaps = await fetchByIds(
+    "ra_video_snapshots",
+    videoIds,
+    (chunk, from, to) =>
+      supabase
+        .from("ra_video_snapshots")
+        .select("id, video_id, captured_at, views, likes, comments, shares, saved")
+        .in("video_id", chunk)
+        .gte("captured_at", sinceIso)
+        .order("captured_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+  );
 
-  // Primera aparición por video = la más reciente (viene ordenado desc).
+  // La más reciente por video (comparando fechas: entre lotes no hay orden global).
   const latestByVideo = new Map<string, (typeof recentSnaps)[number]>();
-  for (const snap of recentSnaps ?? []) {
-    if (!latestByVideo.has(snap.video_id)) latestByVideo.set(snap.video_id, snap);
+  for (const snap of recentSnaps) {
+    const prev = latestByVideo.get(snap.video_id);
+    if (!prev || Date.parse(snap.captured_at) > Date.parse(prev.captured_at)) {
+      latestByVideo.set(snap.video_id, snap);
+    }
   }
 
   // 5. Reconstruye VideoWithMetrics (omite videos sin snapshot reciente).
@@ -214,36 +236,22 @@ export interface VideoSeries {
 /** Solo consideramos videos recientes: la edad-N solo aplica a los que tienen
  *  historia temprana (publicados tras arrancar la ingesta). */
 const SERIES_PUBLISHED_WITHIN_DAYS = 120;
-const SNAPSHOT_PAGE = 1000;
 
-interface SnapshotRow {
-  video_id: string;
-  captured_at: string;
-  views: number;
-  likes: number;
-  comments: number;
-  shares: number;
-}
-
-/** Trae TODOS los snapshots de un set de videos, paginando para no toparse con
- *  el límite de filas por request de Supabase (default 1000). */
-async function fetchAllVideoSnapshots(
+/** Trae TODOS los snapshots de un set de videos (por lotes y paginado; ver
+ *  `fetchByIds`). Dentro de cada video quedan en orden cronológico. */
+function fetchAllVideoSnapshots(
   supabase: ReturnType<typeof createAdminClient>,
   videoIds: string[],
-): Promise<SnapshotRow[]> {
-  const rows: SnapshotRow[] = [];
-  for (let from = 0; ; from += SNAPSHOT_PAGE) {
-    const { data, error } = await supabase
+) {
+  return fetchByIds("ra_video_snapshots", videoIds, (chunk, from, to) =>
+    supabase
       .from("ra_video_snapshots")
       .select("video_id, captured_at, views, likes, comments, shares")
-      .in("video_id", videoIds)
+      .in("video_id", chunk)
       .order("captured_at", { ascending: true })
-      .range(from, from + SNAPSHOT_PAGE - 1);
-    if (error) throw new Error(`ra_video_snapshots: ${error.message}`);
-    rows.push(...(data ?? []));
-    if (!data || data.length < SNAPSHOT_PAGE) break;
-  }
-  return rows;
+      .order("id")
+      .range(from, to),
+  );
 }
 
 /**
@@ -259,14 +267,15 @@ export async function readVideoSeries(
     Date.now() - SERIES_PUBLISHED_WITHIN_DAYS * 86_400_000,
   ).toISOString();
 
-  let query = supabase
-    .from("ra_videos")
-    .select("id, external_id, platform, published_at")
-    .gte("published_at", cutoff);
-  if (platform) query = query.eq("platform", platform);
-  const { data: videos, error } = await query;
-  if (error) throw new Error(`ra_videos: ${error.message}`);
-  if (!videos || videos.length === 0) return [];
+  const videos = await fetchAllPages("ra_videos", (from, to) => {
+    let query = supabase
+      .from("ra_videos")
+      .select("id, external_id, platform, published_at")
+      .gte("published_at", cutoff);
+    if (platform) query = query.eq("platform", platform);
+    return query.order("id").range(from, to);
+  });
+  if (videos.length === 0) return [];
 
   const snaps = await fetchAllVideoSnapshots(
     supabase,
@@ -306,11 +315,12 @@ export async function readSnapshotSeries(
 ): Promise<CalendarSnapshot[][]> {
   const supabase = createAdminClient();
 
-  let query = supabase.from("ra_videos").select("id");
-  if (platform) query = query.eq("platform", platform);
-  const { data: videos, error } = await query;
-  if (error) throw new Error(`ra_videos: ${error.message}`);
-  if (!videos || videos.length === 0) return [];
+  const videos = await fetchAllPages("ra_videos", (from, to) => {
+    let query = supabase.from("ra_videos").select("id");
+    if (platform) query = query.eq("platform", platform);
+    return query.order("id").range(from, to);
+  });
+  if (videos.length === 0) return [];
 
   const snaps = await fetchAllVideoSnapshots(
     supabase,

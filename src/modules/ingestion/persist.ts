@@ -1,6 +1,7 @@
 import "server-only";
 import type { AccountStats, Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
+import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
 import type { VideoWithMetrics } from "@/modules/analytics/insights";
 
 /**
@@ -132,26 +133,35 @@ export async function listStaleVideos(
 ): Promise<StaleVideoRef[]> {
   const supabase = createAdminClient();
 
-  const { data: vids, error: vidErr } = await supabase
-    .from("ra_videos")
-    .select("id, external_id")
-    .eq("platform", platform);
-  if (vidErr) throw new Error(`ra_videos: ${vidErr.message}`);
-  const candidates = (vids ?? []).filter((v) => !excludeExternalIds.has(v.external_id));
+  const vids = await fetchAllPages("ra_videos", (from, to) =>
+    supabase
+      .from("ra_videos")
+      .select("id, external_id")
+      .eq("platform", platform)
+      .order("id")
+      .range(from, to),
+  );
+  const candidates = vids.filter((v) => !excludeExternalIds.has(v.external_id));
   if (candidates.length === 0) return [];
 
   const sinceIso = new Date(
     Date.now() - STALE_WINDOW_DAYS * 86_400_000,
   ).toISOString();
-  const { data: snaps, error: snapErr } = await supabase
-    .from("ra_video_snapshots")
-    .select("video_id, captured_at")
-    .in("video_id", candidates.map((v) => v.id))
-    .gte("captured_at", sinceIso);
-  if (snapErr) throw new Error(`ra_video_snapshots: ${snapErr.message}`);
+  const snaps = await fetchByIds(
+    "ra_video_snapshots",
+    candidates.map((v) => v.id),
+    (chunk, from, to) =>
+      supabase
+        .from("ra_video_snapshots")
+        .select("video_id, captured_at")
+        .in("video_id", chunk)
+        .gte("captured_at", sinceIso)
+        .order("id")
+        .range(from, to),
+  );
 
   const latestByVideo = new Map<string, number>();
-  for (const s of snaps ?? []) {
+  for (const s of snaps) {
     const t = Date.parse(s.captured_at);
     const prev = latestByVideo.get(s.video_id);
     if (!prev || t > prev) latestByVideo.set(s.video_id, t);
