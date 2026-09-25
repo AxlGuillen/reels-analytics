@@ -37,16 +37,24 @@ export async function fetchAllPages<T>(
   return rows;
 }
 
-/** `fetchAllPages` por cada lote de `ID_CHUNK` ids. */
+/**
+ * `fetchAllPages` por cada lote de `ID_CHUNK` ids. Los lotes corren en
+ * paralelo (las páginas de un mismo lote no pueden: cada una depende de si la
+ * anterior vino llena); el resultado conserva el orden de los lotes.
+ */
 export async function fetchByIds<T>(
   label: string,
   ids: readonly string[],
   page: (chunk: string[], from: number, to: number) => PageResult<T>,
 ): Promise<T[]> {
-  const rows: T[] = [];
+  const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += ID_CHUNK) {
-    const chunk = ids.slice(i, i + ID_CHUNK);
-    rows.push(...(await fetchAllPages(label, (from, to) => page(chunk, from, to))));
+    chunks.push(ids.slice(i, i + ID_CHUNK));
   }
-  return rows;
+  const perChunk = await Promise.all(
+    chunks.map((chunk) =>
+      fetchAllPages(label, (from, to) => page(chunk, from, to)),
+    ),
+  );
+  return perChunk.flat();
 }
