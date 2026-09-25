@@ -2,11 +2,8 @@ import "server-only";
 
 import { dayKey } from "@/core/lib/datetime";
 import type { Platform } from "@/core/domain";
-import {
-  readGrowth,
-  readSnapshotSeries,
-  type AccountSeries,
-} from "./history";
+import { readSnapshotSeries, type AccountSeries } from "./history";
+import { analyticsCache, readGrowthCached } from "./cached";
 import { dailyFollowerDeltas } from "./attribution";
 import {
   buildTimeline,
@@ -126,13 +123,17 @@ interface PlatformData {
   daily: TimelineBucket[];
 }
 
-/** Lee y agrega los buckets diarios de una plataforma (publicados + ganados). */
-async function readPlatform(platform: Platform): Promise<PlatformData> {
+/**
+ * Buckets diarios de una plataforma (publicados + ganados), cacheados: es la
+ * lectura cara (toda la historia de snapshots) y no depende del periodo, así
+ * que navegar entre semanas/meses solo recorta este resultado.
+ */
+const dailyFor = analyticsCache("daily", async (platform: Platform) => {
   const [{ videos, accountSeries }, snapshotSeries] = await Promise.all([
-    readGrowth({ platform }),
+    readGrowthCached({ platform }),
     readSnapshotSeries({ platform }),
   ]);
-  const daily = buildTimeline(
+  return buildTimeline(
     {
       publishedAt: videos.map((r) => r.video.publishedAt),
       snapshotSeries,
@@ -140,6 +141,14 @@ async function readPlatform(platform: Platform): Promise<PlatformData> {
     },
     "day" satisfies Granularity,
   );
+});
+
+/** Catálogo + buckets diarios de una plataforma (ambos del caché). */
+async function readPlatform(platform: Platform): Promise<PlatformData> {
+  const [{ videos }, daily] = await Promise.all([
+    readGrowthCached({ platform }),
+    dailyFor(platform),
+  ]);
   return { platform, videos, daily };
 }
 

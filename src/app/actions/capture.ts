@@ -1,6 +1,8 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import type { Platform } from "@/core/domain";
+import { ANALYTICS_TAG } from "@/core/lib/cache-tags";
 import { createServerSupabase } from "@/core/supabase/server";
 import { captureInstagram, captureTikTok } from "@/modules/ingestion/capture";
 import type { IngestResult } from "@/modules/ingestion/persist";
@@ -36,6 +38,8 @@ export async function captureSnapshotAction(
   try {
     const result =
       platform === "tiktok" ? await captureTikTok() : await captureInstagram();
+    // Read-your-own-writes: el refresh posterior debe traer lo recién capturado.
+    updateTag(ANALYTICS_TAG);
     return { ok: true, result };
   } catch (err) {
     return { ok: false, message: reason(err) };
@@ -86,5 +90,7 @@ export async function captureAllAction(): Promise<CaptureAllResult> {
   if (failures.length === settled.length) {
     return { ok: false, message: failures.map((f) => f.message).join(" · ") };
   }
+  // Al menos una plataforma guardó: el `router.refresh()` del botón debe verlo.
+  updateTag(ANALYTICS_TAG);
   return { ok: true, videos, snapshots, failures };
 }

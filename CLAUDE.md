@@ -374,6 +374,28 @@ seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo,
 publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
 `?platform=`.
 
+**Caché de analítica (`modules/analytics/cached.ts`, Vercel Data Cache vía `unstable_cache`):**
+los snapshots solo cambian al capturar, así que las lecturas caras se cachean ya AGREGADAS —
+catálogo (`readGrowthCached`), buckets diarios del Overview (`dailyFor` en `overview.ts`),
+vistas ganadas por mes (`readMonthGainedCached`) y vistas a N días (`readViewsAtAgeCached`).
+Navegar semanas/meses o el filtro de mes de `/growth` solo recorta lo cacheado. Reglas:
+- **Nunca cachear snapshots crudos** (MB y creciendo ~445 filas/día); solo resultados en KB.
+- **Solo por plataforma**; "todas" se compone en memoria (`cache-shape.ts`, puro y testeado).
+- Lo cacheado es **JSON puro**: `serializeGrowth`/`reviveGrowth` convierten las `Date`.
+- Invalidación por evento con el tag `ANALYTICS_TAG` (`core/lib/cache-tags.ts`): el cron de
+  ingesta hace `revalidateTag(tag, { expire: 0 })` (expiración inmediata, no SWR: la primera
+  visita tras las 08:00 ve la captura de hoy) y las acciones de captura hacen `updateTag`
+  (read-your-own-writes para el `router.refresh()` del botón). **Todo escritor nuevo de
+  snapshots debe invalidar el tag.** `revalidate` de 1 día es solo red de seguridad.
+- La clave lleva `VERCEL_GIT_COMMIT_SHA`: cada deploy arranca en frío y un cambio de forma
+  nunca lee entradas viejas. Toda lectura nueva cacheada pasa por `analyticsCache()`.
+- No se usa `'use cache'`: sin `cacheComponents` no existe, y en serverless su versión en
+  memoria no persiste entre requests; `'use cache: remote'` exigiría migrar la app entera a
+  Cache Components (landing, OG, robots, health). Con esa migración, `analyticsCache` es el
+  único punto a cambiar. El MCP sigue leyendo sin caché (`history.ts` directo).
+- En `next dev`, un request con `Cache-Control: no-cache` (p. ej. `fetch(..., {cache:
+  "no-store"})` o recarga forzada) se salta el caché: no confundirlo con un caché roto.
+
 **Overview (`/`, cross-platform por periodo, lee de Supabase):** ya NO lee TikTok en vivo. Usa
 `readOverviewSummary` (`modules/analytics/overview.ts`) sobre ambas plataformas. Selector de periodo
 **Semana/Mes** + navegación ◀▶ (`src/components/dashboard/period-nav.tsx`, solo query params

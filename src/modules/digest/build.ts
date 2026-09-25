@@ -3,7 +3,7 @@ import type { Platform } from "@/core/domain";
 import { formatCount } from "@/core/lib/format";
 import { dayKey, weekday } from "@/core/lib/datetime";
 import { escapeHtml } from "@/core/lib/telegram";
-import { readGrowth } from "@/modules/analytics/history";
+import { readGrowthCached } from "@/modules/analytics/cached";
 import {
   bestBucket,
   CREATOR_TIMEZONE,
@@ -80,7 +80,7 @@ export async function buildWeeklyDigest(): Promise<string> {
   const anchor = dayKey(new Date(now - 86_400_000), CREATOR_TIMEZONE);
   const [summary, { videos }] = await Promise.all([
     readOverviewSummary({ granularity: "week", anchor }),
-    readGrowth(),
+    readGrowthCached(),
   ]);
 
   const {

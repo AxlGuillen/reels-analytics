@@ -1,5 +1,7 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/core/config/env";
+import { ANALYTICS_TAG } from "@/core/lib/cache-tags";
 import { captureInstagram, captureTikTok } from "@/modules/ingestion/capture";
 import { purgeExpiredOAuth } from "@/modules/oauth/store";
 
@@ -33,6 +35,11 @@ export async function GET(request: NextRequest) {
     captureInstagram(),
     purgeExpiredOAuth(),
   ]);
+
+  // Expira el caché de analítica al instante (no stale-while-revalidate): la
+  // primera visita tras el cron debe ver la captura de hoy, no la de ayer.
+  // Incondicional: con una sola plataforma guardada ya cambiaron los datos.
+  revalidateTag(ANALYTICS_TAG, { expire: 0 });
 
   const summarize = (r: PromiseSettledResult<{ videos: number; snapshots: number }>) =>
     r.status === "fulfilled"
