@@ -8,6 +8,7 @@ import {
   refreshLongLivedToken,
 } from "@/modules/instagram/api";
 import { refreshAccessToken, type TikTokTokens } from "@/modules/tiktok/oauth";
+import type { TikTokAuth } from "@/modules/tiktok/read";
 
 /**
  * Fuente de verdad de los tokens para trabajos de fondo (cron/ingesta):
@@ -201,6 +202,72 @@ export async function getValidTikTokAccessToken(
     .eq("account_id", conn.account_id);
   if (error) throw supabaseError("ra_connections", error, { fase: "refresh" });
   return tokens.accessToken;
+}
+
+/**
+ * Token listo para una lectura EN VIVO de la UI (/tiktok, detalle de video).
+ * Sale de `ra_connections`, igual que el del cron: así la UI ve lo mismo que la
+ * ingesta en cualquier navegador. Sin `accountId`, la cuenta principal.
+ */
+export async function resolveTikTokAuth(accountId?: string): Promise<TikTokAuth> {
+  const supabase = createAdminClient();
+  const id = accountId ?? (await primaryAccountId(supabase, "tiktok"));
+  if (!id || !(await connectionFor(supabase, id))) {
+    return { status: "disconnected" };
+  }
+  const accessToken = await getValidTikTokAccessToken(id);
+  return accessToken ? { status: "ok", accessToken } : { status: "expired" };
+}
+
+/**
+ * Token de la cuenta DUEÑA de un video. La Display API solo deja consultar un
+ * video con el token de quien lo publicó, así que el de la principal no sirve
+ * para uno de una cuenta secundaria. Si el video aún no está en `ra_videos`
+ * (recién publicado, sin capturar), se intenta con la principal.
+ */
+export async function resolveTikTokAuthForVideo(
+  externalId: string,
+): Promise<TikTokAuth> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("ra_videos")
+    .select("account_id")
+    .eq("platform", "tiktok")
+    .eq("external_id", externalId)
+    .maybeSingle();
+  if (error) throw supabaseError("ra_videos", error);
+  return resolveTikTokAuth(data?.account_id ?? undefined);
+}
+
+export type ConnectionState = "connected" | "expired" | "disconnected";
+
+/**
+ * Estado de la conexión de la cuenta principal, SOLO con fechas (sin llamar a
+ * la plataforma ni refrescar): lo pinta el rail en cada render. "connected"
+ * si el access token sigue vivo o hay un refresh vigente con que renovarlo —
+ * exactamente lo que necesita el cron para capturar.
+ */
+export async function getPrimaryConnectionState(
+  platform: Platform,
+): Promise<ConnectionState> {
+  const supabase = createAdminClient();
+  const id = await primaryAccountId(supabase, platform);
+  if (!id) return "disconnected";
+
+  const { data, error } = await supabase
+    .from("ra_connections")
+    .select("expires_at, refresh_token, refresh_expires_at")
+    .eq("account_id", id)
+    .maybeSingle();
+  if (error) throw supabaseError("ra_connections", error);
+  if (!data) return "disconnected";
+
+  const now = Date.now();
+  const accessAlive = !!data.expires_at && Date.parse(data.expires_at) > now;
+  const refreshAlive =
+    !!data.refresh_token &&
+    (!data.refresh_expires_at || Date.parse(data.refresh_expires_at) > now);
+  return accessAlive || refreshAlive ? "connected" : "expired";
 }
 
 // ------------------------------------------------------------- Instagram

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { DesktopSidebar, MobileNav } from "@/components/dashboard/sidebar";
 import { env } from "@/core/config/env";
 import { createServerSupabase } from "@/core/supabase/server";
-import { getSession, isExpired } from "@/modules/tiktok/session";
+import { getPrimaryConnectionState } from "@/modules/accounts/tokens";
 
 /**
  * Un server action corre con el `maxDuration` de la ruta que lo invoca, y el
@@ -30,9 +30,14 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const session = await getSession();
+  // El punto del rail refleja la conexión GUARDADA (la que usa el cron), no una
+  // cookie del navegador. Es cosmético: si la BD no responde se pinta apagado en
+  // vez de tumbar todo el panel — la salud real la reporta /api/health.
+  const tiktokState = await getPrimaryConnectionState("tiktok").catch(
+    () => "disconnected" as const,
+  );
   const status = {
-    tiktok: !!session && !isExpired(session),
+    tiktok: tiktokState === "connected",
     instagram: !!env("INSTAGRAM_ACCESS_TOKEN"),
   };
 

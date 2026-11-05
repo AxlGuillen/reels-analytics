@@ -4,8 +4,8 @@ import { PlatformPanelSkeleton } from "@/components/dashboard/platform-panel-ske
 import { RangeSelect } from "@/components/dashboard/range-select";
 import { PageTour } from "@/components/tour/page-tour";
 import { TikTokPanel } from "@/components/tiktok-panel";
+import { resolveTikTokAuth } from "@/modules/accounts/tokens";
 import { readBreakoutIds } from "@/modules/analytics/breakouts";
-import { getSession } from "@/modules/tiktok/session";
 import { readTikTokOverview } from "@/modules/tiktok/read";
 import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
 
@@ -55,11 +55,15 @@ export default async function TikTokPage({
   );
 }
 
-/** Cuerpo con datos (API viva + breakouts); el tour viaja aquí. */
+/**
+ * Cuerpo con datos (API viva + breakouts); el tour viaja aquí. El token sale de
+ * la conexión guardada de la cuenta principal, no de una cookie: la vista
+ * funciona en cualquier navegador y con el mismo token que usa el cron.
+ */
 async function TikTokBody({ range }: { range: ReturnType<typeof resolveRange> }) {
-  const session = await getSession();
+  const auth = await resolveTikTokAuth();
   const [result, breakouts] = await Promise.all([
-    readTikTokOverview(session, { since: sinceForRange(range) }),
+    readTikTokOverview(auth, { since: sinceForRange(range) }),
     // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
     readBreakoutIds("tiktok").catch(() => new Set<string>()),
   ]);

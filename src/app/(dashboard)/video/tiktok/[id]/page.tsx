@@ -18,7 +18,7 @@ import { VideoGrowth } from "@/components/video-growth";
 import { PageTour } from "@/components/tour/page-tour";
 import { queryVideos } from "@/modules/tiktok/api";
 import { toVideo, toVideoMetrics } from "@/modules/tiktok/mappers";
-import { getSession, isExpired } from "@/modules/tiktok/session";
+import { resolveTikTokAuthForVideo } from "@/modules/accounts/tokens";
 
 /** Alias local del KPI compartido. */
 const Stat = StatCard;
@@ -43,13 +43,17 @@ export default async function VideoDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await getSession();
+  // Token de la cuenta DUEÑA del video: la Display API no deja leer un video
+  // ajeno, así que uno de una cuenta secundaria necesita el token de esa cuenta.
+  const auth = await resolveTikTokAuthForVideo(id);
 
-  if (!session || isExpired(session)) {
+  if (auth.status !== "ok") {
     return (
       <PageShell>
         <p className="text-muted-foreground text-sm">
-          Sesión no disponible. Vuelve a conectar TikTok desde Conexiones.
+          {auth.status === "expired"
+            ? "La conexión de TikTok de esta cuenta venció. Reconéctala desde Conexiones."
+            : "TikTok no está conectado. Conéctalo desde Conexiones."}
         </p>
       </PageShell>
     );
@@ -57,7 +61,7 @@ export default async function VideoDetailPage({
 
   let raw;
   try {
-    const results = await queryVideos(session.accessToken, [id]);
+    const results = await queryVideos(auth.accessToken, [id]);
     raw = results[0];
   } catch (err) {
     return (

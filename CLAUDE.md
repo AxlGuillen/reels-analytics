@@ -26,10 +26,14 @@ periódicos y persistirlos**; el crecimiento se calcula comparando snapshots.
 (144 tests) pasan limpios. El detalle de cada pieza va en las secciones siguientes.
 
 **TikTok (integración funcional):** OAuth Login Kit con PKCE + state
-(`modules/tiktok/oauth.ts`); sesión interina en cookie httpOnly
-(`modules/tiktok/session.ts`) que usa la UI en vivo — convive con los tokens
-persistidos en `ra_connections`, que son los que usa el cron; unificar en Supabase
-sigue pendiente. Rutas
+(`modules/tiktok/oauth.ts`). **Los tokens viven SOLO en `ra_connections`**: de ahí leen
+el cron, "Capturar ahora" y también la UI en vivo (`/tiktok`, detalle de video, punto del
+rail, Conexiones) vía `resolveTikTokAuth` / `getPrimaryConnectionState` en
+`accounts/tokens.ts`. Hasta nov 2026 la UI leía de una cookie `tiktok_session` interina
+que tenía dos defectos: solo existía en el navegador donde se conectó (en otro, todo
+decía "sin conectar" con la ingesta funcionando) y nunca se refrescaba, así que caducaba a
+las 24 h con el access token. `modules/tiktok/session.ts` quedó solo con las cookies
+efímeras del handshake OAuth, y el callback borra la cookie vieja si aún existe. Rutas
 `app/api/auth/tiktok/{login,callback}`. **Lectura de datos ya implementada:**
 `api.ts` (cliente Display API: user/info, video/list, video/query), `mappers.ts`
 (raw → dominio), `provider.ts` (contrato completo), `read.ts` (overview para la UI con
@@ -163,8 +167,8 @@ action corre con el `maxDuration` de la ruta que lo invoca y la ingesta de IG ha
 por Reel — sin eso la captura manual moriría por timeout; (2) el toast lleva `text-foreground`
 explícito porque es descendiente del rail (`text-sidebar-foreground`, crema) y `position:
 fixed` NO rompe la herencia de color. El botón **no** se condiciona a los puntos de conexión
-del rail: esos reflejan la sesión en cookie de TikTok, mientras que la captura corre con los
-tokens persistidos en `ra_connections`. El `CaptureButton` por plataforma sigue en `/tiktok` y
+del rail: ambos leen ya de `ra_connections`, pero el punto solo refleja la cuenta principal
+y la captura recorre todas. El `CaptureButton` por plataforma sigue en `/tiktok` y
 `/instagram` para capturas dirigidas.
 
 **Página Historia (`/historia`, línea de tiempo del proyecto):** la historia del repo como
@@ -402,8 +406,12 @@ upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmar
   `/api/health` la principal conserva los nombres de siempre (`ingestion.tiktok`,
   `tokens.tiktok`) para no romper monitores externos; las secundarias van como
   `ingestion.tiktok:@cuenta`.
-- **El callback de TikTok solo escribe la cookie de la UI si la cuenta es la principal**:
-  `/tiktok` lee en vivo de esa única cookie, y autorizar una secundaria la secuestraba.
+- **`/tiktok` es de la principal** (token de su conexión guardada). Autorizar una
+  secundaria devuelve a Conexiones, donde aparece su fila.
+- **El detalle de video usa el token de la cuenta DUEÑA del video**
+  (`resolveTikTokAuthForVideo`, por `ra_videos.account_id`): la Display API no deja leer un
+  video con el token de otra cuenta. Si el video aún no está capturado, prueba con la
+  principal.
 - **Digest**: una sección por secundaria (`analytics/account-week.ts`, puro y testeado,
   reusa `buildTimeline` + `dailyFollowerDeltas` para medirla igual que la principal) con
   la comparación justa: **vistas promedio por video publicado esa semana** contra la

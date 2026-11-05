@@ -87,9 +87,9 @@ registrado), ve a **Conexiones → Agregar otra cuenta** y acepta los permisos.
 
 Te devuelve a Conexiones con el aviso *Cuenta secundaria de TikTok conectada*.
 
-- **La pantalla `/tiktok` sigue mostrando la principal.** Esa pantalla lee en
-  vivo de una sola cookie; el callback solo la actualiza cuando la cuenta
-  autorizada es la principal, así que agregar una secundaria no la secuestra.
+- **La pantalla `/tiktok` sigue mostrando la principal**: lee con el token
+  guardado de la cuenta principal, en cualquier navegador. El detalle de un video
+  usa el token de la cuenta dueña de ese video.
 - **Si por error autorizas la principal otra vez, no pasa nada**: la cuenta se
   identifica por su `open_id` y solo se refrescan sus tokens.
 
