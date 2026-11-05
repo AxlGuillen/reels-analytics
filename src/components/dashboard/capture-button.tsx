@@ -18,14 +18,18 @@ export function CaptureButton({ platform }: { platform: Platform }) {
     setMsg(null);
     startTransition(async () => {
       const res = await captureSnapshotAction(platform);
-      setMsg(
-        res.ok
-          ? {
-              ok: true,
-              text: `Guardado · ${res.result.videos} videos · ${res.result.snapshots} snapshots`,
-            }
-          : { ok: false, text: res.message },
-      );
+      if (!res.ok) {
+        setMsg({ ok: false, text: res.message });
+        return;
+      }
+      // Con varias cuentas puede guardar una y fallar otra: se dice cuál.
+      const failed = res.failures.map((f) => `${f.label}: ${f.message}`);
+      setMsg({
+        ok: failed.length === 0,
+        text:
+          `Guardado · ${res.videos} videos · ${res.snapshots} snapshots` +
+          (failed.length ? ` — falló ${failed.join(" · ")}` : ""),
+      });
     });
   }
 

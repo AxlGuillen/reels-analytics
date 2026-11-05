@@ -2,6 +2,7 @@ import "server-only";
 import { env } from "@/core/config/env";
 import type { Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
+import { supabaseError } from "@/core/supabase/errors";
 import {
   fetchUserInfo as fetchIgUserInfo,
   refreshLongLivedToken,
@@ -14,6 +15,10 @@ import { refreshAccessToken, type TikTokTokens } from "@/modules/tiktok/oauth";
  *  - TikTok: access 24 h / refresh ~1 año (el refresh rota, se guarda el nuevo).
  *  - Instagram: token largo de ~60 días, extensible con `ig_refresh_token`.
  * Así el cron nunca depende de la cookie del navegador.
+ *
+ * Varias cuentas por plataforma: los tokens se resuelven POR CUENTA, nunca por
+ * plataforma. Resolver por plataforma con `.limit(1)` y sin orden devolvía una
+ * cuenta arbitraria en cuanto hubo dos, y podía cambiar entre corridas.
  */
 
 type Supabase = ReturnType<typeof createAdminClient>;
@@ -31,30 +36,101 @@ interface ConnectionRow {
   refresh_expires_at: string | null;
 }
 
-async function getConnection(
-  supabase: Supabase,
-  platform: Platform,
-): Promise<ConnectionRow | null> {
-  const { data: accounts } = await supabase
-    .from("ra_social_accounts")
-    .select("id")
-    .eq("platform", platform)
-    .limit(1);
-  const accountId = accounts?.[0]?.id;
-  if (!accountId) return null;
+export interface ConnectedAccount {
+  accountId: string;
+  platform: Platform;
+  externalId: string;
+  /** null hasta la primera captura (el alta por OAuth solo conoce el open_id). */
+  handle: string | null;
+  isPrimary: boolean;
+}
 
-  const { data } = await supabase
+/** Nombre legible de una cuenta: el @handle si ya lo conocemos. */
+export function accountLabel(account: {
+  handle: string | null;
+  externalId: string;
+}): string {
+  return account.handle ? `@${account.handle}` : account.externalId;
+}
+
+/**
+ * Cuentas de la plataforma que tienen conexión guardada: las que el cron puede
+ * capturar. Orden estable: la principal primero, luego por antigüedad.
+ */
+export async function listConnectedAccounts(
+  platform: Platform,
+): Promise<ConnectedAccount[]> {
+  const supabase = createAdminClient();
+  const { data: accounts, error } = await supabase
+    .from("ra_social_accounts")
+    .select("id, platform, external_id, handle, is_primary")
+    .eq("platform", platform)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (error) throw supabaseError("ra_social_accounts", error);
+  if (!accounts || accounts.length === 0) return [];
+
+  const { data: conns, error: connErr } = await supabase
+    .from("ra_connections")
+    .select("account_id")
+    .in(
+      "account_id",
+      accounts.map((a) => a.id),
+    );
+  if (connErr) throw supabaseError("ra_connections", connErr);
+  const connected = new Set((conns ?? []).map((c) => c.account_id));
+
+  return accounts
+    .filter((a) => connected.has(a.id))
+    .map((a) => ({
+      accountId: a.id,
+      platform: a.platform,
+      externalId: a.external_id,
+      handle: a.handle,
+      isPrimary: a.is_primary,
+    }));
+}
+
+async function connectionFor(
+  supabase: Supabase,
+  accountId: string,
+): Promise<ConnectionRow | null> {
+  const { data, error } = await supabase
     .from("ra_connections")
     .select("account_id, access_token, refresh_token, expires_at, refresh_expires_at")
     .eq("account_id", accountId)
     .maybeSingle();
+  if (error) throw supabaseError("ra_connections", error);
   return data ?? null;
+}
+
+/** Id de la cuenta principal de la plataforma (null si aún no hay cuentas). */
+async function primaryAccountId(
+  supabase: Supabase,
+  platform: Platform,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("ra_social_accounts")
+    .select("id")
+    .eq("platform", platform)
+    .eq("is_primary", true)
+    .maybeSingle();
+  if (error) throw supabaseError("ra_social_accounts", error);
+  return data?.id ?? null;
 }
 
 // ---------------------------------------------------------------- TikTok
 
-/** Persiste (upsert) la cuenta y su conexión. Se llama en el callback de OAuth. */
-export async function saveTikTokConnection(tokens: TikTokTokens): Promise<void> {
+/**
+ * Persiste (upsert) la cuenta y su conexión. Se llama en el callback de OAuth.
+ * Devuelve si la cuenta es la principal: el callback lo usa para decidir si la
+ * cookie de la UI debe apuntar a ella (ver `api/auth/tiktok/callback`). La
+ * marca la decide la BD (trigger `ra_social_accounts_default_primary`): la
+ * primera cuenta de la plataforma es principal; las siguientes, secundarias.
+ */
+export async function saveTikTokConnection(
+  tokens: TikTokTokens,
+): Promise<{ accountId: string; isPrimary: boolean }> {
   const supabase = createAdminClient();
   const now = Date.now();
 
@@ -64,11 +140,10 @@ export async function saveTikTokConnection(tokens: TikTokTokens): Promise<void> 
       { platform: "tiktok", external_id: tokens.openId },
       { onConflict: "platform,external_id" },
     )
-    .select("id")
+    .select("id, is_primary")
     .single();
-  if (error || !acct) {
-    throw new Error(`ra_social_accounts (tiktok): ${error?.message ?? "sin id"}`);
-  }
+  if (error) throw supabaseError("ra_social_accounts", error, { fase: "oauth" });
+  if (!acct) throw new Error("ra_social_accounts (tiktok): el upsert no devolvió id");
 
   const { error: connErr } = await supabase.from("ra_connections").upsert(
     {
@@ -81,12 +156,17 @@ export async function saveTikTokConnection(tokens: TikTokTokens): Promise<void> 
     },
     { onConflict: "account_id" },
   );
-  if (connErr) throw new Error(`ra_connections (tiktok): ${connErr.message}`);
+  if (connErr) throw supabaseError("ra_connections", connErr, { fase: "oauth" });
+
+  return { accountId: acct.id, isPrimary: acct.is_primary };
 }
 
-export async function getValidTikTokAccessToken(): Promise<string | null> {
+/** Access token vigente de UNA cuenta de TikTok (refresca si hace falta). */
+export async function getValidTikTokAccessToken(
+  accountId: string,
+): Promise<string | null> {
   const supabase = createAdminClient();
-  const conn = await getConnection(supabase, "tiktok");
+  const conn = await connectionFor(supabase, accountId);
   if (!conn) return null;
 
   const expiresAt = conn.expires_at ? Date.parse(conn.expires_at) : 0;
@@ -97,27 +177,37 @@ export async function getValidTikTokAccessToken(): Promise<string | null> {
   const refreshExp = conn.refresh_expires_at ? Date.parse(conn.refresh_expires_at) : 0;
   if (refreshExp && refreshExp < Date.now()) return null; // refresh token muerto → reconectar
 
+  let tokens: TikTokTokens;
   try {
-    const tokens = await refreshAccessToken(conn.refresh_token);
-    const now = Date.now();
-    await supabase
-      .from("ra_connections")
-      .update({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken || conn.refresh_token,
-        expires_at: new Date(now + tokens.expiresIn * 1000).toISOString(),
-        refresh_expires_at: tokens.refreshExpiresIn
-          ? new Date(now + tokens.refreshExpiresIn * 1000).toISOString()
-          : conn.refresh_expires_at,
-      })
-      .eq("account_id", conn.account_id);
-    return tokens.accessToken;
+    tokens = await refreshAccessToken(conn.refresh_token);
   } catch {
-    return null;
+    return null; // TikTok rechazó el refresh → reconectar
   }
+
+  // TikTok ROTA el refresh token: si este update falla, el nuevo solo vive en
+  // memoria y el guardado ya quedó invalidado, así que la próxima corrida
+  // fallaría con un "reconecta" sin causa visible. Por eso falla ruidoso aquí.
+  const now = Date.now();
+  const { error } = await supabase
+    .from("ra_connections")
+    .update({
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken || conn.refresh_token,
+      expires_at: new Date(now + tokens.expiresIn * 1000).toISOString(),
+      refresh_expires_at: tokens.refreshExpiresIn
+        ? new Date(now + tokens.refreshExpiresIn * 1000).toISOString()
+        : conn.refresh_expires_at,
+    })
+    .eq("account_id", conn.account_id);
+  if (error) throw supabaseError("ra_connections", error, { fase: "refresh" });
+  return tokens.accessToken;
 }
 
 // ------------------------------------------------------------- Instagram
+//
+// Instagram sigue siendo de UNA cuenta: su token viene de la env var
+// INSTAGRAM_ACCESS_TOKEN, no de un OAuth por cuenta. Sumar una 2.ª cuenta de IG
+// exige primero el flujo OAuth de Instagram (ver docs/agregar-cuenta.md).
 
 /** Siembra la conexión de IG desde la env var (interino, hasta tener OAuth). */
 async function seedInstagramFromEnv(
@@ -126,16 +216,12 @@ async function seedInstagramFromEnv(
   const token = env("INSTAGRAM_ACCESS_TOKEN");
   if (!token) return null;
 
-  // Reusar la cuenta de IG si ya existe (la creó la ingesta); si no, crearla.
-  const { data: existing } = await supabase
-    .from("ra_social_accounts")
-    .select("id")
-    .eq("platform", "instagram")
-    .limit(1);
-  let accountId = existing?.[0]?.id;
+  // Reusar la cuenta principal de IG si ya existe (la creó la ingesta); si no,
+  // crearla — el trigger la marca como principal por ser la primera.
+  let accountId = await primaryAccountId(supabase, "instagram");
   if (!accountId) {
     const user = await fetchIgUserInfo(token);
-    const { data: acct } = await supabase
+    const { data: acct, error } = await supabase
       .from("ra_social_accounts")
       .upsert(
         { platform: "instagram", external_id: user.user_id },
@@ -143,7 +229,8 @@ async function seedInstagramFromEnv(
       )
       .select("id")
       .single();
-    accountId = acct?.id;
+    if (error) throw supabaseError("ra_social_accounts", error, { fase: "seed" });
+    accountId = acct?.id ?? null;
   }
   if (!accountId) return null;
 
@@ -158,12 +245,13 @@ async function seedInstagramFromEnv(
     // token muy nuevo (<24 h) o no refrescable: se usa como está
   }
   const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
-  await supabase
+  const { error: connErr } = await supabase
     .from("ra_connections")
     .upsert(
       { account_id: accountId, access_token: accessToken, expires_at: expiresAt },
       { onConflict: "account_id" },
     );
+  if (connErr) throw supabaseError("ra_connections", connErr, { fase: "seed" });
   return {
     account_id: accountId,
     access_token: accessToken,
@@ -175,8 +263,9 @@ async function seedInstagramFromEnv(
 
 export async function getValidInstagramAccessToken(): Promise<string | null> {
   const supabase = createAdminClient();
+  const accountId = await primaryAccountId(supabase, "instagram");
   const conn =
-    (await getConnection(supabase, "instagram")) ??
+    (accountId ? await connectionFor(supabase, accountId) : null) ??
     (await seedInstagramFromEnv(supabase));
   if (!conn) return null;
 
@@ -185,19 +274,21 @@ export async function getValidInstagramAccessToken(): Promise<string | null> {
     return conn.access_token;
   }
 
+  let refreshed: Awaited<ReturnType<typeof refreshLongLivedToken>>;
   try {
-    const refreshed = await refreshLongLivedToken(conn.access_token);
-    await supabase
-      .from("ra_connections")
-      .update({
-        access_token: refreshed.accessToken,
-        expires_at: new Date(Date.now() + refreshed.expiresIn * 1000).toISOString(),
-      })
-      .eq("account_id", conn.account_id);
-    return refreshed.accessToken;
+    refreshed = await refreshLongLivedToken(conn.access_token);
   } catch {
     // Refresh falló: usar el token actual como último recurso (el error real
     // aflorará en la llamada de datos si de verdad está muerto).
     return conn.access_token;
   }
+  const { error } = await supabase
+    .from("ra_connections")
+    .update({
+      access_token: refreshed.accessToken,
+      expires_at: new Date(Date.now() + refreshed.expiresIn * 1000).toISOString(),
+    })
+    .eq("account_id", conn.account_id);
+  if (error) throw supabaseError("ra_connections", error, { fase: "refresh" });
+  return refreshed.accessToken;
 }

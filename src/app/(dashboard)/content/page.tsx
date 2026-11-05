@@ -16,7 +16,7 @@ import {
 } from "./content-skeleton";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { VideoListTable } from "@/components/dashboard/video-list-table";
-import { readGrowth } from "@/modules/analytics/history";
+import { readGrowthCached } from "@/modules/analytics/cached";
 import {
   groupByContentType,
   summarize,
@@ -103,7 +103,7 @@ export default async function ContentPage({
   );
 }
 
-/** Cuerpo con datos: la única lectura (readGrowth) vive aquí. */
+/** Cuerpo con datos: la única lectura (catálogo cacheado) vive aquí. */
 async function ContentBody({
   platform,
   type,
@@ -111,7 +111,7 @@ async function ContentBody({
   platform: Platform | undefined;
   type: ContentTypeKey | null | undefined;
 }) {
-  const { videos } = await readGrowth({ platform });
+  const { videos } = await readGrowthCached({ platform });
   const byType = groupByContentType(videos);
 
   const inDrilldown = type !== undefined;

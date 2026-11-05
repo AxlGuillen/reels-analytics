@@ -1,6 +1,8 @@
 import "server-only";
-import type { AccountStats, Platform } from "@/core/domain";
+import type { AccountStats } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
+import { supabaseError } from "@/core/supabase/errors";
+import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
 import type { VideoWithMetrics } from "@/modules/analytics/insights";
 
 /**
@@ -12,6 +14,9 @@ import type { VideoWithMetrics } from "@/modules/analytics/insights";
  */
 
 export interface IngestResult {
+  /** id interno en ra_social_accounts (la rotación de IG lo necesita). */
+  accountId: string;
+  /** @handle o external id, para mensajes. */
   account: string;
   videos: number;
   snapshots: number;
@@ -40,9 +45,8 @@ export async function persistOverview(
     )
     .select("id")
     .single();
-  if (acctErr || !acct) {
-    throw new Error(`ra_social_accounts: ${acctErr?.message ?? "sin id"}`);
-  }
+  if (acctErr) throw supabaseError("ra_social_accounts", acctErr);
+  if (!acct) throw new Error("ra_social_accounts: el upsert no devolvió id");
   const accountId = acct.id;
 
   // 2. Snapshot de cuenta
@@ -55,10 +59,10 @@ export async function persistOverview(
     total_likes: account.totalLikes,
     video_count: account.videoCount ?? null,
   });
-  if (accSnapErr) throw new Error(`ra_account_snapshots: ${accSnapErr.message}`);
+  if (accSnapErr) throw supabaseError("ra_account_snapshots", accSnapErr);
 
   if (videos.length === 0) {
-    return { account: label, videos: 0, snapshots: 0 };
+    return { accountId, account: label, videos: 0, snapshots: 0 };
   }
 
   // 3. Videos (upsert) → mapa external_id → id
@@ -79,7 +83,8 @@ export async function persistOverview(
       { onConflict: "platform,external_id" },
     )
     .select("id, external_id");
-  if (vidErr || !vids) throw new Error(`ra_videos: ${vidErr?.message ?? "sin datos"}`);
+  if (vidErr) throw supabaseError("ra_videos", vidErr);
+  if (!vids) throw new Error("ra_videos: el upsert no devolvió datos");
 
   const idByExternal = new Map(vids.map((v) => [v.external_id, v.id]));
 
@@ -103,9 +108,9 @@ export async function persistOverview(
   const { error: vidSnapErr } = await supabase
     .from("ra_video_snapshots")
     .insert(snapshots);
-  if (vidSnapErr) throw new Error(`ra_video_snapshots: ${vidSnapErr.message}`);
+  if (vidSnapErr) throw supabaseError("ra_video_snapshots", vidSnapErr);
 
-  return { account: label, videos: vids.length, snapshots: snapshots.length };
+  return { accountId, account: label, videos: vids.length, snapshots: snapshots.length };
 }
 
 // ------------------------------------------------- Rotación de videos viejos
@@ -120,38 +125,50 @@ export interface StaleVideoRef {
 const STALE_WINDOW_DAYS = 14;
 
 /**
- * Videos de la plataforma cuyo último snapshot es el más viejo (o no tienen
+ * Videos de UNA cuenta cuyo último snapshot es el más viejo (o no tienen
  * ninguno en la ventana), excluyendo los ya capturados en esta corrida. Es la
  * cola de la rotación diaria: con K por día, todo el catálogo recibe snapshot
  * al menos cada ~(catálogo/K) días sin exceder el rate limit.
+ *
+ * Por cuenta, no por plataforma: la rotación pide insights con el token de una
+ * cuenta, así que solo puede rotar los videos de esa misma cuenta.
  */
 export async function listStaleVideos(
-  platform: Platform,
+  accountId: string,
   limit: number,
   excludeExternalIds: ReadonlySet<string>,
 ): Promise<StaleVideoRef[]> {
   const supabase = createAdminClient();
 
-  const { data: vids, error: vidErr } = await supabase
-    .from("ra_videos")
-    .select("id, external_id")
-    .eq("platform", platform);
-  if (vidErr) throw new Error(`ra_videos: ${vidErr.message}`);
-  const candidates = (vids ?? []).filter((v) => !excludeExternalIds.has(v.external_id));
+  const vids = await fetchAllPages("ra_videos", (from, to) =>
+    supabase
+      .from("ra_videos")
+      .select("id, external_id")
+      .eq("account_id", accountId)
+      .order("id")
+      .range(from, to),
+  );
+  const candidates = vids.filter((v) => !excludeExternalIds.has(v.external_id));
   if (candidates.length === 0) return [];
 
   const sinceIso = new Date(
     Date.now() - STALE_WINDOW_DAYS * 86_400_000,
   ).toISOString();
-  const { data: snaps, error: snapErr } = await supabase
-    .from("ra_video_snapshots")
-    .select("video_id, captured_at")
-    .in("video_id", candidates.map((v) => v.id))
-    .gte("captured_at", sinceIso);
-  if (snapErr) throw new Error(`ra_video_snapshots: ${snapErr.message}`);
+  const snaps = await fetchByIds(
+    "ra_video_snapshots",
+    candidates.map((v) => v.id),
+    (chunk, from, to) =>
+      supabase
+        .from("ra_video_snapshots")
+        .select("video_id, captured_at")
+        .in("video_id", chunk)
+        .gte("captured_at", sinceIso)
+        .order("id")
+        .range(from, to),
+  );
 
   const latestByVideo = new Map<string, number>();
-  for (const s of snaps ?? []) {
+  for (const s of snaps) {
     const t = Date.parse(s.captured_at);
     const prev = latestByVideo.get(s.video_id);
     if (!prev || t > prev) latestByVideo.set(s.video_id, t);
@@ -180,6 +197,6 @@ export async function insertVideoSnapshots(rows: VideoSnapshotRow[]): Promise<nu
   if (rows.length === 0) return 0;
   const supabase = createAdminClient();
   const { error } = await supabase.from("ra_video_snapshots").insert(rows);
-  if (error) throw new Error(`ra_video_snapshots (rotación): ${error.message}`);
+  if (error) throw supabaseError("ra_video_snapshots", error, { fase: "rotación" });
   return rows.length;
 }

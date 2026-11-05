@@ -229,6 +229,7 @@ export type Database = {
           external_id: string
           handle: string | null
           id: string
+          is_primary: boolean
           platform: Database["public"]["Enums"]["ra_platform"]
           updated_at: string
         }
@@ -239,6 +240,7 @@ export type Database = {
           external_id: string
           handle?: string | null
           id?: string
+          is_primary?: boolean
           platform: Database["public"]["Enums"]["ra_platform"]
           updated_at?: string
         }
@@ -249,6 +251,7 @@ export type Database = {
           external_id?: string
           handle?: string | null
           id?: string
+          is_primary?: boolean
           platform?: Database["public"]["Enums"]["ra_platform"]
           updated_at?: string
         }

@@ -33,18 +33,17 @@ import { Suspense } from "react";
 import { PageTour } from "@/components/tour/page-tour";
 import { GrowthBodySkeleton } from "./growth-skeleton";
 import { StatCard } from "@/components/dashboard/stat-card";
+import type { AccountSeries } from "@/modules/analytics/history";
 import {
-  readGrowth,
-  readSnapshotSeries,
-  readVideoSeries,
-  type AccountSeries,
-} from "@/modules/analytics/history";
-import { DEFAULT_AGE_DAYS, viewsAtAge } from "@/modules/analytics/timeseries";
+  readGrowthCached,
+  readMonthGainedCached,
+  readViewsAtAgeCached,
+} from "@/modules/analytics/cached";
+import { DEFAULT_AGE_DAYS } from "@/modules/analytics/timeseries";
 import {
   bestBucket,
   captionStats,
   CREATOR_TIMEZONE,
-  gainedByMonth,
   groupByContentType,
   postingCadence,
   summarize,
@@ -193,7 +192,7 @@ async function GrowthBody({
   monthParam?: string;
   metric: MetricMode;
 }) {
-  const { videos, accountSeries } = await readGrowth({ platform });
+  const { videos, accountSeries } = await readGrowthCached({ platform });
   const { data: growthData, series: growthSeries } = mergeSeries(accountSeries);
 
   const byType = groupByContentType(videos);
@@ -218,7 +217,7 @@ async function GrowthBody({
     .slice(0, 8);
 
   // Quick wins: momentum del catálogo, duración (solo TikTok) y caption.
-  const momentum = gainedByMonth(await readSnapshotSeries({ platform }));
+  const momentum = await readMonthGainedCached({ platform });
   const momentumData: InsightDatum[] = momentum.map((m) => ({
     label: m.label,
     value: m.gained,
@@ -256,12 +255,10 @@ async function GrowthBody({
 
   // Normalización por edad: reemplaza las vistas de por vida por las vistas a 7
   // días (comparación justa). Los videos sin historia temprana se excluyen.
-  const viewsAt7 = new Map(
-    (metric === "age7" ? await readVideoSeries({ platform }) : []).map((s) => [
-      s.externalId,
-      viewsAtAge(s.points, DEFAULT_AGE_DAYS),
-    ]),
-  );
+  const viewsAt7 =
+    metric === "age7"
+      ? await readViewsAtAgeCached({ platform })
+      : new Map<string, number>();
   const chartRows =
     metric === "age7"
       ? videosForCharts.flatMap((r) => {

@@ -58,7 +58,7 @@ export function CaptureNowButton({
 
       const detail = `${res.snapshots} snapshots · ${res.videos} videos`;
       if (res.failures.length > 0) {
-        const failed = res.failures.map((f) => f.platform).join(", ");
+        const failed = res.failures.map((f) => f.label).join(", ");
         setStatus({
           tone: "warn",
           text: `Guardado ${detail}, pero ${failed} falló: ${res.failures[0].message}`,

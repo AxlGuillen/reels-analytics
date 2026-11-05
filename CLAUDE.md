@@ -374,6 +374,90 @@ seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo,
 publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
 `?platform=`.
 
+**Varias cuentas por plataforma (nov 2026, 2.ª cuenta de TikTok):** `ra_social_accounts`
+lleva `is_primary` (migración `ra_social_accounts_primary_flag`): **exactamente una principal
+por plataforma** (índice único parcial) y la PRIMERA cuenta de una plataforma queda como
+principal sola (trigger `ra_social_accounts_default_primary`, cubre el callback OAuth y el
+upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmarks; las
+**secundarias** se capturan aparte y solo salen en el digest y en Conexiones. Reglas:
+- **Los tokens se resuelven POR CUENTA, nunca por plataforma** (`listConnectedAccounts`,
+  `getValidTikTokAccessToken(accountId)` en `accounts/tokens.ts`). Antes era
+  `.eq("platform").limit(1)` sin orden: con dos cuentas devolvía una arbitraria y podía
+  dejar de capturar la principal.
+- **Las 3 lecturas base de `history.ts` (`readGrowth`, `readSnapshotSeries`,
+  `readVideoSeries`) aceptan `account: AccountScope` y por defecto leen SOLO la
+  principal.** Ahí se acota todo: caché, Overview, /growth, /content, breakouts y MCP pasan
+  por ellas. Mezclar cuentas rompería tres cosas: el Overview sumaría vistas de audiencias
+  incomparables, el benchmark por cohorte compararía videos de una cuenta de miles de
+  seguidores contra una que empieza de cero, y `followerDeltasFor` (que aplana las lecturas
+  y toma la última del día) saltaría entre cuentas fabricando deltas de miles. Una
+  secundaria se lee pidiéndola por id (`{ accountId }`), como hace el digest.
+- **Captura por cuenta y aislada** (`ingestion/capture.ts`): `captureTikTok()` recorre
+  todas las conexiones en paralelo y la falla de una no frena a las demás; el resultado es
+  `AccountCapture[]` y `ingestion/summary.ts` (puro, testeado) lo resume para el cron y las
+  dos acciones. La rotación de IG es por cuenta (`listStaleVideos(accountId)`): pide
+  insights con el token de una cuenta, solo puede rotar los videos de esa cuenta.
+- **Watchdog y health por cuenta** (`getAccountCaptureStatuses`): medidos por plataforma,
+  una secundaria que sí captura taparía que la principal dejó de hacerlo. En
+  `/api/health` la principal conserva los nombres de siempre (`ingestion.tiktok`,
+  `tokens.tiktok`) para no romper monitores externos; las secundarias van como
+  `ingestion.tiktok:@cuenta`.
+- **El callback de TikTok solo escribe la cookie de la UI si la cuenta es la principal**:
+  `/tiktok` lee en vivo de esa única cookie, y autorizar una secundaria la secuestraba.
+- **Digest**: una sección por secundaria (`analytics/account-week.ts`, puro y testeado,
+  reusa `buildTimeline` + `dailyFollowerDeltas` para medirla igual que la principal) con
+  la comparación justa: **vistas promedio por video publicado esa semana** contra la
+  principal — los totales dependen de los seguidores y una cuenta nueva siempre pierde.
+- **Instagram sigue siendo de una cuenta** (token por env var). Una 2.ª de IG exige antes
+  el OAuth de Instagram.
+- Paso a paso para agregar cuentas (portal de TikTok + conexión): `docs/agregar-cuenta.md`.
+  Pendiente a propósito: selector de cuenta en el panel, cuando la secundaria tenga semanas
+  de historia que comparar.
+
+**Límite de ids por `.in()` (la causa del bug de nov 2026 — leer antes de escribir una
+consulta nueva):** PostgREST recibe el filtro `in` en la URL y el gateway de Supabase
+rechaza las URLs largas con un **400 "Bad Request" SIN cuerpo**. Umbral medido por
+bisección contra este proyecto: **636 ids pasan (~28.8 KB de URL), 637 fallan**. El
+catálogo cruzó esa marca ~14 sep 2026, así que por ~7 semanas falló TODA lectura sin
+filtro de plataforma: `get_top_videos`, `get_growth_summary` y `get_activity_timeline`
+del MCP, el **digest semanal de Telegram** y **/content sin filtro**. `compare_platforms`
+se salvó de casualidad porque itera plataforma por plataforma (481 y 333 ids, bajo el
+tope) — por eso parecía "la consulta buena". **Dos síntomas de una sola causa**, según si
+el error se comprobaba: el `maxRow` de `readGrowth` destructuraba solo `data`, así que un
+400 ahí devolvía catálogo vacío en silencio (el `{"total":0}` de get_top_videos), mientras
+que la lectura de snapshots sí lo comprobaba y lanzaba "Bad Request". Reglas: todo
+`.in()` sobre ids pasa por `fetchByIds` (`core/supabase/batched.ts`, `ID_CHUNK` 150);
+**ningún `await supabase…` puede destructurar `data` sin `error`**; y los errores se arman
+con `supabaseError()` (`core/supabase/errors.ts`), que adjunta code/details/hint y el
+rango paginado, y **reconoce la firma del rechazo del gateway para nombrarla** — en ese
+400 Supabase no manda más detalle, el diagnóstico lo tiene que poner el cliente.
+`modules/mcp/tools.integration.test.ts` ejercita las **9 tools contra la BD real** y falla
+si alguna truena o devuelve vacío habiendo videos (con datos de juguete este bug era
+invisible: dependía del tamaño del catálogo). Se salta sola sin credenciales, para que CI
+siga en verde; en local tarda ~50 s.
+
+**Caché de analítica (`modules/analytics/cached.ts`, Vercel Data Cache vía `unstable_cache`):**
+los snapshots solo cambian al capturar, así que las lecturas caras se cachean ya AGREGADAS —
+catálogo (`readGrowthCached`), buckets diarios del Overview (`dailyFor` en `overview.ts`),
+vistas ganadas por mes (`readMonthGainedCached`) y vistas a N días (`readViewsAtAgeCached`).
+Navegar semanas/meses o el filtro de mes de `/growth` solo recorta lo cacheado. Reglas:
+- **Nunca cachear snapshots crudos** (MB y creciendo ~445 filas/día); solo resultados en KB.
+- **Solo por plataforma**; "todas" se compone en memoria (`cache-shape.ts`, puro y testeado).
+- Lo cacheado es **JSON puro**: `serializeGrowth`/`reviveGrowth` convierten las `Date`.
+- Invalidación por evento con el tag `ANALYTICS_TAG` (`core/lib/cache-tags.ts`): el cron de
+  ingesta hace `revalidateTag(tag, { expire: 0 })` (expiración inmediata, no SWR: la primera
+  visita tras las 08:00 ve la captura de hoy) y las acciones de captura hacen `updateTag`
+  (read-your-own-writes para el `router.refresh()` del botón). **Todo escritor nuevo de
+  snapshots debe invalidar el tag.** `revalidate` de 1 día es solo red de seguridad.
+- La clave lleva `VERCEL_GIT_COMMIT_SHA`: cada deploy arranca en frío y un cambio de forma
+  nunca lee entradas viejas. Toda lectura nueva cacheada pasa por `analyticsCache()`.
+- No se usa `'use cache'`: sin `cacheComponents` no existe, y en serverless su versión en
+  memoria no persiste entre requests; `'use cache: remote'` exigiría migrar la app entera a
+  Cache Components (landing, OG, robots, health). Con esa migración, `analyticsCache` es el
+  único punto a cambiar. El MCP sigue leyendo sin caché (`history.ts` directo).
+- En `next dev`, un request con `Cache-Control: no-cache` (p. ej. `fetch(..., {cache:
+  "no-store"})` o recarga forzada) se salta el caché: no confundirlo con un caché roto.
+
 **Overview (`/`, cross-platform por periodo, lee de Supabase):** ya NO lee TikTok en vivo. Usa
 `readOverviewSummary` (`modules/analytics/overview.ts`) sobre ambas plataformas. Selector de periodo
 **Semana/Mes** + navegación ◀▶ (`src/components/dashboard/period-nav.tsx`, solo query params
@@ -634,7 +718,7 @@ Snapshots inmutables con timestamp; el histórico se construye acumulando filas.
 
 | Tabla | Propósito | Campos clave |
 |-------|-----------|--------------|
-| `ra_social_accounts` | cuenta del creador por plataforma | `platform`, `external_id`, `handle` |
+| `ra_social_accounts` | cuentas del creador (varias por plataforma, una principal) | `platform`, `external_id`, `handle`, `is_primary` |
 | `ra_connections` | tokens OAuth (sensible, solo service role) | `account_id`, `access_token`, `refresh_token`, `expires_at` |
 | `ra_account_snapshots` | métricas de cuenta en el tiempo | `account_id`, `captured_at`, `followers`, `total_views`, `total_likes` |
 | `ra_videos` | un video por plataforma | `account_id`, `platform`, `external_id`, `caption`, `hashtags text[]`, `published_at`, `url`, `duration_s` |

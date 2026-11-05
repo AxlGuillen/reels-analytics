@@ -222,6 +222,22 @@ export const TIMELINE: Chapter[] = [
         description:
           "La historia se volvió una pantalla del propio panel: cada hito enlaza a su commit real en el repo, que ahora es público.",
         sha: "9464931",
+      },
+    ],
+  },
+  {
+    id: "crecer",
+    title: "Más de una cuenta",
+    period: "Noviembre en adelante",
+    intro:
+      "Una segunda cuenta de TikTok, sin baneos, para comparar el mismo contenido frente a otra audiencia. El reto no era capturarla: era que no contaminara los números de la principal.",
+    milestones: [
+      {
+        date: "2026-11-05",
+        title: "Varias cuentas por plataforma",
+        description:
+          "Cada cuenta se captura por separado y la principal sigue alimentando el panel sola. Sumarlas habría mezclado audiencias incomparables y roto el benchmark por cohorte; la secundaria se compara en el digest por vistas promedio por video, que es la medida justa entre cuentas de tamaños muy distintos.",
+        sha: "9c43237",
         tag: "Estás aquí",
       },
     ],
