@@ -1,6 +1,7 @@
 import "server-only";
 import type { AccountStats, Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
+import { supabaseError } from "@/core/supabase/errors";
 import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
 import type { VideoWithMetrics } from "@/modules/analytics/insights";
 
@@ -41,9 +42,8 @@ export async function persistOverview(
     )
     .select("id")
     .single();
-  if (acctErr || !acct) {
-    throw new Error(`ra_social_accounts: ${acctErr?.message ?? "sin id"}`);
-  }
+  if (acctErr) throw supabaseError("ra_social_accounts", acctErr);
+  if (!acct) throw new Error("ra_social_accounts: el upsert no devolvió id");
   const accountId = acct.id;
 
   // 2. Snapshot de cuenta
@@ -56,7 +56,7 @@ export async function persistOverview(
     total_likes: account.totalLikes,
     video_count: account.videoCount ?? null,
   });
-  if (accSnapErr) throw new Error(`ra_account_snapshots: ${accSnapErr.message}`);
+  if (accSnapErr) throw supabaseError("ra_account_snapshots", accSnapErr);
 
   if (videos.length === 0) {
     return { account: label, videos: 0, snapshots: 0 };
@@ -80,7 +80,8 @@ export async function persistOverview(
       { onConflict: "platform,external_id" },
     )
     .select("id, external_id");
-  if (vidErr || !vids) throw new Error(`ra_videos: ${vidErr?.message ?? "sin datos"}`);
+  if (vidErr) throw supabaseError("ra_videos", vidErr);
+  if (!vids) throw new Error("ra_videos: el upsert no devolvió datos");
 
   const idByExternal = new Map(vids.map((v) => [v.external_id, v.id]));
 
@@ -104,7 +105,7 @@ export async function persistOverview(
   const { error: vidSnapErr } = await supabase
     .from("ra_video_snapshots")
     .insert(snapshots);
-  if (vidSnapErr) throw new Error(`ra_video_snapshots: ${vidSnapErr.message}`);
+  if (vidSnapErr) throw supabaseError("ra_video_snapshots", vidSnapErr);
 
   return { account: label, videos: vids.length, snapshots: snapshots.length };
 }
@@ -190,6 +191,6 @@ export async function insertVideoSnapshots(rows: VideoSnapshotRow[]): Promise<nu
   if (rows.length === 0) return 0;
   const supabase = createAdminClient();
   const { error } = await supabase.from("ra_video_snapshots").insert(rows);
-  if (error) throw new Error(`ra_video_snapshots (rotación): ${error.message}`);
+  if (error) throw supabaseError("ra_video_snapshots", error, { fase: "rotación" });
   return rows.length;
 }

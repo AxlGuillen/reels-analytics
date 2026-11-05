@@ -1,6 +1,7 @@
 import "server-only";
 import type { Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
+import { supabaseError } from "@/core/supabase/errors";
 import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
 import type { VideoWithMetrics } from "./insights";
 import { toAgePoints, type AgePoint } from "./timeseries";
@@ -51,7 +52,7 @@ export async function readGrowth(
     .select("id, platform, handle");
   if (platform) accountsQuery = accountsQuery.eq("platform", platform);
   const { data: accounts, error: accErr } = await accountsQuery;
-  if (accErr) throw new Error(`ra_social_accounts: ${accErr.message}`);
+  if (accErr) throw supabaseError("ra_social_accounts", accErr);
   if (!accounts || accounts.length === 0) {
     return { videos: [], accountSeries: [] };
   }
@@ -204,7 +205,7 @@ export async function readVideoHistory(
     .eq("platform", platform)
     .eq("external_id", externalId)
     .limit(1);
-  if (vidErr) throw new Error(`ra_videos: ${vidErr.message}`);
+  if (vidErr) throw supabaseError("ra_videos", vidErr);
   const videoId = videos?.[0]?.id;
   if (!videoId) return [];
 
@@ -213,7 +214,7 @@ export async function readVideoHistory(
     .select("captured_at, views, likes, comments, shares, saved")
     .eq("video_id", videoId)
     .order("captured_at", { ascending: true });
-  if (snapErr) throw new Error(`ra_video_snapshots: ${snapErr.message}`);
+  if (snapErr) throw supabaseError("ra_video_snapshots", snapErr);
 
   return (snaps ?? []).map((s) => ({
     capturedAt: s.captured_at,

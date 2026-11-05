@@ -1,10 +1,14 @@
+import type { PostgrestError } from "@supabase/supabase-js";
+import { supabaseError } from "./errors";
+
 /**
  * Lecturas `.in(columna, ids)` que escalan con el catálogo.
  *
- * PostgREST recibe el filtro `in` en la URL: con ~680 UUIDs la URL pasa el
- * límite del gateway y la respuesta es un 400 "Bad Request" (verificado: 450
- * ids pasan, 676 no). Además cada request devuelve como máximo 1000 filas. Este
- * helper parte los ids en lotes y pagina cada lote hasta agotarlo.
+ * PostgREST recibe el filtro `in` en la URL: pasado cierto largo el gateway la
+ * rechaza con un 400 "Bad Request" SIN cuerpo. Umbral medido por bisección
+ * contra este proyecto: 636 ids pasan (~28.8 KB de URL) y 637 fallan. Además
+ * cada request devuelve como máximo 1000 filas. Este helper parte los ids en
+ * lotes y pagina cada lote hasta agotarlo.
  *
  * Contrato con `page`: la consulta DEBE tener un orden total (desempatar por
  * `id`): el cron escribe cada lote con el mismo `captured_at`, y paginar con un
@@ -19,7 +23,7 @@ export const PAGE_SIZE = 1000;
 
 type PageResult<T> = PromiseLike<{
   data: T[] | null;
-  error: { message: string } | null;
+  error: PostgrestError | null;
 }>;
 
 /** Pagina una consulta (con orden total) hasta agotarla. */
@@ -29,8 +33,9 @@ export async function fetchAllPages<T>(
 ): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await page(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(`${label}: ${error.message}`);
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await page(from, to);
+    if (error) throw supabaseError(label, error, { from, to });
     rows.push(...(data ?? []));
     if (!data || data.length < PAGE_SIZE) break;
   }

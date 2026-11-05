@@ -374,6 +374,28 @@ seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo,
 publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
 `?platform=`.
 
+**Límite de ids por `.in()` (la causa del bug de nov 2026 — leer antes de escribir una
+consulta nueva):** PostgREST recibe el filtro `in` en la URL y el gateway de Supabase
+rechaza las URLs largas con un **400 "Bad Request" SIN cuerpo**. Umbral medido por
+bisección contra este proyecto: **636 ids pasan (~28.8 KB de URL), 637 fallan**. El
+catálogo cruzó esa marca ~14 sep 2026, así que por ~7 semanas falló TODA lectura sin
+filtro de plataforma: `get_top_videos`, `get_growth_summary` y `get_activity_timeline`
+del MCP, el **digest semanal de Telegram** y **/content sin filtro**. `compare_platforms`
+se salvó de casualidad porque itera plataforma por plataforma (481 y 333 ids, bajo el
+tope) — por eso parecía "la consulta buena". **Dos síntomas de una sola causa**, según si
+el error se comprobaba: el `maxRow` de `readGrowth` destructuraba solo `data`, así que un
+400 ahí devolvía catálogo vacío en silencio (el `{"total":0}` de get_top_videos), mientras
+que la lectura de snapshots sí lo comprobaba y lanzaba "Bad Request". Reglas: todo
+`.in()` sobre ids pasa por `fetchByIds` (`core/supabase/batched.ts`, `ID_CHUNK` 150);
+**ningún `await supabase…` puede destructurar `data` sin `error`**; y los errores se arman
+con `supabaseError()` (`core/supabase/errors.ts`), que adjunta code/details/hint y el
+rango paginado, y **reconoce la firma del rechazo del gateway para nombrarla** — en ese
+400 Supabase no manda más detalle, el diagnóstico lo tiene que poner el cliente.
+`modules/mcp/tools.integration.test.ts` ejercita las **9 tools contra la BD real** y falla
+si alguna truena o devuelve vacío habiendo videos (con datos de juguete este bug era
+invisible: dependía del tamaño del catálogo). Se salta sola sin credenciales, para que CI
+siga en verde; en local tarda ~50 s.
+
 **Caché de analítica (`modules/analytics/cached.ts`, Vercel Data Cache vía `unstable_cache`):**
 los snapshots solo cambian al capturar, así que las lecturas caras se cachean ya AGREGADAS —
 catálogo (`readGrowthCached`), buckets diarios del Overview (`dailyFor` en `overview.ts`),
