@@ -374,6 +374,46 @@ seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo,
 publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
 `?platform=`.
 
+**Varias cuentas por plataforma (nov 2026, 2.ª cuenta de TikTok):** `ra_social_accounts`
+lleva `is_primary` (migración `ra_social_accounts_primary_flag`): **exactamente una principal
+por plataforma** (índice único parcial) y la PRIMERA cuenta de una plataforma queda como
+principal sola (trigger `ra_social_accounts_default_primary`, cubre el callback OAuth y el
+upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmarks; las
+**secundarias** se capturan aparte y solo salen en el digest y en Conexiones. Reglas:
+- **Los tokens se resuelven POR CUENTA, nunca por plataforma** (`listConnectedAccounts`,
+  `getValidTikTokAccessToken(accountId)` en `accounts/tokens.ts`). Antes era
+  `.eq("platform").limit(1)` sin orden: con dos cuentas devolvía una arbitraria y podía
+  dejar de capturar la principal.
+- **Las 3 lecturas base de `history.ts` (`readGrowth`, `readSnapshotSeries`,
+  `readVideoSeries`) aceptan `account: AccountScope` y por defecto leen SOLO la
+  principal.** Ahí se acota todo: caché, Overview, /growth, /content, breakouts y MCP pasan
+  por ellas. Mezclar cuentas rompería tres cosas: el Overview sumaría vistas de audiencias
+  incomparables, el benchmark por cohorte compararía videos de una cuenta de miles de
+  seguidores contra una que empieza de cero, y `followerDeltasFor` (que aplana las lecturas
+  y toma la última del día) saltaría entre cuentas fabricando deltas de miles. Una
+  secundaria se lee pidiéndola por id (`{ accountId }`), como hace el digest.
+- **Captura por cuenta y aislada** (`ingestion/capture.ts`): `captureTikTok()` recorre
+  todas las conexiones en paralelo y la falla de una no frena a las demás; el resultado es
+  `AccountCapture[]` y `ingestion/summary.ts` (puro, testeado) lo resume para el cron y las
+  dos acciones. La rotación de IG es por cuenta (`listStaleVideos(accountId)`): pide
+  insights con el token de una cuenta, solo puede rotar los videos de esa cuenta.
+- **Watchdog y health por cuenta** (`getAccountCaptureStatuses`): medidos por plataforma,
+  una secundaria que sí captura taparía que la principal dejó de hacerlo. En
+  `/api/health` la principal conserva los nombres de siempre (`ingestion.tiktok`,
+  `tokens.tiktok`) para no romper monitores externos; las secundarias van como
+  `ingestion.tiktok:@cuenta`.
+- **El callback de TikTok solo escribe la cookie de la UI si la cuenta es la principal**:
+  `/tiktok` lee en vivo de esa única cookie, y autorizar una secundaria la secuestraba.
+- **Digest**: una sección por secundaria (`analytics/account-week.ts`, puro y testeado,
+  reusa `buildTimeline` + `dailyFollowerDeltas` para medirla igual que la principal) con
+  la comparación justa: **vistas promedio por video publicado esa semana** contra la
+  principal — los totales dependen de los seguidores y una cuenta nueva siempre pierde.
+- **Instagram sigue siendo de una cuenta** (token por env var). Una 2.ª de IG exige antes
+  el OAuth de Instagram.
+- Paso a paso para agregar cuentas (portal de TikTok + conexión): `docs/agregar-cuenta.md`.
+  Pendiente a propósito: selector de cuenta en el panel, cuando la secundaria tenga semanas
+  de historia que comparar.
+
 **Límite de ids por `.in()` (la causa del bug de nov 2026 — leer antes de escribir una
 consulta nueva):** PostgREST recibe el filtro `in` en la URL y el gateway de Supabase
 rechaza las URLs largas con un **400 "Bad Request" SIN cuerpo**. Umbral medido por
@@ -678,7 +718,7 @@ Snapshots inmutables con timestamp; el histórico se construye acumulando filas.
 
 | Tabla | Propósito | Campos clave |
 |-------|-----------|--------------|
-| `ra_social_accounts` | cuenta del creador por plataforma | `platform`, `external_id`, `handle` |
+| `ra_social_accounts` | cuentas del creador (varias por plataforma, una principal) | `platform`, `external_id`, `handle`, `is_primary` |
 | `ra_connections` | tokens OAuth (sensible, solo service role) | `account_id`, `access_token`, `refresh_token`, `expires_at` |
 | `ra_account_snapshots` | métricas de cuenta en el tiempo | `account_id`, `captured_at`, `followers`, `total_views`, `total_likes` |
 | `ra_videos` | un video por plataforma | `account_id`, `platform`, `external_id`, `caption`, `hashtags text[]`, `published_at`, `url`, `duration_s` |

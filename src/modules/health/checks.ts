@@ -3,7 +3,12 @@ import type { Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
 import { authorizationServerMetadata, appUrl } from "@/modules/oauth/config";
 import { listConnectedClients } from "@/modules/oauth/store";
-import { getCaptureStatus, STALE_AFTER_HOURS } from "@/modules/ingestion/status";
+import {
+  getAccountCaptureStatuses,
+  STALE_AFTER_HOURS,
+  type AccountCaptureStatus,
+} from "@/modules/ingestion/status";
+import { accountLabel, listConnectedAccounts } from "@/modules/accounts/tokens";
 import type { Check } from "./status";
 
 /**
@@ -108,10 +113,26 @@ async function checkMcp(): Promise<Check> {
   };
 }
 
-/** ¿Sigue guardando snapshots el cron? */
-async function checkIngestion(platform: Platform): Promise<Check> {
-  const status = await getCaptureStatus(platform);
-  const name = `ingestion.${platform}`;
+/**
+ * Nombre estable del check: la cuenta PRINCIPAL conserva el nombre histórico
+ * (`ingestion.tiktok`) para no romper monitores externos que ya lo leen; cada
+ * secundaria se distingue con su @handle (`ingestion.tiktok:@cuenta`).
+ */
+function checkName(
+  kind: "ingestion" | "tokens",
+  platform: Platform,
+  account: { isPrimary: boolean; label: string },
+): string {
+  return account.isPrimary
+    ? `${kind}.${platform}`
+    : `${kind}.${platform}:${account.label}`;
+}
+
+function ingestionCheck(status: AccountCaptureStatus): Check {
+  const name = checkName("ingestion", status.account.platform, {
+    isPrimary: status.account.isPrimary,
+    label: status.label,
+  });
   if (!status.lastCaptureAt) {
     return { name, status: "warn", detail: "Nunca ha capturado." };
   }
@@ -126,54 +147,60 @@ async function checkIngestion(platform: Platform): Promise<Check> {
   };
 }
 
+/** ¿Sigue guardando snapshots el cron? Un check por cuenta conectada. */
+async function checkIngestion(platform: Platform): Promise<Check[]> {
+  const statuses = await getAccountCaptureStatuses(platform);
+  if (statuses.length === 0) {
+    return [
+      { name: `ingestion.${platform}`, status: "warn", detail: "Sin cuenta conectada." },
+    ];
+  }
+  return statuses.map(ingestionCheck);
+}
+
 /**
  * Caducidad de los tokens de plataforma. Solo se leen FECHAS: el token nunca
  * sale de la BD. Avisa antes de que se rompa la ingesta, no después.
  */
-async function checkPlatformToken(platform: Platform): Promise<Check> {
+async function checkPlatformToken(platform: Platform): Promise<Check[]> {
+  const accounts = await listConnectedAccounts(platform);
+  if (accounts.length === 0) {
+    return [{ name: `tokens.${platform}`, status: "warn", detail: "Sin cuenta conectada." }];
+  }
+
   const supabase = createAdminClient();
-  const name = `tokens.${platform}`;
+  return Promise.all(
+    accounts.map(async (account): Promise<Check> => {
+      const name = checkName("tokens", platform, {
+        isPrimary: account.isPrimary,
+        label: accountLabel(account),
+      });
+      const { data, error } = await supabase
+        .from("ra_connections")
+        .select("expires_at, refresh_expires_at")
+        .eq("account_id", account.accountId)
+        .maybeSingle();
+      if (error) return { name, status: "fail", detail: error.message };
+      if (!data) return { name, status: "warn", detail: "Sin conexión guardada." };
 
-  const { data: accounts } = await supabase
-    .from("ra_social_accounts")
-    .select("id")
-    .eq("platform", platform);
-  const ids = (accounts ?? []).map((a) => a.id);
-  if (ids.length === 0) {
-    return { name, status: "warn", detail: "Sin cuenta conectada." };
-  }
+      // TikTok se auto-refresca, así que lo que importa es el refresh; Instagram
+      // usa un token largo que hay que renovar a mano.
+      const relevant = data.refresh_expires_at ?? data.expires_at;
+      if (!relevant) {
+        return { name, status: "ok", detail: "Sin fecha de expiración registrada." };
+      }
 
-  // Hoy es single-user (una conexión por plataforma), pero sin `order` la fila
-  // elegida sería arbitraria y una duplicada vieja reportaría la expiración
-  // equivocada. Se toma la de expiración más lejana = la vigente; `nullsFirst`
-  // en false porque en Postgres un DESC pone los NULL primero.
-  const { data } = await supabase
-    .from("ra_connections")
-    .select("expires_at, refresh_expires_at")
-    .in("account_id", ids)
-    .order("expires_at", { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
-  if (!data) {
-    return { name, status: "warn", detail: "Sin conexión guardada." };
-  }
+      const expiresAt = new Date(relevant);
+      const days = Math.round((expiresAt.getTime() - Date.now()) / 86_400_000);
+      const meta = { expiresAt: expiresAt.toISOString(), days };
 
-  // TikTok se auto-refresca, así que lo que importa es el refresh; Instagram
-  // usa un token largo que hay que renovar a mano.
-  const relevant = data.refresh_expires_at ?? data.expires_at;
-  if (!relevant) {
-    return { name, status: "ok", detail: "Sin fecha de expiración registrada." };
-  }
-
-  const expiresAt = new Date(relevant);
-  const days = Math.round((expiresAt.getTime() - Date.now()) / 86_400_000);
-  const meta = { expiresAt: expiresAt.toISOString(), days };
-
-  if (days <= 0) return { name, status: "warn", detail: "Token vencido.", meta };
-  if (days <= TOKEN_WARN_DAYS) {
-    return { name, status: "warn", detail: `Vence en ${days} días.`, meta };
-  }
-  return { name, status: "ok", detail: `Vence en ${days} días.`, meta };
+      if (days <= 0) return { name, status: "warn", detail: "Token vencido.", meta };
+      if (days <= TOKEN_WARN_DAYS) {
+        return { name, status: "warn", detail: `Vence en ${days} días.`, meta };
+      }
+      return { name, status: "ok", detail: `Vence en ${days} días.`, meta };
+    }),
+  );
 }
 
 /** Cuántos conectores OAuth siguen vivos (informativo). */
@@ -193,7 +220,8 @@ async function checkConnectors(): Promise<Check> {
  * con su mensaje en vez de tumbar la respuesta.
  */
 export async function runChecks(): Promise<Check[]> {
-  const jobs: { name: string; run: () => Promise<Check> }[] = [
+  // Los de ingesta y tokens devuelven UN check por cuenta conectada.
+  const jobs: { name: string; run: () => Promise<Check | Check[]> }[] = [
     { name: "database", run: checkDatabase },
     { name: "page", run: checkPage },
     { name: "mcp", run: checkMcp },
@@ -205,16 +233,18 @@ export async function runChecks(): Promise<Check[]> {
   ];
 
   const settled = await Promise.allSettled(jobs.map((job) => job.run()));
-  return settled.map((result, i) =>
+  return settled.flatMap((result, i): Check[] =>
     result.status === "fulfilled"
-      ? result.value
-      : {
-          name: jobs[i].name,
-          status: "fail" as const,
-          detail:
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason),
-        },
+      ? [result.value].flat()
+      : [
+          {
+            name: jobs[i].name,
+            status: "fail",
+            detail:
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason),
+          },
+        ],
   );
 }

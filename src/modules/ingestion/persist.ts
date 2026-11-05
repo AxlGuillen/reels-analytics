@@ -1,5 +1,5 @@
 import "server-only";
-import type { AccountStats, Platform } from "@/core/domain";
+import type { AccountStats } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
 import { supabaseError } from "@/core/supabase/errors";
 import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
@@ -14,6 +14,9 @@ import type { VideoWithMetrics } from "@/modules/analytics/insights";
  */
 
 export interface IngestResult {
+  /** id interno en ra_social_accounts (la rotación de IG lo necesita). */
+  accountId: string;
+  /** @handle o external id, para mensajes. */
   account: string;
   videos: number;
   snapshots: number;
@@ -59,7 +62,7 @@ export async function persistOverview(
   if (accSnapErr) throw supabaseError("ra_account_snapshots", accSnapErr);
 
   if (videos.length === 0) {
-    return { account: label, videos: 0, snapshots: 0 };
+    return { accountId, account: label, videos: 0, snapshots: 0 };
   }
 
   // 3. Videos (upsert) → mapa external_id → id
@@ -107,7 +110,7 @@ export async function persistOverview(
     .insert(snapshots);
   if (vidSnapErr) throw supabaseError("ra_video_snapshots", vidSnapErr);
 
-  return { account: label, videos: vids.length, snapshots: snapshots.length };
+  return { accountId, account: label, videos: vids.length, snapshots: snapshots.length };
 }
 
 // ------------------------------------------------- Rotación de videos viejos
@@ -122,13 +125,16 @@ export interface StaleVideoRef {
 const STALE_WINDOW_DAYS = 14;
 
 /**
- * Videos de la plataforma cuyo último snapshot es el más viejo (o no tienen
+ * Videos de UNA cuenta cuyo último snapshot es el más viejo (o no tienen
  * ninguno en la ventana), excluyendo los ya capturados en esta corrida. Es la
  * cola de la rotación diaria: con K por día, todo el catálogo recibe snapshot
  * al menos cada ~(catálogo/K) días sin exceder el rate limit.
+ *
+ * Por cuenta, no por plataforma: la rotación pide insights con el token de una
+ * cuenta, así que solo puede rotar los videos de esa misma cuenta.
  */
 export async function listStaleVideos(
-  platform: Platform,
+  accountId: string,
   limit: number,
   excludeExternalIds: ReadonlySet<string>,
 ): Promise<StaleVideoRef[]> {
@@ -138,7 +144,7 @@ export async function listStaleVideos(
     supabase
       .from("ra_videos")
       .select("id, external_id")
-      .eq("platform", platform)
+      .eq("account_id", accountId)
       .order("id")
       .range(from, to),
   );

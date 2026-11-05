@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/core/config/env";
 import { ANALYTICS_TAG } from "@/core/lib/cache-tags";
 import { captureInstagram, captureTikTok } from "@/modules/ingestion/capture";
+import { summarizeCaptures } from "@/modules/ingestion/summary";
 import { purgeExpiredOAuth } from "@/modules/oauth/store";
 
 export const runtime = "nodejs";
@@ -10,11 +11,12 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Cron de ingesta: captura un snapshot de cada plataforma.
+ * Cron de ingesta: captura un snapshot de CADA CUENTA de cada plataforma.
  *
  * Protegido por `CRON_SECRET`: Vercel envía `Authorization: Bearer $CRON_SECRET`
  * al invocar el cron. Fail-closed: si no hay secreto configurado, no corre.
- * Cada plataforma se captura de forma independiente (si una falla, la otra sigue).
+ * Cada cuenta se captura de forma independiente (si una falla, las demás
+ * siguen), y la respuesta lo reporta por cuenta.
  */
 export async function GET(request: NextRequest) {
   const secret = env("CRON_SECRET");
@@ -41,18 +43,15 @@ export async function GET(request: NextRequest) {
   // Incondicional: con una sola plataforma guardada ya cambiaron los datos.
   revalidateTag(ANALYTICS_TAG, { expire: 0 });
 
-  const summarize = (r: PromiseSettledResult<{ videos: number; snapshots: number }>) =>
-    r.status === "fulfilled"
-      ? { ok: true, ...r.value }
-      : {
-          ok: false,
-          error: r.reason instanceof Error ? r.reason.message : String(r.reason),
-        };
+  const summary = summarizeCaptures([
+    { platform: "tiktok", result: tiktok },
+    { platform: "instagram", result: instagram },
+  ]);
 
   return NextResponse.json({
     capturedAt: new Date().toISOString(),
-    tiktok: summarize(tiktok),
-    instagram: summarize(instagram),
+    accounts: summary.accounts,
+    failures: summary.failures,
     oauthPurge: purge.status === "fulfilled" ? purge.value : { ok: false },
   });
 }

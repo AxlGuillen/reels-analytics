@@ -1,9 +1,15 @@
 import "server-only";
-import type { Platform } from "@/core/domain";
+import { PLATFORMS, type Platform } from "@/core/domain";
 import { formatCount } from "@/core/lib/format";
 import { dayKey, weekday } from "@/core/lib/datetime";
 import { escapeHtml } from "@/core/lib/telegram";
+import { accountLabel, listConnectedAccounts } from "@/modules/accounts/tokens";
+import {
+  avgViewsOfPublished,
+  summarizeAccountWeek,
+} from "@/modules/analytics/account-week";
 import { readGrowthCached } from "@/modules/analytics/cached";
+import { readGrowth, readSnapshotSeries } from "@/modules/analytics/history";
 import {
   bestBucket,
   CREATOR_TIMEZONE,
@@ -12,12 +18,14 @@ import {
 } from "@/modules/analytics/insights";
 import { readOverviewSummary } from "@/modules/analytics/overview";
 import { resolvePeriod } from "@/modules/analytics/period";
-import { getCaptureStatus } from "@/modules/ingestion/status";
+import { getAccountCaptureStatuses } from "@/modules/ingestion/status";
 
 /**
  * Arma el digest semanal en HTML de Telegram. El grueso sale de
- * `readOverviewSummary` (semana calendario recién terminada); breakouts, mejor
- * franja y el watchdog de ingesta se leen aparte. Solo lee y formatea.
+ * `readOverviewSummary` (semana calendario recién terminada) y es de las
+ * cuentas PRINCIPALES; cada cuenta secundaria tiene su propia sección al final
+ * (nunca se suma a los totales). Mejor franja y el watchdog de ingesta se leen
+ * aparte. Solo lee y formatea.
  */
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -217,23 +225,74 @@ export async function buildWeeklyDigest(): Promise<string> {
     lines.push(`🗓 <b>Mejor día (histórico)</b>: ${capitalize(bestDay.label)}`);
   }
 
-  // Salud de la ingesta (watchdog): avisar si alguna plataforma dejó de capturar.
-  const [ttCapture, igCapture] = await Promise.all([
-    getCaptureStatus("tiktok"),
-    getCaptureStatus("instagram"),
-  ]);
-  for (const [platform, status] of [
-    ["tiktok", ttCapture],
-    ["instagram", igCapture],
-  ] as const) {
-    if (status.stale) {
-      const since = status.lastCaptureAt
-        ? `desde hace ${Math.round((now - status.lastCaptureAt.getTime()) / 86_400_000)} días`
-        : "nunca ha capturado";
+  // Cuentas secundarias: una sección por cuenta, aparte de los totales de
+  // arriba. La línea de promedio por video es la comparación justa: los
+  // totales dependen de los seguidores y una cuenta nueva siempre pierde ahí.
+  const primaryAvg = Object.fromEntries(
+    PLATFORMS.map((p) => [
+      p,
+      avgViewsOfPublished(
+        videos.filter((r) => r.video.platform === p),
+        weekDays,
+      ),
+    ]),
+  ) as Record<Platform, number | null>;
+  const secondaries = (
+    await Promise.all(PLATFORMS.map((p) => listConnectedAccounts(p)))
+  )
+    .flat()
+    .filter((a) => !a.isPrimary);
+  for (const account of secondaries) {
+    const scope = {
+      platform: account.platform,
+      account: { accountId: account.accountId },
+    };
+    const [growth, snapshotSeries] = await Promise.all([
+      readGrowth(scope),
+      readSnapshotSeries(scope),
+    ]);
+    const week = summarizeAccountWeek({ ...growth, snapshotSeries }, weekDays);
+    lines.push(
+      "",
+      `🧪 <b>Cuenta secundaria · ${escapeHtml(accountLabel(account))}</b> (${PLATFORM_LABEL[account.platform]})`,
+    );
+    if (week.followers === null) {
+      lines.push("• Aún sin capturas: aparece en cuanto el cron la capture.");
+      continue;
+    }
+    lines.push(
+      `• Seguidores: ${formatCount(week.followers)}` +
+        (week.followersGained !== null ? ` (${signed(week.followersGained)})` : ""),
+      `• Publicados: ${week.published} · vistas ganadas: ${formatCount(week.viewsGained)}`,
+    );
+    if (week.avgViewsPublished !== null) {
+      const main = primaryAvg[account.platform];
       lines.push(
-        `⚠️ <b>Ingesta ${PLATFORM_LABEL[platform]}</b>: sin capturar ${since} — revisa Conexiones`,
+        `• Promedio por video publicado: ${formatCount(week.avgViewsPublished)}` +
+          (main !== null ? ` (principal: ${formatCount(main)})` : ""),
       );
     }
+    if (week.best) {
+      const cap = escapeHtml(
+        truncate(week.best.caption?.trim() || week.best.externalId),
+      );
+      lines.push(`• Mejor video: “${cap}” · ${formatCount(week.best.views)} vistas`);
+    }
+  }
+
+  // Salud de la ingesta (watchdog), POR CUENTA: medida por plataforma, una
+  // secundaria que sí captura taparía que la principal dejó de hacerlo.
+  const statuses = (
+    await Promise.all(PLATFORMS.map((p) => getAccountCaptureStatuses(p)))
+  ).flat();
+  for (const status of statuses) {
+    if (!status.stale) continue;
+    const since = status.lastCaptureAt
+      ? `desde hace ${Math.round((now - status.lastCaptureAt.getTime()) / 86_400_000)} días`
+      : "nunca ha capturado";
+    lines.push(
+      `⚠️ <b>Ingesta ${PLATFORM_LABEL[status.account.platform]} ${escapeHtml(status.label)}</b>: sin capturar ${since} — revisa Conexiones`,
+    );
   }
 
   return lines.join("\n");

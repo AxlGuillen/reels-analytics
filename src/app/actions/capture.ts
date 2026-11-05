@@ -5,45 +5,64 @@ import type { Platform } from "@/core/domain";
 import { ANALYTICS_TAG } from "@/core/lib/cache-tags";
 import { createServerSupabase } from "@/core/supabase/server";
 import { captureInstagram, captureTikTok } from "@/modules/ingestion/capture";
-import type { IngestResult } from "@/modules/ingestion/persist";
+import {
+  summarizeCaptures,
+  type CaptureFailure,
+} from "@/modules/ingestion/summary";
 
+/**
+ * Éxito = al menos UNA cuenta guardó; `failures` lleva las que no (por cuenta,
+ * o por plataforma si falló antes de saber cuál). Es la misma forma para el
+ * botón por plataforma y para "Capturar ahora".
+ */
 export type CaptureResult =
-  | { ok: true; result: IngestResult }
+  | { ok: true; videos: number; snapshots: number; failures: CaptureFailure[] }
   | { ok: false; message: string };
 
-/** Éxito = al menos una plataforma guardó; `failures` lleva las que no. */
-export type CaptureAllResult =
-  | {
-      ok: true;
-      videos: number;
-      snapshots: number;
-      failures: { platform: Platform; message: string }[];
-    }
-  | { ok: false; message: string };
+const CAPTURE = { tiktok: captureTikTok, instagram: captureInstagram } as const;
 
-const reason = (err: unknown) =>
-  err instanceof Error ? err.message : "error desconocido";
-
-/** Dispara la ingesta de una plataforma y guarda un snapshot. */
-export async function captureSnapshotAction(
-  platform: Platform,
-): Promise<CaptureResult> {
-  // Solo un usuario autenticado puede disparar capturas (evita POST directo).
+async function isAuthed(): Promise<boolean> {
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ok: false, message: "No autorizado." };
+  return !!user;
+}
 
-  try {
-    const result =
-      platform === "tiktok" ? await captureTikTok() : await captureInstagram();
-    // Read-your-own-writes: el refresh posterior debe traer lo recién capturado.
-    updateTag(ANALYTICS_TAG);
-    return { ok: true, result };
-  } catch (err) {
-    return { ok: false, message: reason(err) };
+/** Corre la captura de las plataformas dadas y la resume por cuenta. */
+async function runCaptures(platforms: Platform[]): Promise<CaptureResult> {
+  const settled = await Promise.allSettled(platforms.map((p) => CAPTURE[p]()));
+  const summary = summarizeCaptures(
+    settled.map((result, i) => ({ platform: platforms[i], result })),
+  );
+  if (!summary.anySaved) {
+    return {
+      ok: false,
+      message:
+        summary.failures.map((f) => `${f.label}: ${f.message}`).join(" · ") ||
+        "Nada que capturar.",
+    };
   }
+  // Read-your-own-writes: el `router.refresh()` posterior debe ver lo capturado.
+  updateTag(ANALYTICS_TAG);
+  return {
+    ok: true,
+    videos: summary.videos,
+    snapshots: summary.snapshots,
+    failures: summary.failures,
+  };
+}
+
+/**
+ * Dispara la ingesta de una plataforma (TODAS sus cuentas con conexión) y
+ * guarda un snapshot de cada una.
+ */
+export async function captureSnapshotAction(
+  platform: Platform,
+): Promise<CaptureResult> {
+  // Solo un usuario autenticado puede disparar capturas (evita POST directo).
+  if (!(await isAuthed())) return { ok: false, message: "No autorizado." };
+  return runCaptures([platform]);
 }
 
 /**
@@ -61,36 +80,7 @@ export async function captureSnapshotAction(
  * última lectura de cada día (`attribution.ts`). Los snapshots son inserts
  * inmutables: no hay constraint por día que romper.
  */
-export async function captureAllAction(): Promise<CaptureAllResult> {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, message: "No autorizado." };
-
-  const settled = await Promise.allSettled([
-    captureTikTok(),
-    captureInstagram(),
-  ]);
-  const platforms: Platform[] = ["tiktok", "instagram"];
-
-  let videos = 0;
-  let snapshots = 0;
-  const failures: { platform: Platform; message: string }[] = [];
-
-  settled.forEach((res, i) => {
-    if (res.status === "fulfilled") {
-      videos += res.value.videos;
-      snapshots += res.value.snapshots;
-    } else {
-      failures.push({ platform: platforms[i], message: reason(res.reason) });
-    }
-  });
-
-  if (failures.length === settled.length) {
-    return { ok: false, message: failures.map((f) => f.message).join(" · ") };
-  }
-  // Al menos una plataforma guardó: el `router.refresh()` del botón debe verlo.
-  updateTag(ANALYTICS_TAG);
-  return { ok: true, videos, snapshots, failures };
+export async function captureAllAction(): Promise<CaptureResult> {
+  if (!(await isAuthed())) return { ok: false, message: "No autorizado." };
+  return runCaptures(["tiktok", "instagram"]);
 }

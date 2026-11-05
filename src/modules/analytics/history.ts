@@ -2,7 +2,7 @@ import "server-only";
 import type { Platform } from "@/core/domain";
 import { createAdminClient } from "@/core/supabase/admin";
 import { supabaseError } from "@/core/supabase/errors";
-import { fetchAllPages, fetchByIds } from "@/core/supabase/batched";
+import { fetchByIds } from "@/core/supabase/batched";
 import type { VideoWithMetrics } from "./insights";
 import { toAgePoints, type AgePoint } from "./timeseries";
 
@@ -27,8 +27,10 @@ export interface AccountPoint {
 }
 
 export interface AccountSeries {
+  accountId: string;
   platform: Platform;
   handle: string | null;
+  isPrimary: boolean;
   points: AccountPoint[];
 }
 
@@ -37,23 +39,53 @@ export interface GrowthData {
   accountSeries: AccountSeries[];
 }
 
+/**
+ * A qué cuentas se acota una lectura. Por defecto, la PRINCIPAL de cada
+ * plataforma: es la que alimenta el panel, el MCP y los benchmarks.
+ *
+ * Por qué no "todas las de la plataforma": con dos cuentas de TikTok, sumar su
+ * catálogo mezclaría una cuenta de miles de seguidores con una que empieza de
+ * cero — el Overview sumaría sus vistas, el benchmark por cohorte compararía
+ * videos de audiencias incomparables, y las series de seguidores se aplanarían
+ * en una sola (`followerDeltas` toma la última lectura del día, que saltaría
+ * entre cuentas y fabricaría deltas de miles). Una secundaria se lee pidiéndola
+ * por id (lo hace el digest).
+ */
+export type AccountScope = "primary" | { accountId: string };
+
 export interface ReadGrowthOptions {
   platform?: Platform;
+  account?: AccountScope;
+}
+
+type Supabase = ReturnType<typeof createAdminClient>;
+
+/** Cuentas dentro del alcance pedido (por defecto, las principales). */
+async function scopedAccounts(
+  supabase: Supabase,
+  { platform, account = "primary" }: ReadGrowthOptions,
+) {
+  let query = supabase
+    .from("ra_social_accounts")
+    .select("id, platform, handle, is_primary");
+  query =
+    account === "primary"
+      ? query.eq("is_primary", true)
+      : query.eq("id", account.accountId);
+  if (platform) query = query.eq("platform", platform);
+  const { data, error } = await query;
+  if (error) throw supabaseError("ra_social_accounts", error);
+  return data ?? [];
 }
 
 export async function readGrowth(
-  { platform }: ReadGrowthOptions = {},
+  options: ReadGrowthOptions = {},
 ): Promise<GrowthData> {
   const supabase = createAdminClient();
 
-  // 1. Cuentas (opcionalmente por plataforma) → metadata por id.
-  let accountsQuery = supabase
-    .from("ra_social_accounts")
-    .select("id, platform, handle");
-  if (platform) accountsQuery = accountsQuery.eq("platform", platform);
-  const { data: accounts, error: accErr } = await accountsQuery;
-  if (accErr) throw supabaseError("ra_social_accounts", accErr);
-  if (!accounts || accounts.length === 0) {
+  // 1. Cuentas dentro del alcance → metadata por id.
+  const accounts = await scopedAccounts(supabase, options);
+  if (accounts.length === 0) {
     return { videos: [], accountSeries: [] };
   }
   const accountIds = accounts.map((a) => a.id);
@@ -75,8 +107,10 @@ export async function readGrowth(
   const seriesByAccount = new Map<string, AccountSeries>();
   for (const acc of accounts) {
     seriesByAccount.set(acc.id, {
+      accountId: acc.id,
       platform: acc.platform,
       handle: acc.handle,
+      isPrimary: acc.is_primary,
       points: [],
     });
   }
@@ -261,21 +295,24 @@ function fetchAllVideoSnapshots(
  * `readGrowth` (trae toda la historia), por eso se acota a videos recientes.
  */
 export async function readVideoSeries(
-  { platform }: { platform?: Platform } = {},
+  options: ReadGrowthOptions = {},
 ): Promise<VideoSeries[]> {
   const supabase = createAdminClient();
   const cutoff = new Date(
     Date.now() - SERIES_PUBLISHED_WITHIN_DAYS * 86_400_000,
   ).toISOString();
 
-  const videos = await fetchAllPages("ra_videos", (from, to) => {
-    let query = supabase
+  const accountIds = (await scopedAccounts(supabase, options)).map((a) => a.id);
+  if (accountIds.length === 0) return [];
+  const videos = await fetchByIds("ra_videos", accountIds, (chunk, from, to) =>
+    supabase
       .from("ra_videos")
       .select("id, external_id, platform, published_at")
-      .gte("published_at", cutoff);
-    if (platform) query = query.eq("platform", platform);
-    return query.order("id").range(from, to);
-  });
+      .in("account_id", chunk)
+      .gte("published_at", cutoff)
+      .order("id")
+      .range(from, to),
+  );
   if (videos.length === 0) return [];
 
   const snaps = await fetchAllVideoSnapshots(
@@ -306,21 +343,26 @@ export interface CalendarSnapshot {
 }
 
 /**
- * Series calendario (capturedAt + métricas) de TODOS los videos de la
- * plataforma, para momentum y timelines. A diferencia de `readVideoSeries`,
+ * Series calendario (capturedAt + métricas) de TODOS los videos de las cuentas
+ * del alcance (por defecto, la principal), para momentum y timelines. A diferencia de `readVideoSeries`,
  * no filtra por fecha de publicación: los deltas de los videos viejos
  * (rotación) también cuentan.
  */
 export async function readSnapshotSeries(
-  { platform }: { platform?: Platform } = {},
+  options: ReadGrowthOptions = {},
 ): Promise<CalendarSnapshot[][]> {
   const supabase = createAdminClient();
 
-  const videos = await fetchAllPages("ra_videos", (from, to) => {
-    let query = supabase.from("ra_videos").select("id");
-    if (platform) query = query.eq("platform", platform);
-    return query.order("id").range(from, to);
-  });
+  const accountIds = (await scopedAccounts(supabase, options)).map((a) => a.id);
+  if (accountIds.length === 0) return [];
+  const videos = await fetchByIds("ra_videos", accountIds, (chunk, from, to) =>
+    supabase
+      .from("ra_videos")
+      .select("id")
+      .in("account_id", chunk)
+      .order("id")
+      .range(from, to),
+  );
   if (videos.length === 0) return [];
 
   const snaps = await fetchAllVideoSnapshots(

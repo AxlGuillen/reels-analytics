@@ -38,8 +38,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const tokens = await exchangeCodeForToken(code, verifier);
-    await saveTikTokConnection(tokens); // persistente (para el cron/ingesta)
-    await saveSession(tokens); // cookie (para la UI interactiva)
+    // Persistente (para el cron/ingesta): toda cuenta autorizada queda guardada.
+    const { isPrimary } = await saveTikTokConnection(tokens);
+    // La cookie alimenta la UI en vivo de /tiktok, que muestra UNA cuenta: la
+    // principal. Autorizar una secundaria no debe secuestrarla — antes había que
+    // reconectar la principal después para recuperar la pantalla.
+    if (!isPrimary) {
+      return NextResponse.redirect(
+        new URL("/settings/connections?added=tiktok", origin),
+      );
+    }
+    await saveSession(tokens);
     return dashboard(`?connected=1`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "error desconocido";

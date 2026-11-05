@@ -4,13 +4,14 @@ Runbook para sumar otra cuenta de TikTok (o Instagram) a la ingesta. Escrito al
 agregar la 2.ª cuenta de TikTok (nov 2026) y pensado para repetirse tal cual con
 la 3.ª, la 4.ª, etc.
 
-> **Orden obligatorio.** Los pasos del portal (Parte 1) son seguros hoy. La
-> autorización OAuth de la cuenta nueva (Parte 2) **NO debe hacerse hasta que el
-> código soporte varias cuentas**: hasta entonces, la resolución de token hace
-> `.eq("platform", …).limit(1)` **sin `order by`**, así que con dos cuentas de
-> TikTok Postgres puede devolver cualquiera de las dos — y cambiar de una corrida
-> a otra. El riesgo no es solo que no se capture la nueva: es que **deje de
-> capturarse la vieja**, la que tiene toda la historia.
+> **Orden obligatorio: portal → despliegue → conexión.** El código multi-cuenta
+> tiene que estar **desplegado en producción** (merge de `stg` a `main`) antes
+> de autorizar la cuenta nueva. El código anterior resolvía el token con
+> `.eq("platform", …).limit(1)` **sin `order by`**: con dos cuentas de TikTok,
+> Postgres podía devolver cualquiera — y cambiar de una corrida a otra. El riesgo
+> no era solo que no se capturara la nueva: era que **dejara de capturarse la
+> vieja**, la que tiene toda la historia. Ya está resuelto en código, pero solo
+> protege una vez desplegado.
 
 ---
 
@@ -73,13 +74,58 @@ hay que saber antes de acumular cuentas. Anótalo.
 
 ## Parte 2 — Conectar la cuenta en la app
 
-> Pendiente hasta que el código soporte varias cuentas por plataforma (ver el
-> aviso del inicio). Se documenta aquí cuando esté.
+### Paso 3 — Iniciar sesión en tiktok.com con la cuenta nueva
 
-El orden de conexión importa por un detalle: la sesión de TikTok vive en **una
-sola cookie**, así que conectar la cuenta B sobrescribe la de A y la pantalla
-`/tiktok` (que lee en vivo) pasaría a mostrar B. Los tokens persistentes de ambas
-sí conviven, porque van por cuenta en `ra_connections`.
+TikTok autoriza **la cuenta con la que tengas sesión activa en tiktok.com**, no
+deja elegirla en la pantalla de permiso. Antes de seguir, entra a tiktok.com con
+la cuenta que vas a agregar (o cierra sesión de la principal).
+
+### Paso 4 — Autorizarla desde Conexiones
+
+En **producción** (`reels-analytics.vercel.app`, el único redirect URI
+registrado), ve a **Conexiones → Agregar otra cuenta** y acepta los permisos.
+
+Te devuelve a Conexiones con el aviso *Cuenta secundaria de TikTok conectada*.
+
+- **La pantalla `/tiktok` sigue mostrando la principal.** Esa pantalla lee en
+  vivo de una sola cookie; el callback solo la actualiza cuando la cuenta
+  autorizada es la principal, así que agregar una secundaria no la secuestra.
+- **Si por error autorizas la principal otra vez, no pasa nada**: la cuenta se
+  identifica por su `open_id` y solo se refrescan sus tokens.
+
+### Paso 5 — Primer snapshot hoy
+
+Pulsa **Capturar ahora** (rail o barra superior). Guarda la primera lectura de la
+cuenta hoy, así la captura del cron de mañana a las 08:00 ya produce deltas. Sin
+esto, el primer delta llega pasado mañana.
+
+### Paso 6 — Comprobar
+
+En Conexiones debe aparecer la fila **`@cuenta · secundaria`** con *Última
+captura: hace un momento*. Si ves *Sin token válido*, repite el Paso 4.
+
+Después puedes volver a iniciar sesión en tiktok.com con tu cuenta principal.
+
+---
+
+## Qué hace la app con una cuenta secundaria
+
+| Dónde | Comportamiento |
+|---|---|
+| Cron 08:00 y **Capturar ahora** | Captura **todas** las cuentas en paralelo. La falla de una no frena a las demás, y la respuesta se reporta por cuenta. |
+| Overview, /growth, /content, MCP, benchmarks | **Solo la principal.** La secundaria nunca se suma: mezclaría audiencias incomparables y rompería el benchmark por cohorte (ver CLAUDE.md, "Varias cuentas por plataforma"). |
+| Digest semanal de Telegram | Una sección propia por secundaria: seguidores, publicados, vistas ganadas, **promedio por video publicado contra el de la principal** y su mejor video. |
+| Watchdog del digest y `/api/health` | **Por cuenta.** La principal conserva los nombres de check de siempre (`ingestion.tiktok`, `tokens.tiktok`); cada secundaria lleva su @handle (`ingestion.tiktok:@cuenta`). |
+| Conexiones | Una fila por cuenta con su rol y su última captura. |
+
+Una vista comparativa dentro del panel (selector de cuenta) queda para cuando la
+secundaria tenga semanas de historia: antes no habría nada que comparar.
+
+### Instagram
+
+Instagram sigue siendo de **una sola cuenta**: su token viene de la variable de
+entorno `INSTAGRAM_ACCESS_TOKEN`, no de un OAuth por cuenta. Sumar una 2.ª cuenta
+de Instagram exige primero implementar el flujo OAuth de Instagram.
 
 ---
 
