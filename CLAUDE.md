@@ -444,10 +444,13 @@ no hay otra elegida (p. ej. `/tiktok` en "Todas"). Reglas:
   (`resolveTikTokAuthForVideo`, por `ra_videos.account_id`): la Display API no deja leer un
   video con el token de otra cuenta. Si el video aún no está capturado, prueba con la
   principal.
-- **Digest**: una sección por secundaria (`analytics/account-week.ts`, puro y testeado,
-  reusa `buildTimeline` + `dailyFollowerDeltas` para medirla igual que la principal) con
-  la comparación justa: **vistas promedio por video publicado esa semana** contra la
-  principal — los totales dependen de los seguidores y una cuenta nueva siempre pierde.
+- **Digest**: los totales son de TODAS las cuentas (como la vista por defecto del panel) y
+  el mejor video dice de qué cuenta es; luego **una línea por cuenta contra SU propia
+  semana anterior** (`summarizeAccountWeek` + `weekOverWeek` en `analytics/account-week.ts`,
+  puros y testeados). No se comparan cuentas entre sí: con nichos distintos (LoL, edits,
+  Valorant) y audiencias de tamaños dispares no significa nada. `weekOverWeek` es null si
+  la semana anterior fue 0 (sin base, nada de "+∞ %"). Duración y mejor día salen de las
+  cuentas principales: son señales de la estrategia de formato del canal principal.
 - **Instagram sigue siendo de una cuenta** (token por env var). Una 2.ª de IG exige antes
   el OAuth de Instagram.
 - Paso a paso para agregar cuentas (portal de TikTok + conexión): `docs/agregar-cuenta.md`.

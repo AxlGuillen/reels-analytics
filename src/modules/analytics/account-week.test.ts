@@ -3,6 +3,7 @@ import {
   avgViewsOfPublished,
   publishedInWeek,
   summarizeAccountWeek,
+  weekOverWeek,
 } from "./account-week";
 
 /**
@@ -145,5 +146,17 @@ describe("publishedInWeek / avgViewsOfPublished", () => {
       video("F", "2026-11-03T20:00:00Z", 101),
     ];
     expect(avgViewsOfPublished(videos, WEEK, TZ)).toBe(101);
+  });
+});
+
+describe("weekOverWeek", () => {
+  test("variación relativa contra la semana anterior", () => {
+    expect(weekOverWeek(135, 100)).toBeCloseTo(0.35);
+    expect(weekOverWeek(50, 100)).toBeCloseTo(-0.5);
+  });
+
+  test("sin base no hay porcentaje", () => {
+    // Cuenta nueva o semana sin capturas: "+∞ %" no le sirve a nadie.
+    expect(weekOverWeek(120, 0)).toBeNull();
   });
 });
