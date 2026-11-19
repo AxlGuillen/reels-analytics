@@ -353,7 +353,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ra_video_latest_snapshot: {
+        Row: {
+          captured_at: string | null
+          comments: number | null
+          likes: number | null
+          saved: number | null
+          shares: number | null
+          video_id: string | null
+          views: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

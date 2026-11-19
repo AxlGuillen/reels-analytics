@@ -372,8 +372,14 @@ Login en `src/app/login/*` (`signInAction`/`signOutAction`); logout en el footer
 **Vista de Crecimiento (lee de Supabase, implementada):** `src/app/(dashboard)/growth`. Es el
 primer consumidor de los snapshots persistidos (las páginas por plataforma siguen leyendo en vivo).
 Capa de lectura `modules/analytics/history.ts` (`readGrowth`, admin client): serie de crecimiento
-de cuenta (`ra_account_snapshots`) + métrica vigente por video (última captura, ventana de 7 días,
-dedupe en TS) reconstruida como `VideoWithMetrics` para reusar `insights.ts`. La vista muestra
+de cuenta (`ra_account_snapshots`) + métrica vigente por video reconstruida como
+`VideoWithMetrics` para reusar `insights.ts`. La métrica vigente es el **último snapshot de cada
+video, sin importar su antigüedad** (vista `ra_video_latest_snapshot`, `security_invoker`,
+LATERAL + `limit 1` sobre el índice `(video_id, captured_at desc)`). El cron solo pide los 400
+videos más recientes por cuenta de TikTok (y 90 Reels en IG): los viejos dejan de recibir
+snapshots a propósito, porque casi no cambian. Hasta nov 2026 una ventana de 7 días los
+SACABA del catálogo (faltaban 92 videos y 751.700 vistas en @axelsine13, el 13 %); ahora
+cuentan con su última métrica conocida, incluidos los borrados o pasados a privado. La vista muestra
 seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo, tabla por mes de
 publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
 `?platform=`.
@@ -500,10 +506,10 @@ con `VideoListTable` (`src/components/dashboard/video-list-table.tsx`, cada fila
 componente compartido `src/components/dashboard/platform-filter.tsx` (preserva query extra); lo
 usan /growth y /content. La tabla "Rendimiento por tipo" de /growth enlaza al drill-down.
 
-> Limitación conocida (IG): el cron persiste hasta 90 Reels (`MAX_REELS` en
-> `modules/instagram/read.ts`). Con ~20 videos/semana, la historia **por video** de IG se congela
-> para lo más viejo que ~4.5 semanas (el crecimiento de **cuenta** no se afecta). Follow-up: subir
-> el tope solo del cron o backfill por lotes.
+> Límite aceptado (IG y TikTok): el cron refresca hasta 90 Reels (`MAX_REELS` en
+> `modules/instagram/read.ts`, más la rotación) y 400 videos de TikTok por cuenta (20 páginas
+> × 20). La **curva** de lo más viejo se congela, pero sigue sumando en los totales con su último
+> snapshot (ver `ra_video_latest_snapshot` en "Vista de Crecimiento").
 
 **Agent-ready (isitagentready.com, implementado):** endpoints públicos de descubrimiento para
 agentes/crawlers, todos fuera del proxy (extensiones y `.well-known` ya excluidos del matcher) y

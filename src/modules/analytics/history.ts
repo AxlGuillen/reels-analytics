@@ -16,9 +16,6 @@ import { toAgePoints, type AgePoint } from "./timeseries";
  * tipo se deriva después, al analizar/renderizar.
  */
 
-/** Ventana hacia atrás desde la última captura para hallar la métrica vigente por video. */
-const LATEST_WINDOW_DAYS = 7;
-
 export interface AccountPoint {
   capturedAt: string;
   followers: number | null;
@@ -139,53 +136,36 @@ export async function readGrowth(
   }
   const videoIds = videoRows.map((v) => v.id);
 
-  // 4. Métrica vigente por video: última captura, ventana hacia atrás, dedupe en TS.
-  // Máximo por lote (limit 1 → una sola página) y luego el global.
-  const maxRows = await fetchByIds("ra_video_snapshots", videoIds, (chunk) =>
-    supabase
-      .from("ra_video_snapshots")
-      .select("captured_at")
-      .in("video_id", chunk)
-      .order("captured_at", { ascending: false })
-      .limit(1),
-  );
-  const latestCapture = Math.max(...maxRows.map((r) => Date.parse(r.captured_at)));
-  if (!Number.isFinite(latestCapture)) {
-    return { videos: [], accountSeries: [...seriesByAccount.values()] };
-  }
-  const sinceIso = new Date(
-    latestCapture - LATEST_WINDOW_DAYS * 86_400_000,
-  ).toISOString();
-
-  const recentSnaps = await fetchByIds(
-    "ra_video_snapshots",
+  // 4. Métrica vigente de CADA video = su último snapshot, tenga la antigüedad
+  //    que tenga (vista `ra_video_latest_snapshot`, una fila por video).
+  //
+  //    Antes había una ventana de 7 días desde la última captura y todo video
+  //    sin snapshot dentro quedaba fuera. Como el cron solo pide los 400 videos
+  //    más recientes por cuenta (los viejos casi no cambian), los más antiguos
+  //    dejaban de recibir snapshots y DESAPARECÍAN de los totales: en
+  //    @axelsine13 faltaban 92 videos y 751.700 vistas (13 %). Ahora cuentan
+  //    con su última métrica conocida.
+  const latest = await fetchByIds(
+    "ra_video_latest_snapshot",
     videoIds,
     (chunk, from, to) =>
       supabase
-        .from("ra_video_snapshots")
-        .select("id, video_id, captured_at, views, likes, comments, shares, saved")
+        .from("ra_video_latest_snapshot")
+        .select("video_id, captured_at, views, likes, comments, shares, saved")
         .in("video_id", chunk)
-        .gte("captured_at", sinceIso)
-        .order("captured_at", { ascending: false })
-        .order("id")
+        .order("video_id")
         .range(from, to),
   );
+  const latestByVideo = new Map(latest.map((snap) => [snap.video_id, snap]));
 
-  // La más reciente por video (comparando fechas: entre lotes no hay orden global).
-  const latestByVideo = new Map<string, (typeof recentSnaps)[number]>();
-  for (const snap of recentSnaps) {
-    const prev = latestByVideo.get(snap.video_id);
-    if (!prev || Date.parse(snap.captured_at) > Date.parse(prev.captured_at)) {
-      latestByVideo.set(snap.video_id, snap);
-    }
-  }
-
-  // 5. Reconstruye VideoWithMetrics (omite videos sin snapshot reciente).
+  // 5. Reconstruye VideoWithMetrics. Solo se omite un video que nunca tuvo
+  //    snapshot (dado de alta pero sin captura todavía).
   const videos: VideoWithMetrics[] = [];
   for (const v of videoRows) {
     const snap = latestByVideo.get(v.id);
-    if (!snap) continue;
-    const capturedAt = new Date(snap.captured_at);
+    // Las columnas de una vista llegan tipadas como opcionales aunque el
+    // `cross join lateral` garantiza valor: el `captured_at` nulo es imposible.
+    if (!snap?.captured_at) continue;
     videos.push({
       video: {
         platform: v.platform,
@@ -200,12 +180,12 @@ export async function readGrowth(
       metrics: {
         platform: v.platform,
         externalId: v.external_id,
-        views: snap.views,
-        likes: snap.likes,
-        comments: snap.comments,
-        shares: snap.shares,
+        views: snap.views ?? 0,
+        likes: snap.likes ?? 0,
+        comments: snap.comments ?? 0,
+        shares: snap.shares ?? 0,
         saved: snap.saved,
-        capturedAt,
+        capturedAt: new Date(snap.captured_at),
       },
     });
   }
