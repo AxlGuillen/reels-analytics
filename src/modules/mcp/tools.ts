@@ -6,7 +6,7 @@ import {
   type ContentTypeKey,
 } from "@/core/lib/content-type";
 import { dayKey, monthKey } from "@/core/lib/datetime";
-import { dailyFollowerDeltas } from "@/modules/analytics/attribution";
+import { followerDeltasByDay } from "@/modules/analytics/attribution";
 import {
   readBreakoutDetails,
   readVideoBenchmark,
@@ -15,7 +15,7 @@ import {
   readGrowth,
   readSnapshotSeries,
   readVideoHistory,
-  type AccountSeries,
+  resolveAccounts,
 } from "@/modules/analytics/history";
 import {
   bestBucket,
@@ -170,21 +170,6 @@ export async function getTopVideos(params: {
   };
 }
 
-/** Deltas diarios de seguidores de todas las cuentas del alcance, sumados. */
-function mergedFollowerDeltas(accountSeries: AccountSeries[]) {
-  const byDay = new Map<string, number>();
-  for (const s of accountSeries) {
-    const deltas = dailyFollowerDeltas(
-      s.points.map((p) => ({
-        capturedAt: new Date(p.capturedAt),
-        followers: p.followers,
-      })),
-    );
-    for (const d of deltas) byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.delta);
-  }
-  return [...byDay.entries()].map(([day, delta]) => ({ day, delta }));
-}
-
 const TIMELINE_DEFAULT_DAYS: Record<Granularity, number> = {
   day: 30,
   week: 84,
@@ -212,7 +197,7 @@ export async function getActivityTimeline(params: {
     {
       publishedAt: videos.map((r) => r.video.publishedAt),
       snapshotSeries,
-      followerDeltas: mergedFollowerDeltas(accountSeries),
+      followerDeltas: followerDeltasByDay(accountSeries),
     },
     granularity,
   );
@@ -317,7 +302,7 @@ export async function comparePlatforms(params: { sinceDays?: number } = {}) {
           }
         }
       }
-      const followersGained = mergedFollowerDeltas(accountSeries)
+      const followersGained = followerDeltasByDay(accountSeries)
         .filter((d) => d.day >= cutoffDay)
         .reduce((sum, d) => sum + d.delta, 0);
       const s = summarize(published);
@@ -346,17 +331,19 @@ export async function comparePlatforms(params: { sinceDays?: number } = {}) {
   };
 }
 
-/** Videos que están despegando AHORA (≥2× la mediana de su plataforma a su edad). */
+/** Videos que están despegando AHORA (≥2× la mediana de SU cuenta a su edad). */
 export async function getBreakouts(params: { platform?: Platform } = {}) {
-  const platforms: Platform[] = params.platform
-    ? [params.platform]
-    : ["tiktok", "instagram"];
+  // Cada cuenta contra su propio cohorte: nunca se mezclan cuentas.
+  const accounts = await resolveAccounts({
+    platform: params.platform,
+    account: "primary",
+  });
 
   const results = await Promise.all(
-    platforms.map(async (platform) => {
+    accounts.map(async ({ accountId }) => {
       const [details, { videos }] = await Promise.all([
-        readBreakoutDetails(platform).catch(() => []),
-        readGrowth({ platform }),
+        readBreakoutDetails(accountId).catch(() => []),
+        readGrowth({ account: { accountId } }),
       ]);
       const byId = new Map(videos.map((r) => [r.video.externalId, r]));
       return details.flatMap((d) => {

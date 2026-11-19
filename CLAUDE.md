@@ -394,14 +394,26 @@ upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmar
   `getValidTikTokAccessToken(accountId)` en `accounts/tokens.ts`). Antes era
   `.eq("platform").limit(1)` sin orden: con dos cuentas devolvía una arbitraria y podía
   dejar de capturar la principal.
-- **Las 3 lecturas base de `history.ts` (`readGrowth`, `readSnapshotSeries`,
-  `readVideoSeries`) aceptan `account: AccountScope` y por defecto leen SOLO la
-  principal.** Ahí se acota todo: caché, Overview, /growth, /content, breakouts y MCP pasan
-  por ellas. Mezclar cuentas rompería tres cosas: el Overview sumaría vistas de audiencias
-  incomparables, el benchmark por cohorte compararía videos de una cuenta de miles de
-  seguidores contra una que empieza de cero, y `followerDeltasFor` (que aplana las lecturas
-  y toma la última del día) saltaría entre cuentas fabricando deltas de miles. Una
-  secundaria se lee pidiéndola por id (`{ accountId }`), como hace el digest.
+- **La CUENTA es la unidad de lectura, caché y suma.** Las 3 lecturas base de
+  `history.ts` (`readGrowth`, `readSnapshotSeries`, `readVideoSeries`) aceptan
+  `account: AccountScope` = `"primary"` (default de esa capa) | `"all"` (todas, conectadas o
+  no: la historia de una cuenta desconectada sigue en el reporte) | `{ accountId }`.
+  `resolveAccounts(scope)` lista las cuentas de un alcance en orden de desglose (TikTok antes
+  que IG, principal primero, luego por antigüedad). Cada video lleva su cuenta en
+  `Video.accountId` (dentro de `video` para que sobreviva al serializado del caché), y todo
+  lo que agrupa "por cuenta" usa `accountKey(row)` (`insights.ts`), que cae a la plataforma
+  en las lecturas en vivo. Leer varias cuentas juntas es seguro solo si quien SUMA lo hace
+  por cuenta — tres reglas que no se negocian:
+  1. **Seguidores**: `followerDeltasByDay` (`attribution.ts`) calcula cada cuenta y luego
+     suma por día. Aplanar las lecturas de varias cuentas antes de calcular toma "la última
+     del día" de cualquiera y fabrica deltas de miles.
+  2. **Benchmarks y breakouts** (`breakouts.ts`): el cohorte es SIEMPRE de una sola cuenta;
+     `readVideoBenchmark` resuelve la cuenta dueña (`readVideoOwner`). Un video de Valorant
+     contra los de LoL, o de una cuenta de decenas contra una de miles, no significa nada.
+  3. **Overview**: cada cuenta se mide sola y `aggregateAccounts` (`overview-shape.ts`, puro
+     y testeado) arma total, reparto por plataforma y desglose (`byAccount`) desde la misma
+     lista — la fila de total del desglose cuadra siempre con los KPIs.
+  También `postingCadence` y `attributeFollowers` agrupan por cuenta.
 - **Captura por cuenta y aislada** (`ingestion/capture.ts`): `captureTikTok()` recorre
   todas las conexiones en paralelo y la falla de una no frena a las demás; el resultado es
   `AccountCapture[]` y `ingestion/summary.ts` (puro, testeado) lo resume para el cron y las
@@ -456,7 +468,9 @@ catálogo (`readGrowthCached`), buckets diarios del Overview (`dailyFor` en `ove
 vistas ganadas por mes (`readMonthGainedCached`) y vistas a N días (`readViewsAtAgeCached`).
 Navegar semanas/meses o el filtro de mes de `/growth` solo recorta lo cacheado. Reglas:
 - **Nunca cachear snapshots crudos** (MB y creciendo ~445 filas/día); solo resultados en KB.
-- **Solo por plataforma**; "todas" se compone en memoria (`cache-shape.ts`, puro y testeado).
+- **Solo por CUENTA** (entradas `growth`/`daily`/`month-gained`/`views-at-age` llaveadas por
+  `accountId`); cualquier alcance —una plataforma, "todas"— se compone en memoria
+  (`cache-shape.ts`, puro y testeado). Una entrada sirve a todas las vistas que la incluyen.
 - Lo cacheado es **JSON puro**: `serializeGrowth`/`reviveGrowth` convierten las `Date`.
 - Invalidación por evento con el tag `ANALYTICS_TAG` (`core/lib/cache-tags.ts`): el cron de
   ingesta hace `revalidateTag(tag, { expire: 0 })` (expiración inmediata, no SWR: la primera

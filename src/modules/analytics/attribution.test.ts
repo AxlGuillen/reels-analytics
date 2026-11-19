@@ -4,6 +4,7 @@ import type { VideoWithMetrics } from "./insights";
 import {
   attributeFollowers,
   dailyFollowerDeltas,
+  followerDeltasByDay,
   type FollowerDelta,
 } from "./attribution";
 
@@ -115,5 +116,48 @@ describe("attributeFollowers", () => {
     // El de IG no tiene deltas (no hay serie de IG) → solo queda el de TikTok, sin compartir.
     expect(result).toHaveLength(1);
     expect(result[0].sharedWindow).toBe(false);
+  });
+});
+
+describe("varias cuentas en la misma plataforma", () => {
+  const withAccount = (row: VideoWithMetrics, accountId: string): VideoWithMetrics => ({
+    ...row,
+    video: { ...row.video, accountId },
+  });
+
+  test("followerDeltasByDay calcula por cuenta y luego suma", () => {
+    // Una cuenta de miles y una de decenas, capturadas los mismos días. Aplanar
+    // sus lecturas tomaría "la última del día" de cualquiera de las dos y
+    // fabricaría deltas de ±8.950; por cuenta, cada una ganó 10.
+    const deltas = followerDeltasByDay([
+      {
+        points: [
+          { capturedAt: "2026-11-02T14:00:00Z", followers: 9000 },
+          { capturedAt: "2026-11-03T14:00:00Z", followers: 9010 },
+        ],
+      },
+      {
+        points: [
+          { capturedAt: "2026-11-02T14:00:01Z", followers: 50 },
+          { capturedAt: "2026-11-03T14:00:01Z", followers: 60 },
+        ],
+      },
+    ]);
+    expect(deltas).toEqual([{ day: "2026-11-02", delta: 20 }]);
+  });
+
+  test("un video solo se lleva crédito de los seguidores de SU cuenta", () => {
+    const deltasByAccount = new Map<string, FollowerDelta[]>([
+      ["main", [{ day: "2026-11-02", delta: 500, spanDays: 1 }]],
+      ["valo", [{ day: "2026-11-02", delta: 3, spanDays: 1 }]],
+    ]);
+    const main = withAccount(video("m1", "2026-11-02T20:00:00Z"), "main");
+    const valo = withAccount(video("v1", "2026-11-02T20:00:00Z"), "valo");
+    const result = attributeFollowers([main, valo], deltasByAccount);
+
+    expect(result.find((r) => r.row.video.externalId === "m1")?.gained).toBe(500);
+    expect(result.find((r) => r.row.video.externalId === "v1")?.gained).toBe(3);
+    // Misma plataforma y misma ventana, pero cuentas distintas: no la comparten.
+    expect(result.every((r) => !r.sharedWindow)).toBe(true);
   });
 });

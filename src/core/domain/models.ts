@@ -47,6 +47,12 @@ export interface Video {
   durationSeconds: number | null;
   /** miniatura/portada del video, si la plataforma la expone. */
   thumbnailUrl?: string | null;
+  /**
+   * Cuenta dueña (`ra_social_accounts.id`). Solo la traen las lecturas
+   * persistidas; la API en vivo no la conoce. Con varias cuentas por
+   * plataforma, es lo que permite agrupar y comparar por cuenta.
+   */
+  accountId?: string;
 }
 
 /** Métricas de un video en un instante dado (esto es lo que se historiza). */

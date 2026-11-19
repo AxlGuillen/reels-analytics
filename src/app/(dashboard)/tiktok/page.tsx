@@ -6,6 +6,7 @@ import { PageTour } from "@/components/tour/page-tour";
 import { TikTokPanel } from "@/components/tiktok-panel";
 import { resolveTikTokAuth } from "@/modules/accounts/tokens";
 import { readBreakoutIds } from "@/modules/analytics/breakouts";
+import { resolveAccounts } from "@/modules/analytics/history";
 import { readTikTokOverview } from "@/modules/tiktok/read";
 import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
 
@@ -65,7 +66,9 @@ async function TikTokBody({ range }: { range: ReturnType<typeof resolveRange> })
   const [result, breakouts] = await Promise.all([
     readTikTokOverview(auth, { since: sinceForRange(range) }),
     // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
-    readBreakoutIds("tiktok").catch(() => new Set<string>()),
+    resolveAccounts({ platform: "tiktok", account: "primary" })
+      .then((accounts) => readBreakoutIds(accounts.map((a) => a.accountId)))
+      .catch(() => new Set<string>()),
   ]);
 
   return (

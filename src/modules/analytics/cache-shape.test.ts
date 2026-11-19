@@ -19,6 +19,7 @@ const growth = (platform: "tiktok" | "instagram", id: string): GrowthData => ({
         url: null,
         durationSeconds: 47,
         thumbnailUrl: null,
+        accountId: `acc-${platform}`,
       },
       metrics: {
         platform,
@@ -51,6 +52,13 @@ describe("serializeGrowth / reviveGrowth", () => {
     expect(revived).toEqual(original);
     expect(revived.videos[0].video.publishedAt).toBeInstanceOf(Date);
     expect(revived.videos[0].metrics.capturedAt).toBeInstanceOf(Date);
+  });
+
+  test("conserva la cuenta dueña de cada video", () => {
+    // Si el caché la perdiera, todo lo que agrupa por cuenta volvería a
+    // agrupar por plataforma y mezclaría cuentas sin avisar.
+    const back = reviveGrowth(JSON.parse(JSON.stringify(serializeGrowth(growth("tiktok", "1")))));
+    expect(back.videos[0].video.accountId).toBe("acc-tiktok");
   });
 
   test("lo serializado ya es JSON puro (sin Date)", () => {

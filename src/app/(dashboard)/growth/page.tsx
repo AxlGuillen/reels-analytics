@@ -200,10 +200,11 @@ async function GrowthBody({
   const cadence = postingCadence(videos);
   const summary = summarize(videos);
 
-  // Atribución de seguidores: deltas diarios por plataforma × ventana de cada video.
-  const deltasByPlatform = new Map<Platform, FollowerDelta[]>(
+  // Atribución de seguidores: deltas diarios de CADA cuenta × ventana de cada
+  // video de esa cuenta (llave `accountKey`; ver `attributeFollowers`).
+  const deltasByAccount = new Map<string, FollowerDelta[]>(
     accountSeries.map((s) => [
-      s.platform,
+      s.accountId,
       dailyFollowerDeltas(
         s.points.map((p) => ({
           capturedAt: new Date(p.capturedAt),
@@ -212,7 +213,7 @@ async function GrowthBody({
       ),
     ]),
   );
-  const attributed = attributeFollowers(videos, deltasByPlatform)
+  const attributed = attributeFollowers(videos, deltasByAccount)
     .filter((a) => a.gained > 0)
     .slice(0, 8);
 

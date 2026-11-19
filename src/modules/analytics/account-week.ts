@@ -1,16 +1,16 @@
 import { dayKey } from "@/core/lib/datetime";
-import { dailyFollowerDeltas } from "./attribution";
+import { followerDeltasByDay } from "./attribution";
 import type { AccountSeries, CalendarSnapshot } from "./history";
 import { CREATOR_TIMEZONE, type VideoWithMetrics } from "./insights";
 import { buildTimeline } from "./timeline";
 
 /**
- * La semana de UNA cuenta, para el digest de las cuentas secundarias. Puro y
- * testeado.
+ * La semana de una o varias cuentas, para el digest. Puro y testeado.
  *
  * Reusa a propósito las mismas piezas que el Overview (`buildTimeline` para los
- * deltas, `dailyFollowerDeltas` para los seguidores): si la secundaria se
- * midiera con otra cuenta, compararla contra la principal no valdría nada.
+ * deltas, `followerDeltasByDay` para los seguidores): medida con otra cuenta,
+ * la semana no sería comparable con lo que muestra el panel. Con varias
+ * cuentas, los seguidores se calculan por cuenta y luego se suman.
  */
 
 export interface AccountWeek {
@@ -59,14 +59,11 @@ export function summarizeAccountWeek(
   weekDays: ReadonlySet<string>,
   timeZone = CREATOR_TIMEZONE,
 ): AccountWeek {
-  const points = input.accountSeries.flatMap((s) =>
-    s.points.map((p) => ({ capturedAt: new Date(p.capturedAt), followers: p.followers })),
-  );
   const timeline = buildTimeline(
     {
       publishedAt: input.videos.map((r) => r.video.publishedAt),
       snapshotSeries: input.snapshotSeries,
-      followerDeltas: dailyFollowerDeltas(points, timeZone),
+      followerDeltas: followerDeltasByDay(input.accountSeries, timeZone),
     },
     "day",
     timeZone,
@@ -82,10 +79,20 @@ export function summarizeAccountWeek(
     }
   }
 
-  const lastFollowers = [...points]
-    .filter((p) => p.followers !== null)
-    .sort((a, b) => a.capturedAt.getTime() - b.capturedAt.getTime())
-    .at(-1)?.followers ?? null;
+  // Seguidores actuales = la última lectura de CADA cuenta, sumadas (null si
+  // ninguna se ha capturado). La última lectura "global" sería la de una sola.
+  const lastPerAccount = input.accountSeries
+    .map(
+      (s) =>
+        [...s.points]
+          .filter((p) => p.followers !== null)
+          .sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt))
+          .at(-1)?.followers ?? null,
+    )
+    .filter((f): f is number => f !== null);
+  const lastFollowers = lastPerAccount.length
+    ? lastPerAccount.reduce((a, b) => a + b, 0)
+    : null;
 
   const week = publishedInWeek(input.videos, weekDays, timeZone);
   const top = [...week].sort((a, b) => b.metrics.views - a.metrics.views)[0];

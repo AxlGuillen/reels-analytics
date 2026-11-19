@@ -2,14 +2,9 @@ import "server-only";
 
 import { dayKey } from "@/core/lib/datetime";
 import type { Platform } from "@/core/domain";
-import { readSnapshotSeries, type AccountSeries } from "./history";
-import { analyticsCache, readGrowthCached } from "./cached";
-import { dailyFollowerDeltas } from "./attribution";
-import {
-  buildTimeline,
-  type Granularity,
-  type TimelineBucket,
-} from "./timeline";
+import { followerDeltasByDay } from "./attribution";
+import { analyticsCache, readGrowthCached, type ScopeOptions } from "./cached";
+import { readSnapshotSeries, resolveAccounts, type ScopedAccount } from "./history";
 import {
   CREATOR_TIMEZONE,
   groupByContentType,
@@ -17,28 +12,26 @@ import {
   type VideoWithMetrics,
 } from "./insights";
 import {
+  aggregateAccounts,
+  type AccountBreakdown,
+  type AccountPeriod,
+  type PeriodMetrics,
+  type SubBucketMetrics,
+} from "./overview-shape";
+import {
   periodProgress,
   resolvePeriod,
   sumOverPeriod,
   type Period,
   type PeriodGranularity,
 } from "./period";
+import {
+  buildTimeline,
+  type Granularity,
+  type TimelineBucket,
+} from "./timeline";
 
-/** KPIs de un periodo: publicados + métricas GANADAS (deltas entre snapshots). */
-export interface PeriodMetrics {
-  videosPublished: number;
-  views: number;
-  likes: number;
-  comments: number;
-}
-
-export interface SubBucketMetrics {
-  key: string;
-  label: string;
-  combined: PeriodMetrics;
-  tiktok: PeriodMetrics;
-  instagram: PeriodMetrics;
-}
+export type { AccountBreakdown, PeriodMetrics, SubBucketMetrics } from "./overview-shape";
 
 /** Video más visto publicado en el periodo (para el digest / destacados). */
 export interface BestVideo {
@@ -47,6 +40,8 @@ export interface BestVideo {
   caption: string | null;
   /** vistas totales de por vida (≈ ganadas en el periodo si se publicó en él). */
   views: number;
+  /** @handle de la cuenta dueña: con varias cuentas, dice de cuál es el hit. */
+  account: string | null;
 }
 
 export interface OverviewSummary {
@@ -67,24 +62,13 @@ export interface OverviewSummary {
   byPlatform: Record<Platform, PeriodMetrics>;
   /** seguidores ganados por plataforma (null = sin observación en el periodo). */
   followersByPlatform: Record<Platform, number | null>;
+  /** una fila por cuenta del alcance; su suma es `combined`. */
+  byAccount: AccountBreakdown[];
   subBuckets: SubBucketMetrics[];
-  /** tipos de contenido de los videos PUBLICADOS en el periodo (ambas plataformas). */
+  /** tipos de contenido de los videos PUBLICADOS en el periodo (todo el alcance). */
   contentTypes: ContentTypeStat[];
   /** video más visto publicado en el periodo (o null si no se publicó nada). */
   bestVideo: BestVideo | null;
-}
-
-const PLATFORMS: Platform[] = ["tiktok", "instagram"];
-
-/** Deltas diarios de seguidores de las series de cuenta de una plataforma. */
-function followerDeltasFor(accountSeries: AccountSeries[]) {
-  const points = accountSeries.flatMap((s) =>
-    s.points.map((p) => ({
-      capturedAt: new Date(p.capturedAt),
-      followers: p.followers,
-    })),
-  );
-  return dailyFollowerDeltas(points);
 }
 
 /** Map day key → valor, a partir de los buckets diarios del timeline. */
@@ -117,42 +101,44 @@ function followersInPeriod(
   return seen ? sum : null;
 }
 
-interface PlatformData {
-  platform: Platform;
-  videos: VideoWithMetrics[];
-  daily: TimelineBucket[];
-}
-
 /**
- * Buckets diarios de una plataforma (publicados + ganados), cacheados: es la
+ * Buckets diarios de UNA cuenta (publicados + ganados), cacheados: es la
  * lectura cara (toda la historia de snapshots) y no depende del periodo, así
- * que navegar entre semanas/meses solo recorta este resultado.
+ * que navegar entre semanas/meses solo recorta este resultado. Por cuenta y no
+ * por plataforma: cada cuenta mide sus propios seguidores, nunca mezclados.
  */
-const dailyFor = analyticsCache("daily", async (platform: Platform) => {
+const dailyFor = analyticsCache("daily", async (accountId: string) => {
+  const scope: ScopeOptions = { account: { accountId } };
   const [{ videos, accountSeries }, snapshotSeries] = await Promise.all([
-    readGrowthCached({ platform }),
-    readSnapshotSeries({ platform }),
+    readGrowthCached(scope),
+    readSnapshotSeries(scope),
   ]);
   return buildTimeline(
     {
       publishedAt: videos.map((r) => r.video.publishedAt),
       snapshotSeries,
-      followerDeltas: followerDeltasFor(accountSeries),
+      followerDeltas: followerDeltasByDay(accountSeries),
     },
     "day" satisfies Granularity,
   );
 });
 
-/** Catálogo + buckets diarios de una plataforma (ambos del caché). */
-async function readPlatform(platform: Platform): Promise<PlatformData> {
-  const [{ videos }, daily] = await Promise.all([
-    readGrowthCached({ platform }),
-    dailyFor(platform),
-  ]);
-  return { platform, videos, daily };
+interface AccountData {
+  account: ScopedAccount;
+  videos: VideoWithMetrics[];
+  daily: TimelineBucket[];
 }
 
-/** Totales y por sub-bucket de una plataforma para el periodo dado. */
+/** Catálogo + buckets diarios de una cuenta (ambos del caché). */
+async function readAccount(account: ScopedAccount): Promise<AccountData> {
+  const [{ videos }, daily] = await Promise.all([
+    readGrowthCached({ account: { accountId: account.accountId } }),
+    dailyFor(account.accountId),
+  ]);
+  return { account, videos, daily };
+}
+
+/** Totales y por sub-bucket de una cuenta para el periodo dado. */
 function metricsFor(period: Period, daily: TimelineBucket[]) {
   const views = sumOverPeriod(period, dayMap(daily, (b) => b.viewsGained));
   const likes = sumOverPeriod(period, dayMap(daily, (b) => b.likesGained));
@@ -173,51 +159,32 @@ function metricsFor(period: Period, daily: TimelineBucket[]) {
   return { total, perBucket };
 }
 
-const addMetrics = (a: PeriodMetrics, b: PeriodMetrics): PeriodMetrics => ({
-  videosPublished: a.videosPublished + b.videosPublished,
-  views: a.views + b.views,
-  likes: a.likes + b.likes,
-  comments: a.comments + b.comments,
-});
-
 /**
- * Resumen del Overview para un periodo (semana/mes). Cross-platform: devuelve
- * KPIs combinados y por plataforma, el desglose por sub-bucket (día/semana) y
- * los tipos de contenido de lo publicado en el periodo.
+ * Resumen del Overview para un periodo (semana/mes) y un alcance de cuentas.
+ * Cada cuenta se mide por separado y `aggregateAccounts` arma el total, el
+ * reparto por plataforma y el desglose por cuenta desde la misma lista: la
+ * fila de total del desglose siempre cuadra con los KPIs.
  */
 export async function readOverviewSummary(opts: {
   granularity: PeriodGranularity;
   anchor?: string;
+  /** cuentas a incluir; por defecto, las principales (ver `AccountScope`). */
+  scope?: ScopeOptions;
 }): Promise<OverviewSummary> {
   const today = dayKey(new Date(), CREATOR_TIMEZONE);
   const period = resolvePeriod(opts.granularity, opts.anchor, today);
 
-  const data = await Promise.all(PLATFORMS.map(readPlatform));
-  const byName = new Map(data.map((d) => [d.platform, d]));
+  const accounts = await resolveAccounts(opts.scope ?? {});
+  const data = await Promise.all(accounts.map(readAccount));
 
-  const per = new Map(
-    data.map((d) => [d.platform, metricsFor(period, d.daily)]),
-  );
-  const tk = per.get("tiktok")!;
-  const ig = per.get("instagram")!;
-
-  // Seguidores ganados (combinado, sumando ambas plataformas).
-  const tkFollowers = followersInPeriod(period, byName.get("tiktok")!.daily);
-  const igFollowers = followersInPeriod(period, byName.get("instagram")!.daily);
-  const followersGained =
-    tkFollowers === null && igFollowers === null
-      ? null
-      : (tkFollowers ?? 0) + (igFollowers ?? 0);
-
-  const subBuckets: SubBucketMetrics[] = period.sub.buckets.map((b, i) => ({
-    key: b.key,
-    label: b.label,
-    tiktok: tk.perBucket[i],
-    instagram: ig.perBucket[i],
-    combined: addMetrics(tk.perBucket[i], ig.perBucket[i]),
+  const measured: AccountPeriod[] = data.map(({ account, daily }) => ({
+    ...account,
+    ...metricsFor(period, daily),
+    followersGained: followersInPeriod(period, daily),
   }));
+  const totals = aggregateAccounts(measured, period.sub.buckets);
 
-  // Tipos de contenido: videos publicados en el periodo (ambas plataformas).
+  // Tipos de contenido y mejor video: lo publicado en el periodo, todo el alcance.
   const periodDays = new Set(period.dayKeys);
   const publishedInPeriod = data
     .flatMap((d) => d.videos)
@@ -228,6 +195,7 @@ export async function readOverviewSummary(opts: {
         b.metrics.views > a.metrics.views ? b : a,
       )
     : null;
+  const handleOf = new Map(accounts.map((a) => [a.accountId, a.handle]));
 
   return {
     period: {
@@ -239,10 +207,11 @@ export async function readOverviewSummary(opts: {
       subGranularity: period.sub.granularity,
       ...periodProgress(period, today),
     },
-    combined: { ...addMetrics(tk.total, ig.total), followersGained },
-    byPlatform: { tiktok: tk.total, instagram: ig.total },
-    followersByPlatform: { tiktok: tkFollowers, instagram: igFollowers },
-    subBuckets,
+    combined: totals.combined,
+    byPlatform: totals.byPlatform,
+    followersByPlatform: totals.followersByPlatform,
+    byAccount: totals.byAccount,
+    subBuckets: totals.subBuckets,
     contentTypes: groupByContentType(publishedInPeriod),
     bestVideo: bestRow
       ? {
@@ -250,6 +219,9 @@ export async function readOverviewSummary(opts: {
           platform: bestRow.video.platform,
           caption: bestRow.video.caption,
           views: bestRow.metrics.views,
+          account: bestRow.video.accountId
+            ? (handleOf.get(bestRow.video.accountId) ?? null)
+            : null,
         }
       : null,
   };

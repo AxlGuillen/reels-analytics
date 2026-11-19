@@ -37,27 +37,34 @@ export interface GrowthData {
 }
 
 /**
- * A qué cuentas se acota una lectura. Por defecto, la PRINCIPAL de cada
- * plataforma: es la que alimenta el panel, el MCP y los benchmarks.
+ * A qué cuentas se acota una lectura:
+ *  - `"primary"`: la principal de cada plataforma (default de esta capa).
+ *  - `"all"`: TODAS las cuentas, conectadas o no — la historia de una cuenta
+ *    que perdió su conexión sigue contando en el reporte.
+ *  - `{ accountId }`: una sola.
  *
- * Por qué no "todas las de la plataforma": con dos cuentas de TikTok, sumar su
- * catálogo mezclaría una cuenta de miles de seguidores con una que empieza de
- * cero — el Overview sumaría sus vistas, el benchmark por cohorte compararía
- * videos de audiencias incomparables, y las series de seguidores se aplanarían
- * en una sola (`followerDeltas` toma la última lectura del día, que saltaría
- * entre cuentas y fabricaría deltas de miles). Una secundaria se lee pidiéndola
- * por id (lo hace el digest).
+ * Leer varias cuentas juntas es seguro mientras quien SUMA lo haga por cuenta:
+ * los seguidores con `followerDeltasByDay`, los benchmarks con el cohorte de
+ * cada cuenta (`breakouts.ts`) y el Overview con `aggregateAccounts`. Lo que no
+ * se puede es aplanar las series de seguidores de varias cuentas: fabrica
+ * deltas de miles (ver `followerDeltasByDay`).
  */
-export type AccountScope = "primary" | { accountId: string };
+export type AccountScope = "primary" | "all" | { accountId: string };
 
 export interface ReadGrowthOptions {
   platform?: Platform;
   account?: AccountScope;
 }
 
+export interface ScopedAccount {
+  accountId: string;
+  platform: Platform;
+  handle: string | null;
+  isPrimary: boolean;
+}
+
 type Supabase = ReturnType<typeof createAdminClient>;
 
-/** Cuentas dentro del alcance pedido (por defecto, las principales). */
 async function scopedAccounts(
   supabase: Supabase,
   { platform, account = "primary" }: ReadGrowthOptions,
@@ -65,14 +72,45 @@ async function scopedAccounts(
   let query = supabase
     .from("ra_social_accounts")
     .select("id, platform, handle, is_primary");
-  query =
-    account === "primary"
-      ? query.eq("is_primary", true)
-      : query.eq("id", account.accountId);
+  if (account === "primary") query = query.eq("is_primary", true);
+  else if (account !== "all") query = query.eq("id", account.accountId);
   if (platform) query = query.eq("platform", platform);
-  const { data, error } = await query;
+  // Orden estable para el desglose: TikTok antes que Instagram (orden del
+  // enum), la principal primero y luego por antigüedad.
+  const { data, error } = await query
+    .order("platform")
+    .order("is_primary", { ascending: false })
+    .order("created_at");
   if (error) throw supabaseError("ra_social_accounts", error);
   return data ?? [];
+}
+
+/** Cuentas dentro de un alcance, en orden de desglose (ver `scopedAccounts`). */
+export async function resolveAccounts(
+  options: ReadGrowthOptions = {},
+): Promise<ScopedAccount[]> {
+  const rows = await scopedAccounts(createAdminClient(), options);
+  return rows.map((a) => ({
+    accountId: a.id,
+    platform: a.platform,
+    handle: a.handle,
+    isPrimary: a.is_primary,
+  }));
+}
+
+/** Cuenta dueña de un video (null si aún no está en `ra_videos`). */
+export async function readVideoOwner(
+  platform: Platform,
+  externalId: string,
+): Promise<string | null> {
+  const { data, error } = await createAdminClient()
+    .from("ra_videos")
+    .select("account_id")
+    .eq("platform", platform)
+    .eq("external_id", externalId)
+    .maybeSingle();
+  if (error) throw supabaseError("ra_videos", error);
+  return data?.account_id ?? null;
 }
 
 export async function readGrowth(
@@ -125,7 +163,7 @@ export async function readGrowth(
     supabase
       .from("ra_videos")
       .select(
-        "id, platform, external_id, caption, hashtags, published_at, url, duration_s, thumbnail_url",
+        "id, account_id, platform, external_id, caption, hashtags, published_at, url, duration_s, thumbnail_url",
       )
       .in("account_id", chunk)
       .order("id")
@@ -176,6 +214,7 @@ export async function readGrowth(
         url: v.url,
         durationSeconds: v.duration_s,
         thumbnailUrl: v.thumbnail_url,
+        accountId: v.account_id,
       },
       metrics: {
         platform: v.platform,
@@ -243,6 +282,8 @@ export async function readVideoHistory(
 export interface VideoSeries {
   externalId: string;
   platform: Platform;
+  /** cuenta dueña: el cohorte de un video se arma SOLO con su cuenta. */
+  accountId: string;
   /** Fecha de publicación: la necesita el cohorte semanal (ver `weeklyCohort`). */
   publishedAt: Date;
   points: AgePoint[];
@@ -287,7 +328,7 @@ export async function readVideoSeries(
   const videos = await fetchByIds("ra_videos", accountIds, (chunk, from, to) =>
     supabase
       .from("ra_videos")
-      .select("id, external_id, platform, published_at")
+      .select("id, account_id, external_id, platform, published_at")
       .in("account_id", chunk)
       .gte("published_at", cutoff)
       .order("id")
@@ -309,6 +350,7 @@ export async function readVideoSeries(
   return videos.map((v) => ({
     externalId: v.external_id,
     platform: v.platform,
+    accountId: v.account_id,
     publishedAt: new Date(v.published_at),
     points: toAgePoints(new Date(v.published_at), byVideo.get(v.id) ?? []),
   }));
