@@ -87,9 +87,9 @@ registrado), ve a **Conexiones → Agregar otra cuenta** y acepta los permisos.
 
 Te devuelve a Conexiones con el aviso *Cuenta secundaria de TikTok conectada*.
 
-- **La pantalla `/tiktok` sigue mostrando la principal.** Esa pantalla lee en
-  vivo de una sola cookie; el callback solo la actualiza cuando la cuenta
-  autorizada es la principal, así que agregar una secundaria no la secuestra.
+- **La pantalla `/tiktok` muestra la cuenta elegida en el selector** (la
+  principal si está en "Todas las cuentas"), con el token guardado de esa cuenta.
+  El detalle de un video usa el token de la cuenta dueña de ese video.
 - **Si por error autorizas la principal otra vez, no pasa nada**: la cuenta se
   identifica por su `open_id` y solo se refrescan sus tokens.
 
@@ -113,13 +113,15 @@ Después puedes volver a iniciar sesión en tiktok.com con tu cuenta principal.
 | Dónde | Comportamiento |
 |---|---|
 | Cron 08:00 y **Capturar ahora** | Captura **todas** las cuentas en paralelo. La falla de una no frena a las demás, y la respuesta se reporta por cuenta. |
-| Overview, /growth, /content, MCP, benchmarks | **Solo la principal.** La secundaria nunca se suma: mezclaría audiencias incomparables y rompería el benchmark por cohorte (ver CLAUDE.md, "Varias cuentas por plataforma"). |
-| Digest semanal de Telegram | Una sección propia por secundaria: seguidores, publicados, vistas ganadas, **promedio por video publicado contra el de la principal** y su mejor video. |
+| Overview, /growth, /content | Entra en **"Todas las cuentas"** (la vista por defecto) y tiene su propia opción en el selector de cuenta. En "Todas", el Overview agrega el **desglose por cuenta** del periodo. Seguidores se calculan por cuenta antes de sumar. |
+| Benchmarks y breakouts | **Siempre contra su propia cuenta**: nunca se mezclan cuentas en un cohorte (ver CLAUDE.md, "Varias cuentas por plataforma"). |
+| MCP | Todas las cuentas por defecto; `account: "@cuenta"` acota a una. |
+| Digest semanal de Telegram | Suma en los totales y tiene su línea en "Por cuenta", comparada contra **su propia semana anterior**. |
 | Watchdog del digest y `/api/health` | **Por cuenta.** La principal conserva los nombres de check de siempre (`ingestion.tiktok`, `tokens.tiktok`); cada secundaria lleva su @handle (`ingestion.tiktok:@cuenta`). |
 | Conexiones | Una fila por cuenta con su rol y su última captura. |
 
-Una vista comparativa dentro del panel (selector de cuenta) queda para cuando la
-secundaria tenga semanas de historia: antes no habría nada que comparar.
+Los videos de una cuenta nueva caen en "Sin clasificar" hasta que sus hashtags
+identificadores se agreguen como tipos en `src/core/lib/content-type.ts`.
 
 ### Instagram
 

@@ -370,11 +370,22 @@ export interface CadenceBucket {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Impacto del **espaciado** entre publicaciones. Para cada plataforma ordena por
+ * Llave de la cuenta dueña de un video: su `accountId` si lo trae (lecturas
+ * persistidas) o, si no, su plataforma (lecturas en vivo, una cuenta por
+ * plataforma). Todo lo que agrupa "por cuenta" usa esta llave: con varias
+ * cuentas por plataforma, agrupar por plataforma mezclaría sus videos.
+ */
+export function accountKey(row: VideoWithMetrics): string {
+  return row.video.accountId ?? row.video.platform;
+}
+
+/**
+ * Impacto del **espaciado** entre publicaciones. Para cada CUENTA ordena por
  * `publishedAt`, calcula el gap (días) desde el post anterior y agrupa en buckets
  * (mismo día / 1 día / 2–3 / 4+), promediando vistas. Responde si publicar más
  * seguido o más espaciado se asocia con mejor rendimiento. El primer video de cada
- * plataforma no tiene gap previo y se omite.
+ * cuenta no tiene gap previo y se omite. Por cuenta y no por plataforma: dos
+ * cuentas de TikTok intercaladas inventarían gaps de horas entre sí.
  */
 export function postingCadence(rows: VideoWithMetrics[]): CadenceBucket[] {
   const buckets = [
@@ -385,14 +396,15 @@ export function postingCadence(rows: VideoWithMetrics[]): CadenceBucket[] {
   ];
   const sums = buckets.map(() => ({ views: 0, count: 0 }));
 
-  const byPlatform = new Map<string, VideoWithMetrics[]>();
+  const byAccount = new Map<string, VideoWithMetrics[]>();
   for (const row of rows) {
-    const list = byPlatform.get(row.video.platform) ?? [];
+    const key = accountKey(row);
+    const list = byAccount.get(key) ?? [];
     list.push(row);
-    byPlatform.set(row.video.platform, list);
+    byAccount.set(key, list);
   }
 
-  for (const list of byPlatform.values()) {
+  for (const list of byAccount.values()) {
     const sorted = [...list].sort(
       (a, b) => a.video.publishedAt.getTime() - b.video.publishedAt.getTime(),
     );

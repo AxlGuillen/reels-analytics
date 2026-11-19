@@ -230,7 +230,7 @@ export const TIMELINE: Chapter[] = [
     title: "Más de una cuenta",
     period: "Noviembre en adelante",
     intro:
-      "Una segunda cuenta de TikTok, sin baneos, para comparar el mismo contenido frente a otra audiencia. El reto no era capturarla: era que no contaminara los números de la principal.",
+      "Primero una segunda cuenta de TikTok para comparar el mismo contenido frente a otra audiencia; después, cuatro cuentas y un reporte mensual que las necesita todas. El reto nunca fue capturarlas: era sumarlas sin que una contaminara los números de otra.",
     milestones: [
       {
         date: "2026-11-05",
@@ -238,6 +238,20 @@ export const TIMELINE: Chapter[] = [
         description:
           "Cada cuenta se captura por separado y la principal sigue alimentando el panel sola. Sumarlas habría mezclado audiencias incomparables y roto el benchmark por cohorte; la secundaria se compara en el digest por vistas promedio por video, que es la medida justa entre cuentas de tamaños muy distintos.",
         sha: "9c43237",
+      },
+      {
+        date: "2026-11-19",
+        title: "Ningún video se queda fuera",
+        description:
+          "El catálogo descartaba todo video sin captura en la última semana: faltaban 92 videos y el 13 % de las vistas de la cuenta principal. Ahora cada video cuenta con su última métrica conocida, aunque el cron ya no lo mida por viejo.",
+        sha: "816f50d",
+      },
+      {
+        date: "2026-11-19",
+        title: "Todas las cuentas, una sola vista",
+        description:
+          "La cuenta pasa a ser la unidad de lectura, caché y suma: un selector global elige \"Todas\" o una sola, y el Overview mensual trae el desglose por cuenta del reporte. Seguidores y benchmarks se calculan por cuenta antes de sumar; el digest y el MCP leen igual que el panel.",
+        sha: "e5c2d3e",
         tag: "Estás aquí",
       },
     ],

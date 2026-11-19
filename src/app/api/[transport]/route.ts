@@ -31,6 +31,12 @@ export const maxDuration = 60;
  */
 
 const platformSchema = z.enum(["tiktok", "instagram"]);
+const accountSchema = z
+  .string()
+  .min(1)
+  .describe(
+    "Cuenta por @handle (p. ej. @axelsine.valo). Sin indicar: todas las cuentas. Si el handle existe en dos plataformas, indica también platform.",
+  );
 // Derivado del diccionario: sumar un tipo en content-type.ts lo expone aquí
 // solo (el enum a mano ya se había quedado atrás una vez).
 const contentTypeSchema = z.enum(
@@ -52,6 +58,7 @@ const mcpHandler = createMcpHandler(
         inputSchema: {
           query: z.string().min(1).describe("Texto a buscar dentro del caption"),
           platform: platformSchema.optional(),
+          account: accountSchema.optional(),
           limit: z.number().int().min(1).max(50).optional(),
         },
       },
@@ -78,6 +85,7 @@ const mcpHandler = createMcpHandler(
         inputSchema: {
           contentType: contentTypeSchema.optional(),
           platform: platformSchema.optional(),
+          account: accountSchema.optional(),
           publishedWithinDays: z.number().int().min(1).optional(),
           orderBy: z.enum(["views", "engagement"]).optional(),
           limit: z.number().int().min(1).max(50).optional(),
@@ -93,6 +101,7 @@ const mcpHandler = createMcpHandler(
         inputSchema: {
           granularity: z.enum(["day", "week", "month"]).optional(),
           platform: platformSchema.optional(),
+          account: accountSchema.optional(),
           sinceDays: z.number().int().min(1).max(730).optional(),
         },
       },
@@ -106,6 +115,7 @@ const mcpHandler = createMcpHandler(
         inputSchema: {
           hashtag: z.string().min(1).describe("El hashtag, con o sin #"),
           platform: platformSchema.optional(),
+          account: accountSchema.optional(),
           publishedWithinDays: z.number().int().min(1).optional(),
           topN: z.number().int().min(1).max(20).optional(),
         },
@@ -130,6 +140,7 @@ const mcpHandler = createMcpHandler(
         ...TOOL_META.get_breakouts,
         inputSchema: {
           platform: platformSchema.optional(),
+          account: accountSchema.optional(),
         },
       },
       async (args) => json(await getBreakouts(args)),
@@ -158,6 +169,7 @@ const mcpHandler = createMcpHandler(
         ...TOOL_META.get_growth_summary,
         inputSchema: {
           platform: platformSchema.optional(),
+          account: accountSchema.optional(),
         },
       },
       async (args) => json(await getGrowthSummary(args)),

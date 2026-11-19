@@ -1,7 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { env } from "@/core/config/env";
-import { PLATFORMS, type Platform } from "@/core/domain";
 import { ANALYTICS_TAG } from "@/core/lib/cache-tags";
 import {
   mergeGrowth,
@@ -13,7 +12,9 @@ import {
   readGrowth,
   readSnapshotSeries,
   readVideoSeries,
+  resolveAccounts,
   type GrowthData,
+  type ReadGrowthOptions,
 } from "./history";
 import { gainedByMonth, type MonthGained } from "./insights";
 import { DEFAULT_AGE_DAYS, viewsAtAge } from "./timeseries";
@@ -33,7 +34,10 @@ import { DEFAULT_AGE_DAYS, viewsAtAge } from "./timeseries";
  * - `revalidate` de 1 día solo como red por si una invalidación fallara.
  * - Clave con el commit desplegado: cada deploy arranca con caché limpio, así
  *   un cambio de forma de los datos nunca lee entradas viejas.
- * - Solo se cachea POR PLATAFORMA; "todas" se compone en memoria.
+ * - Solo se cachea POR CUENTA; cualquier alcance (una plataforma, "todas") se
+ *   compone en memoria a partir de las cuentas que contiene. Así una entrada
+ *   sirve a todas las vistas que la incluyen, y ninguna cuenta se mezcla con
+ *   otra antes de tiempo.
  *
  * Nada de aquí depende del usuario ni de la hora: la app es single-user y las
  * páginas siguen detrás del proxy; el periodo (semana/mes) se resuelve fuera.
@@ -54,38 +58,41 @@ export function analyticsCache<A extends unknown[], R>(
   });
 }
 
-const scope = (platform?: Platform): Platform[] =>
-  platform ? [platform] : [...PLATFORMS];
+/** Alcance de una lectura cacheada: plataforma opcional + cuentas. */
+export type ScopeOptions = ReadGrowthOptions;
 
-const growthFor = analyticsCache("growth", async (platform: Platform) =>
-  serializeGrowth(await readGrowth({ platform })),
+/** Ids de las cuentas del alcance (la consulta es diminuta: no se cachea). */
+async function accountIdsOf(scope: ScopeOptions): Promise<string[]> {
+  return (await resolveAccounts(scope)).map((a) => a.accountId);
+}
+
+const growthFor = analyticsCache("growth", async (accountId: string) =>
+  serializeGrowth(await readGrowth({ account: { accountId } })),
 );
 
 /** `readGrowth` cacheado (catálogo con métrica vigente + series de cuenta). */
-export async function readGrowthCached(
-  { platform }: { platform?: Platform } = {},
-): Promise<GrowthData> {
-  const parts = await Promise.all(scope(platform).map((p) => growthFor(p)));
+export async function readGrowthCached(scope: ScopeOptions = {}): Promise<GrowthData> {
+  const ids = await accountIdsOf(scope);
+  const parts = await Promise.all(ids.map((id) => growthFor(id)));
   return mergeGrowth(parts.map(reviveGrowth));
 }
 
-const monthGainedFor = analyticsCache("month-gained", async (platform: Platform) =>
-  gainedByMonth(await readSnapshotSeries({ platform })),
+const monthGainedFor = analyticsCache("month-gained", async (accountId: string) =>
+  gainedByMonth(await readSnapshotSeries({ account: { accountId } })),
 );
 
 /** Vistas ganadas por mes (momentum del catálogo) — `/growth`. */
 export async function readMonthGainedCached(
-  { platform }: { platform?: Platform } = {},
+  scope: ScopeOptions = {},
 ): Promise<MonthGained[]> {
-  return mergeMonthGained(
-    await Promise.all(scope(platform).map((p) => monthGainedFor(p))),
-  );
+  const ids = await accountIdsOf(scope);
+  return mergeMonthGained(await Promise.all(ids.map((id) => monthGainedFor(id))));
 }
 
 const viewsAtAgeFor = analyticsCache(
   "views-at-age",
-  async (platform: Platform, days: number): Promise<[string, number][]> =>
-    (await readVideoSeries({ platform })).flatMap((s) => {
+  async (accountId: string, days: number): Promise<[string, number][]> =>
+    (await readVideoSeries({ account: { accountId } })).flatMap((s) => {
       const views = viewsAtAge(s.points, days);
       return views == null ? [] : [[s.externalId, views]];
     }),
@@ -93,11 +100,10 @@ const viewsAtAgeFor = analyticsCache(
 
 /** Vistas a N días por video (solo los que tienen historia temprana). */
 export async function readViewsAtAgeCached({
-  platform,
   days = DEFAULT_AGE_DAYS,
-}: { platform?: Platform; days?: number } = {}): Promise<Map<string, number>> {
-  const parts = await Promise.all(
-    scope(platform).map((p) => viewsAtAgeFor(p, days)),
-  );
+  ...scope
+}: ScopeOptions & { days?: number } = {}): Promise<Map<string, number>> {
+  const ids = await accountIdsOf(scope);
+  const parts = await Promise.all(ids.map((id) => viewsAtAgeFor(id, days)));
   return new Map(parts.flat());
 }

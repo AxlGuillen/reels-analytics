@@ -1,29 +1,21 @@
 import { cookies } from "next/headers";
-import type { Connection } from "@/core/domain";
-import type { TikTokTokens } from "./oauth";
 
 /**
- * Almacenamiento INTERINO de la sesión de TikTok en una cookie httpOnly.
+ * Cookies del handshake OAuth de TikTok (state + PKCE verifier): efímeras, de
+ * uso único, viven solo entre el login y el callback.
  *
- * Es temporal: cuando montemos Supabase, los tokens se persistirán ahí cifrados
- * (tabla `connections`) y esto se reemplazará. Sirve para probar el flujo de
- * conexión de punta a punta con una sola cuenta en desarrollo.
+ * Aquí vivía también una cookie `tiktok_session` con los tokens, de la que
+ * leían la vista en vivo de /tiktok, el detalle de video, el rail y Conexiones.
+ * Era interina hasta tener Supabase y tenía dos defectos: solo existía en el
+ * navegador donde se conectó (en otro, todo decía "sin conectar" aunque la
+ * ingesta funcionara) y nunca se refrescaba, así que caducaba a las 24 h junto
+ * con el access token. Los tokens viven ahora SOLO en `ra_connections`
+ * (`modules/accounts/tokens.ts`), de donde leen el cron y la UI por igual.
  */
 
-const SESSION_COOKIE = "tiktok_session";
+const LEGACY_SESSION_COOKIE = "tiktok_session";
 export const STATE_COOKIE = "tiktok_oauth_state";
 export const VERIFIER_COOKIE = "tiktok_oauth_verifier";
-
-export interface TikTokSession {
-  accessToken: string;
-  refreshToken: string;
-  openId: string;
-  scope: string;
-  /** epoch ms en que expira el access token. */
-  expiresAt: number;
-  /** epoch ms en que expira el refresh token. */
-  refreshExpiresAt: number;
-}
 
 function baseCookieOptions() {
   return {
@@ -34,54 +26,13 @@ function baseCookieOptions() {
   };
 }
 
-/** Guarda los tokens recién obtenidos como sesión. */
-export async function saveSession(tokens: TikTokTokens): Promise<void> {
-  const now = Date.now();
-  const session: TikTokSession = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    openId: tokens.openId,
-    scope: tokens.scope,
-    expiresAt: now + tokens.expiresIn * 1000,
-    refreshExpiresAt: now + tokens.refreshExpiresIn * 1000,
-  };
+/**
+ * Borra la cookie de sesión vieja si el navegador aún la tiene. Nadie la lee
+ * ya, pero guardaba access y refresh token: no tiene por qué quedarse.
+ */
+export async function clearLegacySession(): Promise<void> {
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, JSON.stringify(session), {
-    ...baseCookieOptions(),
-    maxAge: tokens.refreshExpiresIn || 60 * 60 * 24 * 30,
-  });
-}
-
-/** Lee la sesión actual, o null si no hay conexión. */
-export async function getSession(): Promise<TikTokSession | null> {
-  const jar = await cookies();
-  const raw = jar.get(SESSION_COOKIE)?.value;
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as TikTokSession;
-  } catch {
-    return null;
-  }
-}
-
-/** Cierra la conexión de TikTok. */
-export async function clearSession(): Promise<void> {
-  const jar = await cookies();
-  jar.delete(SESSION_COOKIE);
-}
-
-/** ¿El access token ya expiró? */
-export function isExpired(session: TikTokSession): boolean {
-  return Date.now() >= session.expiresAt;
-}
-
-/** Construye la `Connection` que consumen los providers a partir de la sesión. */
-export function toConnection(session: TikTokSession): Connection {
-  return {
-    platform: "tiktok",
-    externalAccountId: session.openId,
-    accessToken: session.accessToken,
-  };
+  if (jar.has(LEGACY_SESSION_COOKIE)) jar.delete(LEGACY_SESSION_COOKIE);
 }
 
 /** Guarda los valores efímeros del handshake OAuth (state + PKCE verifier). */

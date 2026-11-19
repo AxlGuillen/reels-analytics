@@ -3,6 +3,7 @@ import type { VideoWithMetrics } from "./insights";
 import {
   captionStats,
   gainedByMonth,
+  postingCadence,
   summarize,
   viewsByDuration,
 } from "./insights";
@@ -108,5 +109,28 @@ describe("gainedByMonth", () => {
 
   test("empty input yields no months", () => {
     expect(gainedByMonth([], "UTC")).toEqual([]);
+  });
+});
+
+describe("postingCadence", () => {
+  const post = (accountId: string, iso: string, views: number): VideoWithMetrics => {
+    const r = row({ views });
+    return { ...r, video: { ...r.video, accountId, publishedAt: new Date(iso) } };
+  };
+
+  test("mide el espaciado dentro de cada cuenta, no entre cuentas", () => {
+    // Dos cuentas de TikTok que publican cada 4 días, desfasadas un día. Por
+    // plataforma saldrían gaps de 1 y 3 días que nadie publicó así.
+    const rows = [
+      post("a", "2026-11-01T18:00:00Z", 100),
+      post("b", "2026-11-02T18:00:00Z", 10),
+      post("a", "2026-11-05T18:00:00Z", 200),
+      post("b", "2026-11-06T18:00:00Z", 20),
+    ];
+    const byLabel = Object.fromEntries(postingCadence(rows).map((b) => [b.label, b]));
+    expect(byLabel["4+ días"].count).toBe(2);
+    expect(byLabel["4+ días"].avgViews).toBe(110); // (200 + 20) / 2
+    expect(byLabel["1 día"].count).toBe(0);
+    expect(byLabel["2–3 días"].count).toBe(0);
   });
 });

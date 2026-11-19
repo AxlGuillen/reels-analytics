@@ -5,6 +5,7 @@ import { RangeSelect } from "@/components/dashboard/range-select";
 import { PageTour } from "@/components/tour/page-tour";
 import { InstagramPanel } from "@/components/instagram-panel";
 import { readBreakoutIds } from "@/modules/analytics/breakouts";
+import { resolveAccounts } from "@/modules/analytics/history";
 import { readInstagramOverview } from "@/modules/instagram/read";
 import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
 
@@ -52,7 +53,9 @@ async function InstagramBody({
   const [result, breakouts] = await Promise.all([
     readInstagramOverview({ since: sinceForRange(range) }),
     // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
-    readBreakoutIds("instagram").catch(() => new Set<string>()),
+    resolveAccounts({ platform: "instagram", account: "primary" })
+      .then((accounts) => readBreakoutIds(accounts.map((a) => a.accountId)))
+      .catch(() => new Set<string>()),
   ]);
 
   return (

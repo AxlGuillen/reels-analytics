@@ -16,9 +16,6 @@ import { toAgePoints, type AgePoint } from "./timeseries";
  * tipo se deriva después, al analizar/renderizar.
  */
 
-/** Ventana hacia atrás desde la última captura para hallar la métrica vigente por video. */
-const LATEST_WINDOW_DAYS = 7;
-
 export interface AccountPoint {
   capturedAt: string;
   followers: number | null;
@@ -40,27 +37,34 @@ export interface GrowthData {
 }
 
 /**
- * A qué cuentas se acota una lectura. Por defecto, la PRINCIPAL de cada
- * plataforma: es la que alimenta el panel, el MCP y los benchmarks.
+ * A qué cuentas se acota una lectura:
+ *  - `"primary"`: la principal de cada plataforma (default de esta capa).
+ *  - `"all"`: TODAS las cuentas, conectadas o no — la historia de una cuenta
+ *    que perdió su conexión sigue contando en el reporte.
+ *  - `{ accountId }`: una sola.
  *
- * Por qué no "todas las de la plataforma": con dos cuentas de TikTok, sumar su
- * catálogo mezclaría una cuenta de miles de seguidores con una que empieza de
- * cero — el Overview sumaría sus vistas, el benchmark por cohorte compararía
- * videos de audiencias incomparables, y las series de seguidores se aplanarían
- * en una sola (`followerDeltas` toma la última lectura del día, que saltaría
- * entre cuentas y fabricaría deltas de miles). Una secundaria se lee pidiéndola
- * por id (lo hace el digest).
+ * Leer varias cuentas juntas es seguro mientras quien SUMA lo haga por cuenta:
+ * los seguidores con `followerDeltasByDay`, los benchmarks con el cohorte de
+ * cada cuenta (`breakouts.ts`) y el Overview con `aggregateAccounts`. Lo que no
+ * se puede es aplanar las series de seguidores de varias cuentas: fabrica
+ * deltas de miles (ver `followerDeltasByDay`).
  */
-export type AccountScope = "primary" | { accountId: string };
+export type AccountScope = "primary" | "all" | { accountId: string };
 
 export interface ReadGrowthOptions {
   platform?: Platform;
   account?: AccountScope;
 }
 
+export interface ScopedAccount {
+  accountId: string;
+  platform: Platform;
+  handle: string | null;
+  isPrimary: boolean;
+}
+
 type Supabase = ReturnType<typeof createAdminClient>;
 
-/** Cuentas dentro del alcance pedido (por defecto, las principales). */
 async function scopedAccounts(
   supabase: Supabase,
   { platform, account = "primary" }: ReadGrowthOptions,
@@ -68,14 +72,45 @@ async function scopedAccounts(
   let query = supabase
     .from("ra_social_accounts")
     .select("id, platform, handle, is_primary");
-  query =
-    account === "primary"
-      ? query.eq("is_primary", true)
-      : query.eq("id", account.accountId);
+  if (account === "primary") query = query.eq("is_primary", true);
+  else if (account !== "all") query = query.eq("id", account.accountId);
   if (platform) query = query.eq("platform", platform);
-  const { data, error } = await query;
+  // Orden estable para el desglose: TikTok antes que Instagram (orden del
+  // enum), la principal primero y luego por antigüedad.
+  const { data, error } = await query
+    .order("platform")
+    .order("is_primary", { ascending: false })
+    .order("created_at");
   if (error) throw supabaseError("ra_social_accounts", error);
   return data ?? [];
+}
+
+/** Cuentas dentro de un alcance, en orden de desglose (ver `scopedAccounts`). */
+export async function resolveAccounts(
+  options: ReadGrowthOptions = {},
+): Promise<ScopedAccount[]> {
+  const rows = await scopedAccounts(createAdminClient(), options);
+  return rows.map((a) => ({
+    accountId: a.id,
+    platform: a.platform,
+    handle: a.handle,
+    isPrimary: a.is_primary,
+  }));
+}
+
+/** Cuenta dueña de un video (null si aún no está en `ra_videos`). */
+export async function readVideoOwner(
+  platform: Platform,
+  externalId: string,
+): Promise<string | null> {
+  const { data, error } = await createAdminClient()
+    .from("ra_videos")
+    .select("account_id")
+    .eq("platform", platform)
+    .eq("external_id", externalId)
+    .maybeSingle();
+  if (error) throw supabaseError("ra_videos", error);
+  return data?.account_id ?? null;
 }
 
 export async function readGrowth(
@@ -128,7 +163,7 @@ export async function readGrowth(
     supabase
       .from("ra_videos")
       .select(
-        "id, platform, external_id, caption, hashtags, published_at, url, duration_s, thumbnail_url",
+        "id, account_id, platform, external_id, caption, hashtags, published_at, url, duration_s, thumbnail_url",
       )
       .in("account_id", chunk)
       .order("id")
@@ -139,53 +174,36 @@ export async function readGrowth(
   }
   const videoIds = videoRows.map((v) => v.id);
 
-  // 4. Métrica vigente por video: última captura, ventana hacia atrás, dedupe en TS.
-  // Máximo por lote (limit 1 → una sola página) y luego el global.
-  const maxRows = await fetchByIds("ra_video_snapshots", videoIds, (chunk) =>
-    supabase
-      .from("ra_video_snapshots")
-      .select("captured_at")
-      .in("video_id", chunk)
-      .order("captured_at", { ascending: false })
-      .limit(1),
-  );
-  const latestCapture = Math.max(...maxRows.map((r) => Date.parse(r.captured_at)));
-  if (!Number.isFinite(latestCapture)) {
-    return { videos: [], accountSeries: [...seriesByAccount.values()] };
-  }
-  const sinceIso = new Date(
-    latestCapture - LATEST_WINDOW_DAYS * 86_400_000,
-  ).toISOString();
-
-  const recentSnaps = await fetchByIds(
-    "ra_video_snapshots",
+  // 4. Métrica vigente de CADA video = su último snapshot, tenga la antigüedad
+  //    que tenga (vista `ra_video_latest_snapshot`, una fila por video).
+  //
+  //    Antes había una ventana de 7 días desde la última captura y todo video
+  //    sin snapshot dentro quedaba fuera. Como el cron solo pide los 400 videos
+  //    más recientes por cuenta (los viejos casi no cambian), los más antiguos
+  //    dejaban de recibir snapshots y DESAPARECÍAN de los totales: en
+  //    @axelsine13 faltaban 92 videos y 751.700 vistas (13 %). Ahora cuentan
+  //    con su última métrica conocida.
+  const latest = await fetchByIds(
+    "ra_video_latest_snapshot",
     videoIds,
     (chunk, from, to) =>
       supabase
-        .from("ra_video_snapshots")
-        .select("id, video_id, captured_at, views, likes, comments, shares, saved")
+        .from("ra_video_latest_snapshot")
+        .select("video_id, captured_at, views, likes, comments, shares, saved")
         .in("video_id", chunk)
-        .gte("captured_at", sinceIso)
-        .order("captured_at", { ascending: false })
-        .order("id")
+        .order("video_id")
         .range(from, to),
   );
+  const latestByVideo = new Map(latest.map((snap) => [snap.video_id, snap]));
 
-  // La más reciente por video (comparando fechas: entre lotes no hay orden global).
-  const latestByVideo = new Map<string, (typeof recentSnaps)[number]>();
-  for (const snap of recentSnaps) {
-    const prev = latestByVideo.get(snap.video_id);
-    if (!prev || Date.parse(snap.captured_at) > Date.parse(prev.captured_at)) {
-      latestByVideo.set(snap.video_id, snap);
-    }
-  }
-
-  // 5. Reconstruye VideoWithMetrics (omite videos sin snapshot reciente).
+  // 5. Reconstruye VideoWithMetrics. Solo se omite un video que nunca tuvo
+  //    snapshot (dado de alta pero sin captura todavía).
   const videos: VideoWithMetrics[] = [];
   for (const v of videoRows) {
     const snap = latestByVideo.get(v.id);
-    if (!snap) continue;
-    const capturedAt = new Date(snap.captured_at);
+    // Las columnas de una vista llegan tipadas como opcionales aunque el
+    // `cross join lateral` garantiza valor: el `captured_at` nulo es imposible.
+    if (!snap?.captured_at) continue;
     videos.push({
       video: {
         platform: v.platform,
@@ -196,16 +214,17 @@ export async function readGrowth(
         url: v.url,
         durationSeconds: v.duration_s,
         thumbnailUrl: v.thumbnail_url,
+        accountId: v.account_id,
       },
       metrics: {
         platform: v.platform,
         externalId: v.external_id,
-        views: snap.views,
-        likes: snap.likes,
-        comments: snap.comments,
-        shares: snap.shares,
+        views: snap.views ?? 0,
+        likes: snap.likes ?? 0,
+        comments: snap.comments ?? 0,
+        shares: snap.shares ?? 0,
         saved: snap.saved,
-        capturedAt,
+        capturedAt: new Date(snap.captured_at),
       },
     });
   }
@@ -263,6 +282,8 @@ export async function readVideoHistory(
 export interface VideoSeries {
   externalId: string;
   platform: Platform;
+  /** cuenta dueña: el cohorte de un video se arma SOLO con su cuenta. */
+  accountId: string;
   /** Fecha de publicación: la necesita el cohorte semanal (ver `weeklyCohort`). */
   publishedAt: Date;
   points: AgePoint[];
@@ -307,7 +328,7 @@ export async function readVideoSeries(
   const videos = await fetchByIds("ra_videos", accountIds, (chunk, from, to) =>
     supabase
       .from("ra_videos")
-      .select("id, external_id, platform, published_at")
+      .select("id, account_id, external_id, platform, published_at")
       .in("account_id", chunk)
       .gte("published_at", cutoff)
       .order("id")
@@ -329,6 +350,7 @@ export async function readVideoSeries(
   return videos.map((v) => ({
     externalId: v.external_id,
     platform: v.platform,
+    accountId: v.account_id,
     publishedAt: new Date(v.published_at),
     points: toAgePoints(new Date(v.published_at), byVideo.get(v.id) ?? []),
   }));

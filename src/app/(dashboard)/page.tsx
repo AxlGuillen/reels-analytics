@@ -19,13 +19,17 @@ import { CREATOR_TIMEZONE } from "@/modules/analytics/insights";
 import { resolvePeriod } from "@/modules/analytics/period";
 import { OverviewBodySkeleton } from "./overview-skeleton";
 import { FreshPeriodNotice } from "./fresh-period-notice";
-import { formatCount } from "@/core/lib/format";
+import { formatCount, formatPercent } from "@/core/lib/format";
 import { contentHref, type ContentTypeKey } from "@/core/lib/content-type";
+import { AccountSelector } from "@/components/dashboard/account-selector";
+import type { ReadGrowthOptions } from "@/modules/analytics/history";
 import {
   readOverviewSummary,
+  type AccountBreakdown,
   type OverviewSummary,
   type SubBucketMetrics,
 } from "@/modules/analytics/overview";
+import { getAccountScope, selectorProps } from "./account-scope";
 
 /** Tile de icono de 26px que encabeza cada card (motivo del sistema). */
 function IconTile({
@@ -229,6 +233,85 @@ function PlatformCard({
   );
 }
 
+/**
+ * Desglose por cuenta del periodo: la tabla del reporte mensual. Solo en
+ * "todas las cuentas" — con una sola, la tabla repetiría los KPIs. Sus filas
+ * salen de la misma lista que el total (`aggregateAccounts`), así que la fila
+ * de total siempre cuadra con las cards de arriba.
+ */
+function AccountBreakdownCard({
+  rows,
+  total,
+}: {
+  rows: AccountBreakdown[];
+  total: OverviewSummary["combined"];
+}) {
+  const engagement = (likes: number, comments: number, views: number) =>
+    views > 0 ? formatPercent((likes + comments) / views) : "—";
+  const followers = (v: number | null) =>
+    v === null ? "—" : `${v >= 0 ? "+" : ""}${formatCount(v)}`;
+
+  return (
+    <section
+      data-tour="desglose"
+      className="bg-card shadow-card mt-3.5 rounded-lg p-[18px]"
+    >
+      <div className="mb-3 text-[15px] font-medium tracking-[-0.01em]">
+        Desglose por cuenta
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-[13px]">
+          <thead>
+            <tr className="text-muted-foreground text-left font-mono text-[10.5px] tracking-wider uppercase">
+              <th className="pb-2 font-normal">Cuenta</th>
+              <th className="pb-2 text-right font-normal">Vistas ganadas</th>
+              <th className="pb-2 text-right font-normal">Seguidores</th>
+              <th className="pb-2 text-right font-normal">Publicados</th>
+              <th className="pb-2 text-right font-normal">Engagement</th>
+            </tr>
+          </thead>
+          <tbody className="tabular-nums">
+            {rows.map((r) => (
+              <tr key={r.accountId} className="border-border border-t">
+                <td className="py-2.5">
+                  <span className="flex items-center gap-2">
+                    <span className="font-medium">
+                      {r.handle ? `@${r.handle}` : "cuenta nueva"}
+                    </span>
+                    <span className="text-muted-foreground font-mono text-[10.5px]">
+                      {r.platform === "tiktok" ? "TikTok" : "Instagram"}
+                    </span>
+                    {r.isPrimary && (
+                      <span className="bg-primary text-primary-foreground rounded-full px-2 py-[1px] text-[9.5px] font-semibold tracking-wider uppercase">
+                        principal
+                      </span>
+                    )}
+                  </span>
+                </td>
+                <td className="py-2.5 text-right">{formatCount(r.metrics.views)}</td>
+                <td className="py-2.5 text-right">{followers(r.followersGained)}</td>
+                <td className="py-2.5 text-right">{r.metrics.videosPublished}</td>
+                <td className="text-muted-foreground py-2.5 text-right">
+                  {engagement(r.metrics.likes, r.metrics.comments, r.metrics.views)}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-foreground/80 border-t-2 font-medium">
+              <td className="pt-2.5">Total</td>
+              <td className="pt-2.5 text-right">{formatCount(total.views)}</td>
+              <td className="pt-2.5 text-right">{followers(total.followersGained)}</td>
+              <td className="pt-2.5 text-right">{total.videosPublished}</td>
+              <td className="pt-2.5 text-right">
+                {engagement(total.likes, total.comments, total.views)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function PageShell({ children }: { children: React.ReactNode }) {
   return <div className="w-full px-4 py-6 md:px-1">{children}</div>;
 }
@@ -250,6 +333,8 @@ export default async function OverviewPage({
   );
   const currentAnchor =
     granularity === "month" ? `${period.key}-01` : period.key;
+  const accountState = await getAccountScope();
+  const selected = accountState.selected;
 
   return (
     <PageShell>
@@ -261,17 +346,20 @@ export default async function OverviewPage({
           Cómo van{" "}
           <span className="bg-primary text-primary-foreground inline-flex items-center gap-1.5 rounded-full px-3.5 pt-0.5 pb-1">
             <Sparkle className="size-4" />
-            tus reels
+            {selected?.handle ? `@${selected.handle}` : "tus reels"}
           </span>{" "}
           {period.granularity === "week" ? "esta semana" : "este mes"}
         </h1>
-        <PeriodNav
-          granularity={period.granularity}
-          label={period.label}
-          currentAnchor={currentAnchor}
-          prevAnchor={period.prevAnchor}
-          nextAnchor={period.nextAnchor}
-        />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <AccountSelector {...selectorProps(accountState)} />
+          <PeriodNav
+            granularity={period.granularity}
+            label={period.label}
+            currentAnchor={currentAnchor}
+            prevAnchor={period.prevAnchor}
+            nextAnchor={period.nextAnchor}
+          />
+        </div>
       </header>
 
       {/* key = periodo RESUELTO: cambiar de periodo remonta el Suspense y
@@ -279,10 +367,15 @@ export default async function OverviewPage({
           loading.tsx; esta capa cubre esa transición y el streaming de la
           primera carga). */}
       <Suspense
-        key={`${granularity}:${period.key}`}
+        key={`${accountState.value}:${granularity}:${period.key}`}
         fallback={<OverviewBodySkeleton />}
       >
-        <OverviewBody granularity={granularity} anchor={sp.anchor} />
+        <OverviewBody
+          granularity={granularity}
+          anchor={sp.anchor}
+          scope={accountState.scope}
+          allAccounts={selected === null}
+        />
       </Suspense>
     </PageShell>
   );
@@ -296,13 +389,18 @@ export default async function OverviewPage({
 async function OverviewBody({
   granularity,
   anchor,
+  scope,
+  allAccounts,
 }: {
   granularity: "week" | "month";
   anchor?: string;
+  scope: ReadGrowthOptions;
+  /** true en "todas las cuentas": hay reparto entre plataformas y desglose. */
+  allAccounts: boolean;
 }) {
   let summary: OverviewSummary;
   try {
-    summary = await readOverviewSummary({ granularity, anchor });
+    summary = await readOverviewSummary({ granularity, anchor, scope });
   } catch (err) {
     return (
       <div className="bg-card shadow-card rounded-lg p-5">
@@ -314,11 +412,19 @@ async function OverviewBody({
     );
   }
 
-  const { period, combined, byPlatform, subBuckets, contentTypes, bestVideo } =
-    summary;
+  const {
+    period,
+    combined,
+    byPlatform,
+    byAccount,
+    subBuckets,
+    contentTypes,
+    bestVideo,
+  } = summary;
   const unit = period.subGranularity === "day" ? "día" : "semana";
+  // El % de TikTok solo dice algo cuando hay más de una plataforma en juego.
   const tkShare =
-    combined.views > 0
+    allAccounts && combined.views > 0
       ? Math.round((byPlatform.tiktok.views / combined.views) * 100)
       : null;
   // "Recién empezado" = periodo actual sin UN SOLO delta observado (solo hay
@@ -454,6 +560,10 @@ async function OverviewBody({
             </div>
             <StatsChart buckets={subBuckets} />
           </section>
+
+          {allAccounts && byAccount.length > 1 && (
+            <AccountBreakdownCard rows={byAccount} total={combined} />
+          )}
 
           {/* Tipos de contenido */}
           <section

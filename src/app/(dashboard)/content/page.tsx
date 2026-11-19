@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { MoveLeftIcon } from "@animateicons/react/lucide";
-import type { Platform } from "@/core/domain";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { AccountSelector } from "@/components/dashboard/account-selector";
+import type { ReadGrowthOptions } from "@/modules/analytics/history";
+import { getAccountScope, selectorProps } from "../account-scope";
 import { Suspense } from "react";
 import { PageTour } from "@/components/tour/page-tour";
 import {
@@ -47,13 +48,10 @@ const Stat = StatCard;
 export default async function ContentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; platform?: string }>;
+  searchParams: Promise<{ type?: string }>;
 }) {
-  const { type: typeParam, platform: platformParam } = await searchParams;
-  const platform: Platform | undefined =
-    platformParam === "tiktok" || platformParam === "instagram"
-      ? platformParam
-      : undefined;
+  const { type: typeParam } = await searchParams;
+  const accountState = await getAccountScope();
   const type = parseTypeParam(typeParam);
   const inDrilldown = type !== undefined;
 
@@ -66,7 +64,7 @@ export default async function ContentPage({
         <div>
           {inDrilldown && (
             <Link
-              href={platform ? `/content?platform=${platform}` : "/content"}
+              href="/content"
               className="text-muted-foreground hover:text-foreground mb-2 inline-flex items-center gap-1.5 text-sm"
             >
               <MoveLeftIcon size={16} /> Contenido
@@ -81,23 +79,19 @@ export default async function ContentPage({
               : "Tu catálogo dividido por tipo de contenido (hashtag identificador)."}
           </p>
         </div>
-        <PlatformFilter
-          active={platform}
-          basePath="/content"
-          extraQuery={{ type: typeParam }}
-        />
+        <AccountSelector {...selectorProps(accountState)} />
       </header>
 
       {/* Los cambios de searchParams no pasan por loading.tsx: el Suspense
           (key = filtros) cubre esa transición y el streaming inicial. La
           variante del fallback la decide `type`, que es síncrono. */}
       <Suspense
-        key={`${typeParam ?? ""}:${platform ?? "all"}`}
+        key={`${typeParam ?? ""}:${accountState.value}`}
         fallback={
           inDrilldown ? <ContentDrilldownSkeleton /> : <ContentSummarySkeleton />
         }
       >
-        <ContentBody platform={platform} type={type} />
+        <ContentBody scope={accountState.scope} type={type} />
       </Suspense>
     </div>
   );
@@ -105,13 +99,13 @@ export default async function ContentPage({
 
 /** Cuerpo con datos: la única lectura (catálogo cacheado) vive aquí. */
 async function ContentBody({
-  platform,
+  scope,
   type,
 }: {
-  platform: Platform | undefined;
+  scope: ReadGrowthOptions;
   type: ContentTypeKey | null | undefined;
 }) {
-  const { videos } = await readGrowthCached({ platform });
+  const { videos } = await readGrowthCached(scope);
   const byType = groupByContentType(videos);
 
   const inDrilldown = type !== undefined;
@@ -145,7 +139,7 @@ async function ContentBody({
             return (
               <Link
                 key={t.label}
-                href={contentHref(t.key, platform)}
+                href={contentHref(t.key)}
                 className={
                   lead
                     ? "bg-primary text-primary-foreground shadow-card hover:shadow-lift relative block overflow-hidden rounded-lg p-5 transition-shadow duration-200"

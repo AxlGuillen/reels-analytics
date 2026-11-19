@@ -17,9 +17,9 @@ import {
   type AccountCaptureStatus,
   type CaptureStatus,
 } from "@/modules/ingestion/status";
-import { getSession, isExpired } from "@/modules/tiktok/session";
+import { getPrimaryConnectionState } from "@/modules/accounts/tokens";
 
-type ConnState = "connected" | "expired" | "disconnected";
+type ConnState = Awaited<ReturnType<typeof getPrimaryConnectionState>>;
 
 function StateBadge({ state }: { state: ConnState }) {
   if (state === "connected")
@@ -28,7 +28,7 @@ function StateBadge({ state }: { state: ConnState }) {
         conectada
       </Badge>
     );
-  if (state === "expired") return <Badge variant="secondary">sesión expirada</Badge>;
+  if (state === "expired") return <Badge variant="secondary">conexión vencida</Badge>;
   return <Badge variant="secondary">sin conectar</Badge>;
 }
 
@@ -85,12 +85,10 @@ export default async function ConnectionsPage({
   searchParams: Promise<{ added?: string }>;
 }) {
   const { added } = await searchParams;
-  const session = await getSession();
-  const tiktokState: ConnState = !session
-    ? "disconnected"
-    : isExpired(session)
-      ? "expired"
-      : "connected";
+  // Estado de la conexión GUARDADA de la cuenta principal: el mismo que usa el
+  // cron. Antes salía de una cookie del navegador, así que en cualquier otro
+  // navegador decía "sin conectar" aunque la ingesta estuviera capturando.
+  const tiktokState: ConnState = await getPrimaryConnectionState("tiktok");
   const instagramConnected = !!env("INSTAGRAM_ACCESS_TOKEN");
   const [tiktokAccounts, instagramAccounts] = await Promise.all([
     getAccountCaptureStatuses("tiktok"),

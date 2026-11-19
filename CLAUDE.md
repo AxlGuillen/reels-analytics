@@ -26,10 +26,14 @@ periódicos y persistirlos**; el crecimiento se calcula comparando snapshots.
 (144 tests) pasan limpios. El detalle de cada pieza va en las secciones siguientes.
 
 **TikTok (integración funcional):** OAuth Login Kit con PKCE + state
-(`modules/tiktok/oauth.ts`); sesión interina en cookie httpOnly
-(`modules/tiktok/session.ts`) que usa la UI en vivo — convive con los tokens
-persistidos en `ra_connections`, que son los que usa el cron; unificar en Supabase
-sigue pendiente. Rutas
+(`modules/tiktok/oauth.ts`). **Los tokens viven SOLO en `ra_connections`**: de ahí leen
+el cron, "Capturar ahora" y también la UI en vivo (`/tiktok`, detalle de video, punto del
+rail, Conexiones) vía `resolveTikTokAuth` / `getPrimaryConnectionState` en
+`accounts/tokens.ts`. Hasta nov 2026 la UI leía de una cookie `tiktok_session` interina
+que tenía dos defectos: solo existía en el navegador donde se conectó (en otro, todo
+decía "sin conectar" con la ingesta funcionando) y nunca se refrescaba, así que caducaba a
+las 24 h con el access token. `modules/tiktok/session.ts` quedó solo con las cookies
+efímeras del handshake OAuth, y el callback borra la cookie vieja si aún existe. Rutas
 `app/api/auth/tiktok/{login,callback}`. **Lectura de datos ya implementada:**
 `api.ts` (cliente Display API: user/info, video/list, video/query), `mappers.ts`
 (raw → dominio), `provider.ts` (contrato completo), `read.ts` (overview para la UI con
@@ -62,7 +66,14 @@ search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_su
 get_activity_timeline día/semana/mes, get_hashtag_stats, compare_platforms,
 get_breakouts, get_script_stats_block → YAML para el frontmatter de guiones)
 para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
-rendimiento real.
+rendimiento real. **Alcance**: sin `account` las tools leen TODAS las cuentas (como el panel);
+con `account` (@handle, con o sin @) solo esa — `scopeFor` en `tools.ts` falla con la lista de
+cuentas válidas si el handle no existe o es ambiguo (@axelsine13 está en TikTok e Instagram:
+hay que pasar también `platform`), nunca devuelve vacío. Cada video de las respuestas dice su
+`account`; `compare_platforms` suma todas las cuentas de cada plataforma; los benchmarks y
+breakouts son siempre contra el cohorte de SU cuenta. Excepción deliberada:
+`get_script_stats_block` busca solo en las cuentas **principales** (su YAML tiene una clave
+por plataforma y un guion cross-posteado en una secundaria daría coincidencias ajenas).
 
 > Los textos de las tools (nombre/título/descripción) viven en `modules/mcp/catalog.ts`
 > (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
@@ -163,8 +174,8 @@ action corre con el `maxDuration` de la ruta que lo invoca y la ingesta de IG ha
 por Reel — sin eso la captura manual moriría por timeout; (2) el toast lleva `text-foreground`
 explícito porque es descendiente del rail (`text-sidebar-foreground`, crema) y `position:
 fixed` NO rompe la herencia de color. El botón **no** se condiciona a los puntos de conexión
-del rail: esos reflejan la sesión en cookie de TikTok, mientras que la captura corre con los
-tokens persistidos en `ra_connections`. El `CaptureButton` por plataforma sigue en `/tiktok` y
+del rail: ambos leen ya de `ra_connections`, pero el punto solo refleja la cuenta principal
+y la captura recorre todas. El `CaptureButton` por plataforma sigue en `/tiktok` y
 `/instagram` para capturas dirigidas.
 
 **Página Historia (`/historia`, línea de tiempo del proyecto):** la historia del repo como
@@ -368,30 +379,50 @@ Login en `src/app/login/*` (`signInAction`/`signOutAction`); logout en el footer
 **Vista de Crecimiento (lee de Supabase, implementada):** `src/app/(dashboard)/growth`. Es el
 primer consumidor de los snapshots persistidos (las páginas por plataforma siguen leyendo en vivo).
 Capa de lectura `modules/analytics/history.ts` (`readGrowth`, admin client): serie de crecimiento
-de cuenta (`ra_account_snapshots`) + métrica vigente por video (última captura, ventana de 7 días,
-dedupe en TS) reconstruida como `VideoWithMetrics` para reusar `insights.ts`. La vista muestra
-seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo, tabla por mes de
-publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
-`?platform=`.
+de cuenta (`ra_account_snapshots`) + métrica vigente por video reconstruida como
+`VideoWithMetrics` para reusar `insights.ts`. La métrica vigente es el **último snapshot de cada
+video, sin importar su antigüedad** (vista `ra_video_latest_snapshot`, `security_invoker`,
+LATERAL + `limit 1` sobre el índice `(video_id, captured_at desc)`). El cron solo pide los 400
+videos más recientes por cuenta de TikTok (y 90 Reels en IG): los viejos dejan de recibir
+snapshots a propósito, porque casi no cambian. Hasta nov 2026 una ventana de 7 días los
+SACABA del catálogo (faltaban 92 videos y 751.700 vistas en @axelsine13, el 13 %); ahora
+cuentan con su última métrica conocida, incluidos los borrados o pasados a privado. La vista muestra
+seguidores en el tiempo (una línea y una tarjeta por CUENTA, colores `--chart-1..5`),
+rendimiento por tipo, tabla por mes de publicación, espaciado entre publicaciones y
+hashtags/día/hora. Se acota con el selector de cuenta (ver "Varias cuentas por plataforma").
 
 **Varias cuentas por plataforma (nov 2026, 2.ª cuenta de TikTok):** `ra_social_accounts`
 lleva `is_primary` (migración `ra_social_accounts_primary_flag`): **exactamente una principal
 por plataforma** (índice único parcial) y la PRIMERA cuenta de una plataforma queda como
 principal sola (trigger `ra_social_accounts_default_primary`, cubre el callback OAuth y el
-upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmarks; las
-**secundarias** se capturan aparte y solo salen en el digest y en Conexiones. Reglas:
+upsert de la ingesta). Todas las cuentas se capturan, se ven en el panel y suman en la vista
+"Todas las cuentas"; la **principal** es la que se usa cuando una vista necesita UNA cuenta y
+no hay otra elegida (p. ej. `/tiktok` en "Todas"). Reglas:
 - **Los tokens se resuelven POR CUENTA, nunca por plataforma** (`listConnectedAccounts`,
   `getValidTikTokAccessToken(accountId)` en `accounts/tokens.ts`). Antes era
   `.eq("platform").limit(1)` sin orden: con dos cuentas devolvía una arbitraria y podía
   dejar de capturar la principal.
-- **Las 3 lecturas base de `history.ts` (`readGrowth`, `readSnapshotSeries`,
-  `readVideoSeries`) aceptan `account: AccountScope` y por defecto leen SOLO la
-  principal.** Ahí se acota todo: caché, Overview, /growth, /content, breakouts y MCP pasan
-  por ellas. Mezclar cuentas rompería tres cosas: el Overview sumaría vistas de audiencias
-  incomparables, el benchmark por cohorte compararía videos de una cuenta de miles de
-  seguidores contra una que empieza de cero, y `followerDeltasFor` (que aplana las lecturas
-  y toma la última del día) saltaría entre cuentas fabricando deltas de miles. Una
-  secundaria se lee pidiéndola por id (`{ accountId }`), como hace el digest.
+- **La CUENTA es la unidad de lectura, caché y suma.** Las 3 lecturas base de
+  `history.ts` (`readGrowth`, `readSnapshotSeries`, `readVideoSeries`) aceptan
+  `account: AccountScope` = `"primary"` (default de esa capa) | `"all"` (todas, conectadas o
+  no: la historia de una cuenta desconectada sigue en el reporte) | `{ accountId }`.
+  `resolveAccounts(scope)` lista las cuentas de un alcance en orden de desglose (TikTok antes
+  que IG, principal primero, luego por antigüedad). Cada video lleva su cuenta en
+  `Video.accountId` (dentro de `video` para que sobreviva al serializado del caché), y todo
+  lo que agrupa "por cuenta" usa `accountKey(row)` (`insights.ts`), que cae a la plataforma
+  en las lecturas en vivo. Leer varias cuentas juntas es seguro solo si quien SUMA lo hace
+  por cuenta — tres reglas que no se negocian:
+  1. **Seguidores**: `followerDeltasByDay` (`attribution.ts`) calcula cada cuenta y luego
+     suma por día. Aplanar las lecturas de varias cuentas antes de calcular toma "la última
+     del día" de cualquiera y fabrica deltas de miles.
+  2. **Benchmarks y breakouts** (`breakouts.ts`): el cohorte es SIEMPRE de una sola cuenta;
+     `readVideoBenchmark` resuelve la cuenta dueña (`readVideoOwner`). Un video de Valorant
+     contra los de LoL, o de una cuenta de decenas contra una de miles, no significa nada.
+  3. **Overview**: cada cuenta se mide sola y `aggregateAccounts` (`overview-shape.ts`, puro
+     y testeado) arma total, reparto por plataforma y desglose (`byAccount`) desde la misma
+     lista — la fila de total del desglose cuadra siempre con los KPIs.
+  También `postingCadence` y `attributeFollowers` agrupan por cuenta.
+- **MCP**: todas las cuentas por defecto, `account` opcional (ver "Servidor MCP").
 - **Captura por cuenta y aislada** (`ingestion/capture.ts`): `captureTikTok()` recorre
   todas las conexiones en paralelo y la falla de una no frena a las demás; el resultado es
   `AccountCapture[]` y `ingestion/summary.ts` (puro, testeado) lo resume para el cron y las
@@ -402,17 +433,35 @@ upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmar
   `/api/health` la principal conserva los nombres de siempre (`ingestion.tiktok`,
   `tokens.tiktok`) para no romper monitores externos; las secundarias van como
   `ingestion.tiktok:@cuenta`.
-- **El callback de TikTok solo escribe la cookie de la UI si la cuenta es la principal**:
-  `/tiktok` lee en vivo de esa única cookie, y autorizar una secundaria la secuestraba.
-- **Digest**: una sección por secundaria (`analytics/account-week.ts`, puro y testeado,
-  reusa `buildTimeline` + `dailyFollowerDeltas` para medirla igual que la principal) con
-  la comparación justa: **vistas promedio por video publicado esa semana** contra la
-  principal — los totales dependen de los seguidores y una cuenta nueva siempre pierde.
+- **Selector de cuenta global** (`AccountSelector` en el header de Overview, Crecimiento y
+  Contenido): "Todas las cuentas" (**default**) o una sola. Vive en la cookie `ra_scope`
+  (`(dashboard)/account-scope.ts`: `getAccountScope` la lee y valida; una cuenta que ya no
+  existe cae a "todas") y la cambia `setAccountScopeAction` (`app/actions/scope.ts`), que al
+  escribir la cookie hace que Next re-renderice la ruta sola. **No va en la URL a propósito**:
+  los links del rail, `PeriodNav`, `FreshPeriodNotice` y `RangeSelect` reconstruyen la URL y
+  perderían el parámetro al navegar. El alcance entra en la llave de cada `Suspense`.
+  Reemplazó a `PlatformFilter` (eliminado): la cuenta ya implica la plataforma.
+- **Overview**: en "Todas" suma las cuentas, conserva el reparto TikTok/Instagram y agrega la
+  card **"Desglose por cuenta"** (vistas ganadas, seguidores, publicados y engagement del
+  periodo + fila de total; ancla `desglose`) — la tabla del reporte mensual del creador. Con
+  una cuenta elegida, el mismo layout acotado a ella, sin desglose ni "% TT".
+- **`/tiktok` muestra la cuenta de TikTok elegida** (o la principal en "Todas"/Instagram),
+  con su propio token y sus propios breakouts. Autorizar una secundaria devuelve a
+  Conexiones, donde aparece su fila.
+- **El detalle de video usa el token de la cuenta DUEÑA del video**
+  (`resolveTikTokAuthForVideo`, por `ra_videos.account_id`): la Display API no deja leer un
+  video con el token de otra cuenta. Si el video aún no está capturado, prueba con la
+  principal.
+- **Digest**: los totales son de TODAS las cuentas (como la vista por defecto del panel) y
+  el mejor video dice de qué cuenta es; luego **una línea por cuenta contra SU propia
+  semana anterior** (`summarizeAccountWeek` + `weekOverWeek` en `analytics/account-week.ts`,
+  puros y testeados). No se comparan cuentas entre sí: con nichos distintos (LoL, edits,
+  Valorant) y audiencias de tamaños dispares no significa nada. `weekOverWeek` es null si
+  la semana anterior fue 0 (sin base, nada de "+∞ %"). Duración y mejor día salen de las
+  cuentas principales: son señales de la estrategia de formato del canal principal.
 - **Instagram sigue siendo de una cuenta** (token por env var). Una 2.ª de IG exige antes
   el OAuth de Instagram.
 - Paso a paso para agregar cuentas (portal de TikTok + conexión): `docs/agregar-cuenta.md`.
-  Pendiente a propósito: selector de cuenta en el panel, cuando la secundaria tenga semanas
-  de historia que comparar.
 
 **Límite de ids por `.in()` (la causa del bug de nov 2026 — leer antes de escribir una
 consulta nueva):** PostgREST recibe el filtro `in` en la URL y el gateway de Supabase
@@ -442,7 +491,9 @@ catálogo (`readGrowthCached`), buckets diarios del Overview (`dailyFor` en `ove
 vistas ganadas por mes (`readMonthGainedCached`) y vistas a N días (`readViewsAtAgeCached`).
 Navegar semanas/meses o el filtro de mes de `/growth` solo recorta lo cacheado. Reglas:
 - **Nunca cachear snapshots crudos** (MB y creciendo ~445 filas/día); solo resultados en KB.
-- **Solo por plataforma**; "todas" se compone en memoria (`cache-shape.ts`, puro y testeado).
+- **Solo por CUENTA** (entradas `growth`/`daily`/`month-gained`/`views-at-age` llaveadas por
+  `accountId`); cualquier alcance —una plataforma, "todas"— se compone en memoria
+  (`cache-shape.ts`, puro y testeado). Una entrada sirve a todas las vistas que la incluyen.
 - Lo cacheado es **JSON puro**: `serializeGrowth`/`reviveGrowth` convierten las `Date`.
 - Invalidación por evento con el tag `ANALYTICS_TAG` (`core/lib/cache-tags.ts`): el cron de
   ingesta hace `revalidateTag(tag, { expire: 0 })` (expiración inmediata, no SWR: la primera
@@ -465,8 +516,8 @@ Navegar semanas/meses o el filtro de mes de `/growth` solo recorta lo cacheado. 
 (puro, testeado: `resolvePeriod` semana/mes + sub-buckets día/semana + `sumOverPeriod`, sin navegar
 al futuro). KPIs del periodo — **Videos publicados** (conteo) + **Vistas/Likes/Comentarios ganados**
 (deltas vía `buildTimeline`) — combinados y con split TikTok/Instagram, + seguidores ganados. Barras
-de vistas apiladas por plataforma (por día en semana, por semana en mes) y tipos de contenido
-publicados con link a `/content`.
+de vistas apiladas por plataforma (por día en semana, por semana en mes), tipos de contenido
+publicados con link a `/content` y, en "Todas las cuentas", el desglose por cuenta.
 
 **Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
@@ -486,16 +537,15 @@ del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`). `#hu
 
 **Vista Contenido (`/content`, implementada):** catálogo dividido por tipo. Resumen = una card
 por tipo (iterando `groupByContentType`, dinámico — tipos nuevos aparecen solos) y drill-down vía
-`?type=<key|unclassified>` (+ `?platform=`): KPIs del grupo (`summarize`) + listado cross-platform
-con `VideoListTable` (`src/components/dashboard/video-list-table.tsx`, cada fila enlaza a
-`/video/{platform}/{id}`; badge con acento por plataforma). El filtro de plataforma es el
-componente compartido `src/components/dashboard/platform-filter.tsx` (preserva query extra); lo
-usan /growth y /content. La tabla "Rendimiento por tipo" de /growth enlaza al drill-down.
+`?type=<key|unclassified>`: KPIs del grupo (`summarize`) + listado cross-platform con
+`VideoListTable` (`src/components/dashboard/video-list-table.tsx`, cada fila enlaza a
+`/video/{platform}/{id}`; badge con acento por plataforma). Se acota con el selector de cuenta
+global. La tabla "Rendimiento por tipo" de /growth enlaza al drill-down (`contentHref`).
 
-> Limitación conocida (IG): el cron persiste hasta 90 Reels (`MAX_REELS` en
-> `modules/instagram/read.ts`). Con ~20 videos/semana, la historia **por video** de IG se congela
-> para lo más viejo que ~4.5 semanas (el crecimiento de **cuenta** no se afecta). Follow-up: subir
-> el tope solo del cron o backfill por lotes.
+> Límite aceptado (IG y TikTok): el cron refresca hasta 90 Reels (`MAX_REELS` en
+> `modules/instagram/read.ts`, más la rotación) y 400 videos de TikTok por cuenta (20 páginas
+> × 20). La **curva** de lo más viejo se congela, pero sigue sumando en los totales con su último
+> snapshot (ver `ra_video_latest_snapshot` en "Vista de Crecimiento").
 
 **Agent-ready (isitagentready.com, implementado):** endpoints públicos de descubrimiento para
 agentes/crawlers, todos fuera del proxy (extensiones y `.well-known` ya excluidos del matcher) y

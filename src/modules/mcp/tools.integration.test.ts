@@ -86,6 +86,32 @@ describe.skipIf(!hasCreds)("MCP tools contra datos reales", () => {
   );
 
   test(
+    "account acota a una cuenta; sin account suma todas",
+    async () => {
+      const all = await tools.getGrowthSummary({ platform: "tiktok" });
+      const one = await tools.getGrowthSummary({
+        platform: "tiktok",
+        account: "@axelsine13",
+      });
+      expect(one.accounts).toHaveLength(1);
+      expect(one.catalog.totalVideos).toBeGreaterThan(0);
+      expect(all.catalog.totalVideos).toBeGreaterThanOrEqual(one.catalog.totalVideos);
+
+      const top = await tools.getTopVideos({ platform: "tiktok", account: "axelsine13" });
+      expect(top.videos.every((v) => v.account === "axelsine13")).toBe(true);
+
+      // @axelsine13 existe en TikTok e Instagram: sin plataforma es ambiguo.
+      await expect(tools.getGrowthSummary({ account: "@axelsine13" })).rejects.toThrow(
+        /varias plataformas/,
+      );
+      await expect(tools.getGrowthSummary({ account: "@nadie" })).rejects.toThrow(
+        /no encontrada/,
+      );
+    },
+    TIMEOUT,
+  );
+
+  test(
     "get_activity_timeline devuelve buckets con y sin plataforma",
     async () => {
       const day = await tools.getActivityTimeline({
@@ -157,7 +183,13 @@ describe.skipIf(!hasCreds)("MCP tools contra datos reales", () => {
   test(
     "get_script_stats_block devuelve el bloque del guion",
     async () => {
-      const top = await tools.getTopVideos({ limit: 1 });
+      // El bloque busca solo en las cuentas principales: el video de prueba
+      // tiene que salir de una de ellas.
+      const top = await tools.getTopVideos({
+        limit: 1,
+        platform: "tiktok",
+        account: "@axelsine13",
+      });
       const caption = top.videos[0]?.caption ?? "";
       // Primeras palabras del caption: suficiente para que haga match.
       const needle = caption.split(" ").slice(0, 3).join(" ");

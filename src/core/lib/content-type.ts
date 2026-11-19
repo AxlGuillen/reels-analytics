@@ -120,14 +120,11 @@ export const UNCLASSIFIED_PARAM = "unclassified";
 /**
  * URL canónica del drill-down de un tipo en la vista Contenido. Única fuente de
  * verdad del link (la usan /content y /growth); así un cambio de convención del
- * param no rompe enlaces en silencio.
+ * param no rompe enlaces en silencio. La cuenta no viaja en la URL: es global
+ * (cookie del selector de cuenta, ver `(dashboard)/account-scope.ts`).
  */
-export function contentHref(
-  key: ContentTypeKey | null,
-  platform?: "tiktok" | "instagram",
-): string {
+export function contentHref(key: ContentTypeKey | null): string {
   const params = new URLSearchParams();
   params.set("type", key ?? UNCLASSIFIED_PARAM);
-  if (platform) params.set("platform", platform);
   return `/content?${params.toString()}`;
 }

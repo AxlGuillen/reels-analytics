@@ -3,13 +3,12 @@ import { PLATFORMS, type Platform } from "@/core/domain";
 import { formatCount } from "@/core/lib/format";
 import { dayKey, weekday } from "@/core/lib/datetime";
 import { escapeHtml } from "@/core/lib/telegram";
-import { accountLabel, listConnectedAccounts } from "@/modules/accounts/tokens";
 import {
-  avgViewsOfPublished,
   summarizeAccountWeek,
+  weekOverWeek,
 } from "@/modules/analytics/account-week";
 import { readGrowthCached } from "@/modules/analytics/cached";
-import { readGrowth, readSnapshotSeries } from "@/modules/analytics/history";
+import { readSnapshotSeries, resolveAccounts } from "@/modules/analytics/history";
 import {
   bestBucket,
   CREATOR_TIMEZONE,
@@ -21,11 +20,12 @@ import { resolvePeriod } from "@/modules/analytics/period";
 import { getAccountCaptureStatuses } from "@/modules/ingestion/status";
 
 /**
- * Arma el digest semanal en HTML de Telegram. El grueso sale de
- * `readOverviewSummary` (semana calendario recién terminada) y es de las
- * cuentas PRINCIPALES; cada cuenta secundaria tiene su propia sección al final
- * (nunca se suma a los totales). Mejor franja y el watchdog de ingesta se leen
- * aparte. Solo lee y formatea.
+ * Arma el digest semanal en HTML de Telegram. Los totales son de TODAS las
+ * cuentas (`readOverviewSummary` con alcance "all", semana calendario recién
+ * terminada), igual que la vista por defecto del panel. Después, una línea por
+ * cuenta contra SU propia semana anterior. Duración y mejor día salen de las
+ * cuentas principales (son señales de la estrategia de formato del canal
+ * principal). El watchdog de ingesta va al final. Solo lee y formatea.
  */
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -86,10 +86,12 @@ export async function buildWeeklyDigest(): Promise<string> {
   // Ancla en "ayer": corriendo el lunes, cae en domingo → semana Lun–Dom recién
   // cerrada. La lectura pesada (ambas plataformas) vive en readOverviewSummary.
   const anchor = dayKey(new Date(now - 86_400_000), CREATOR_TIMEZONE);
-  const [summary, { videos }] = await Promise.all([
-    readOverviewSummary({ granularity: "week", anchor }),
-    readGrowthCached(),
+  const [summary, { videos }, accounts] = await Promise.all([
+    readOverviewSummary({ granularity: "week", anchor, scope: { account: "all" } }),
+    readGrowthCached({ account: "primary" }),
+    resolveAccounts({ account: "all" }),
   ]);
+  const multiAccount = accounts.length > 1;
 
   const {
     combined,
@@ -103,7 +105,7 @@ export async function buildWeeklyDigest(): Promise<string> {
 
   const lines: string[] = [
     "<b>📊 Reels Analytics — resumen semanal</b>",
-    `<i>${period.label}</i>`,
+    `<i>${multiAccount ? `Todas las cuentas · ${period.label}` : period.label}</i>`,
     "",
   ];
 
@@ -145,8 +147,11 @@ export async function buildWeeklyDigest(): Promise<string> {
     const cap = escapeHtml(
       truncate(bestVideo.caption?.trim() || bestVideo.externalId),
     );
+    // Con varias cuentas, de cuál es el hit importa tanto como el hit.
+    const owner =
+      multiAccount && bestVideo.account ? ` · @${escapeHtml(bestVideo.account)}` : "";
     lines.push(
-      `🏆 <b>Mejor video</b>: “${cap}” · ${PLATFORM_LABEL[bestVideo.platform]} · ${formatCount(bestVideo.views)} vistas`,
+      `🏆 <b>Mejor video</b>: “${cap}” · ${PLATFORM_LABEL[bestVideo.platform]}${owner} · ${formatCount(bestVideo.views)} vistas`,
     );
   }
   lines.push("");
@@ -213,7 +218,10 @@ export async function buildWeeklyDigest(): Promise<string> {
     })
     .filter((l): l is string => l !== null);
   if (durationLines.length > 0) {
-    lines.push("", "🎞 <b>Duración</b> (esta semana · prom. histórico, TikTok)");
+    lines.push(
+      "",
+      `🎞 <b>Duración</b> (esta semana · prom. histórico, TikTok${multiAccount ? " principal" : ""})`,
+    );
     lines.push(...durationLines);
   }
 
@@ -222,61 +230,44 @@ export async function buildWeeklyDigest(): Promise<string> {
   // así que no dice cuándo la gente realmente vio el video.
   const bestDay = bestBucket(viewsByWeekday(videos));
   if (bestDay) {
-    lines.push(`🗓 <b>Mejor día (histórico)</b>: ${capitalize(bestDay.label)}`);
+    lines.push(
+      `🗓 <b>Mejor día (histórico${multiAccount ? ", cuentas principales" : ""})</b>: ${capitalize(bestDay.label)}`,
+    );
   }
 
-  // Cuentas secundarias: una sección por cuenta, aparte de los totales de
-  // arriba. La línea de promedio por video es la comparación justa: los
-  // totales dependen de los seguidores y una cuenta nueva siempre pierde ahí.
-  const primaryAvg = Object.fromEntries(
-    PLATFORMS.map((p) => [
-      p,
-      avgViewsOfPublished(
-        videos.filter((r) => r.video.platform === p),
-        weekDays,
-      ),
-    ]),
-  ) as Record<Platform, number | null>;
-  const secondaries = (
-    await Promise.all(PLATFORMS.map((p) => listConnectedAccounts(p)))
-  )
-    .flat()
-    .filter((a) => !a.isPrimary);
-  for (const account of secondaries) {
-    const scope = {
-      platform: account.platform,
-      account: { accountId: account.accountId },
-    };
-    const [growth, snapshotSeries] = await Promise.all([
-      readGrowth(scope),
-      readSnapshotSeries(scope),
-    ]);
-    const week = summarizeAccountWeek({ ...growth, snapshotSeries }, weekDays);
-    lines.push(
-      "",
-      `🧪 <b>Cuenta secundaria · ${escapeHtml(accountLabel(account))}</b> (${PLATFORM_LABEL[account.platform]})`,
+  // Por cuenta: cada una contra SU propia semana anterior. Compararlas entre
+  // sí no dice nada con nichos distintos (LoL, edits, Valorant) ni con
+  // audiencias de tamaños tan dispares; contra su propia historia, sí. Una
+  // línea por cuenta: con cinco cuentas, más sería ruido en el teléfono.
+  if (multiAccount) {
+    const prevWeekDays = new Set(
+      resolvePeriod("week", period.prevAnchor, today).dayKeys,
     );
-    if (week.followers === null) {
-      lines.push("• Aún sin capturas: aparece en cuanto el cron la capture.");
-      continue;
-    }
-    lines.push(
-      `• Seguidores: ${formatCount(week.followers)}` +
-        (week.followersGained !== null ? ` (${signed(week.followersGained)})` : ""),
-      `• Publicados: ${week.published} · vistas ganadas: ${formatCount(week.viewsGained)}`,
-    );
-    if (week.avgViewsPublished !== null) {
-      const main = primaryAvg[account.platform];
+    lines.push("", "👤 <b>Por cuenta</b> (vs su semana anterior)");
+    for (const account of accounts) {
+      const scope = { account: { accountId: account.accountId } } as const;
+      const [growth, snapshotSeries] = await Promise.all([
+        readGrowthCached(scope),
+        readSnapshotSeries(scope),
+      ]);
+      const input = { ...growth, snapshotSeries };
+      const week = summarizeAccountWeek(input, weekDays);
+      const name = `<b>${escapeHtml(account.handle ? `@${account.handle}` : "cuenta nueva")}</b> · ${PLATFORM_LABEL[account.platform]}`;
+      if (week.followers === null) {
+        lines.push(`${name} — aún sin capturas`);
+        continue;
+      }
+      const change = weekOverWeek(
+        week.viewsGained,
+        summarizeAccountWeek(input, prevWeekDays).viewsGained,
+      );
+      const pct =
+        change === null ? "" : ` (${change >= 0 ? "+" : ""}${Math.round(change * 100)}%)`;
+      const followers =
+        week.followersGained === null ? "—" : signed(week.followersGained);
       lines.push(
-        `• Promedio por video publicado: ${formatCount(week.avgViewsPublished)}` +
-          (main !== null ? ` (principal: ${formatCount(main)})` : ""),
+        `${name} — ${formatCount(week.viewsGained)} vistas${pct} · ${followers} seg. · ${week.published} publ.`,
       );
-    }
-    if (week.best) {
-      const cap = escapeHtml(
-        truncate(week.best.caption?.trim() || week.best.externalId),
-      );
-      lines.push(`• Mejor video: “${cap}” · ${formatCount(week.best.views)} vistas`);
     }
   }
 

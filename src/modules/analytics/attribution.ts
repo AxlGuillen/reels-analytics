@@ -1,6 +1,5 @@
-import type { Platform } from "@/core/domain";
 import { dayKey } from "@/core/lib/datetime";
-import { CREATOR_TIMEZONE, type VideoWithMetrics } from "./insights";
+import { accountKey, CREATOR_TIMEZONE, type VideoWithMetrics } from "./insights";
 
 /**
  * Atribución de seguidores: cruza los deltas diarios de seguidores de la cuenta
@@ -60,11 +59,37 @@ export function dailyFollowerDeltas(
   return deltas;
 }
 
+/**
+ * Deltas diarios de seguidores de VARIAS cuentas, sumados por día.
+ *
+ * Cada cuenta se calcula por separado y recién después se suma. Aplanar las
+ * lecturas de todas las cuentas antes de calcular (lo que se hacía) rompe con
+ * dos o más: `dailyFollowerDeltas` se queda con la última lectura del día, que
+ * saltaría entre una cuenta de miles de seguidores y una de decenas, y el
+ * delta resultante serían miles de seguidores inventados.
+ */
+export function followerDeltasByDay(
+  series: { points: { capturedAt: string; followers: number | null }[] }[],
+  timeZone = CREATOR_TIMEZONE,
+): { day: string; delta: number }[] {
+  const byDay = new Map<string, number>();
+  for (const s of series) {
+    const deltas = dailyFollowerDeltas(
+      s.points.map((p) => ({ capturedAt: new Date(p.capturedAt), followers: p.followers })),
+      timeZone,
+    );
+    for (const d of deltas) byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.delta);
+  }
+  return [...byDay.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([day, delta]) => ({ day, delta }));
+}
+
 export interface AttributedVideo {
   row: VideoWithMetrics;
   /** seguidores ganados por la cuenta en la ventana del video. */
   gained: number;
-  /** true si otro video de la misma plataforma comparte la ventana. */
+  /** true si otro video de la misma cuenta comparte la ventana. */
   sharedWindow: boolean;
 }
 
@@ -72,10 +97,13 @@ export interface AttributedVideo {
  * Seguidores ganados en la ventana de cada video (publicación + día siguiente).
  * Los videos sin deltas observados en su ventana se omiten (no se inventa dato);
  * si varios videos comparten ventana, se marca — el crédito es de todos ellos.
+ *
+ * Los deltas van por CUENTA (llave `accountKey`): un video solo puede llevarse
+ * crédito por los seguidores de la cuenta donde se publicó.
  */
 export function attributeFollowers(
   videos: VideoWithMetrics[],
-  deltasByPlatform: ReadonlyMap<Platform, FollowerDelta[]>,
+  deltasByAccount: ReadonlyMap<string, FollowerDelta[]>,
   timeZone = CREATOR_TIMEZONE,
   windowDays = ATTRIBUTION_WINDOW_DAYS,
 ): AttributedVideo[] {
@@ -91,7 +119,7 @@ export function attributeFollowers(
 
   const results: AttributedVideo[] = [];
   for (const w of windows) {
-    const deltas = deltasByPlatform.get(w.row.video.platform) ?? [];
+    const deltas = deltasByAccount.get(accountKey(w.row)) ?? [];
     const inWindow = deltas.filter((d) => w.days.has(d.day));
     if (inWindow.length === 0) continue;
     results.push({
@@ -100,7 +128,7 @@ export function attributeFollowers(
       sharedWindow: windows.some(
         (o) =>
           o !== w &&
-          o.row.video.platform === w.row.video.platform &&
+          accountKey(o.row) === accountKey(w.row) &&
           [...o.days].some((d) => w.days.has(d)),
       ),
     });

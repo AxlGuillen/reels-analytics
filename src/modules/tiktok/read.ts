@@ -2,7 +2,6 @@ import type { AccountStats } from "@/core/domain";
 import type { VideoWithMetrics } from "@/modules/analytics/insights";
 import { fetchUserInfo, fetchVideoList } from "./api";
 import { toAccountStats, toVideo, toVideoMetrics } from "./mappers";
-import { isExpired, type TikTokSession } from "./session";
 
 /**
  * Lecturas de alto nivel para la UI. Combina metadatos de video con sus métricas
@@ -24,6 +23,15 @@ export interface TikTokOverview {
   account: AccountStats;
   videos: VideoWithMetrics[];
 }
+
+/**
+ * Token de UNA cuenta ya resuelto desde `ra_connections` (lo arma
+ * `accounts/tokens.ts`): `expired` = hay conexión pero el refresh murió.
+ */
+export type TikTokAuth =
+  | { status: "disconnected" }
+  | { status: "expired" }
+  | { status: "ok"; accessToken: string };
 
 export type TikTokReadResult =
   | { status: "disconnected" }
@@ -72,15 +80,15 @@ export async function readTikTokOverviewByToken(
   return { account: toAccountStats(user), videos };
 }
 
+/** Lectura en vivo para la UI, a partir del token ya resuelto de la cuenta. */
 export async function readTikTokOverview(
-  session: TikTokSession | null,
+  auth: TikTokAuth,
   options: ReadOptions = {},
 ): Promise<TikTokReadResult> {
-  if (!session) return { status: "disconnected" };
-  if (isExpired(session)) return { status: "expired" };
+  if (auth.status !== "ok") return { status: auth.status };
 
   try {
-    return { status: "ok", overview: await readTikTokOverviewByToken(session.accessToken, options) };
+    return { status: "ok", overview: await readTikTokOverviewByToken(auth.accessToken, options) };
   } catch (err) {
     return {
       status: "error",
