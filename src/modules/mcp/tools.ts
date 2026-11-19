@@ -16,6 +16,7 @@ import {
   readSnapshotSeries,
   readVideoHistory,
   resolveAccounts,
+  type ReadGrowthOptions,
 } from "@/modules/analytics/history";
 import {
   bestBucket,
@@ -38,12 +39,47 @@ import {
  * Lógica de las tools del servidor MCP (/api/mcp). Otro consumidor más de
  * `modules/analytics`: expone la historia persistida para que Claude cruce
  * guiones (vault de Obsidian) con rendimiento real. Solo lectura.
+ *
+ * Alcance: sin `account`, TODAS las cuentas (como el panel); con `account`
+ * (@handle), solo esa. Los benchmarks son siempre por cuenta.
  */
 
-function videoSummary(row: VideoWithMetrics) {
+type Handles = ReadonlyMap<string, string | null>;
+
+/** @handle de cada cuenta, para decir de cuál es cada video en las respuestas. */
+async function accountHandles(): Promise<Handles> {
+  const accounts = await resolveAccounts({ account: "all" });
+  return new Map(accounts.map((a) => [a.accountId, a.handle]));
+}
+
+/**
+ * Traduce los filtros de una tool al alcance de lectura. Un `account`
+ * desconocido o ambiguo (p. ej. @axelsine13 existe en TikTok e Instagram)
+ * falla con la lista de cuentas válidas en vez de devolver vacío: un vacío
+ * silencioso ya ocultó un bug una vez.
+ */
+async function scopeFor(params: {
+  platform?: Platform;
+  account?: string;
+}): Promise<ReadGrowthOptions> {
+  if (!params.account) return { platform: params.platform, account: "all" };
+  const wanted = params.account.replace(/^@/, "").trim().toLowerCase();
+  const candidates = await resolveAccounts({ platform: params.platform, account: "all" });
+  const matches = candidates.filter((a) => (a.handle ?? "").toLowerCase() === wanted);
+  if (matches.length === 1) return { account: { accountId: matches[0].accountId } };
+  const known = candidates.map((a) => `@${a.handle ?? "?"} (${a.platform})`).join(", ");
+  throw new Error(
+    matches.length === 0
+      ? `Cuenta "${params.account}" no encontrada. Disponibles: ${known}.`
+      : `"${params.account}" existe en varias plataformas: indica también platform. Disponibles: ${known}.`,
+  );
+}
+
+function videoSummary(row: VideoWithMetrics, handles?: Handles) {
   const type = classifyContentType(row.video.hashtags);
   return {
     platform: row.video.platform,
+    account: row.video.accountId ? (handles?.get(row.video.accountId) ?? null) : null,
     externalId: row.video.externalId,
     caption: row.video.caption,
     hashtags: row.video.hashtags,
@@ -67,15 +103,19 @@ function videoSummary(row: VideoWithMetrics) {
 export async function searchVideos(params: {
   query: string;
   platform?: Platform;
+  account?: string;
   limit?: number;
 }) {
-  const { videos } = await readGrowth({ platform: params.platform });
+  const [{ videos }, handles] = await Promise.all([
+    readGrowth(await scopeFor(params)),
+    accountHandles(),
+  ]);
   const needle = params.query.toLowerCase();
   const matches = videos
     .filter((r) => (r.video.caption ?? "").toLowerCase().includes(needle))
     .sort((a, b) => b.video.publishedAt.getTime() - a.video.publishedAt.getTime())
     .slice(0, params.limit ?? 10);
-  return { total: matches.length, videos: matches.map(videoSummary) };
+  return { total: matches.length, videos: matches.map((r) => videoSummary(r, handles)) };
 }
 
 /** Métricas completas de un video: actuales + normalizadas por edad + benchmark. */
@@ -85,7 +125,10 @@ export async function getVideoStats(params: {
   ageDays?: number;
 }) {
   const ageDays = params.ageDays ?? 30;
-  const { videos } = await readGrowth({ platform: params.platform });
+  const [{ videos }, handles] = await Promise.all([
+    readGrowth({ platform: params.platform, account: "all" }),
+    accountHandles(),
+  ]);
   const row = videos.find((r) => r.video.externalId === params.externalId);
   if (!row) {
     return {
@@ -103,7 +146,7 @@ export async function getVideoStats(params: {
   );
 
   return {
-    ...videoSummary(row),
+    ...videoSummary(row, handles),
     ageAnalysis: {
       requestedAgeDays: ageDays,
       viewsAtAge: viewsAtAge(agePoints, ageDays),
@@ -119,8 +162,8 @@ export async function getVideoStats(params: {
           cohortScope: benchmark.scope,
           note:
             benchmark.scope === "week"
-              ? "múltiplo vs. la mediana de los videos publicados esa MISMA SEMANA a la misma edad (neutraliza el crecimiento de audiencia: comparable entre meses)."
-              : "múltiplo vs. la mediana de TODO el catálogo reciente a la misma edad (su semana no juntó cohorte suficiente); ojo: la audiencia crece con el tiempo, así que no es comparable entre meses.",
+              ? "múltiplo vs. la mediana de los videos de SU CUENTA publicados esa MISMA SEMANA a la misma edad (neutraliza el crecimiento de audiencia: comparable entre meses)."
+              : "múltiplo vs. la mediana de TODO el catálogo reciente de SU CUENTA a la misma edad (su semana no juntó cohorte suficiente); ojo: la audiencia crece con el tiempo, así que no es comparable entre meses.",
         }
       : null,
     history: history.map((p) => ({
@@ -138,11 +181,15 @@ export async function getVideoStats(params: {
 export async function getTopVideos(params: {
   contentType?: ContentTypeKey;
   platform?: Platform;
+  account?: string;
   publishedWithinDays?: number;
   orderBy?: "views" | "engagement";
   limit?: number;
 }) {
-  const { videos } = await readGrowth({ platform: params.platform });
+  const [{ videos }, handles] = await Promise.all([
+    readGrowth(await scopeFor(params)),
+    accountHandles(),
+  ]);
   const cutoff = params.publishedWithinDays
     ? Date.now() - params.publishedWithinDays * 86_400_000
     : null;
@@ -166,7 +213,7 @@ export async function getTopVideos(params: {
 
   return {
     total: filtered.length,
-    videos: sorted.slice(0, params.limit ?? 10).map(videoSummary),
+    videos: sorted.slice(0, params.limit ?? 10).map((r) => videoSummary(r, handles)),
   };
 }
 
@@ -183,14 +230,16 @@ const TIMELINE_DEFAULT_DAYS: Record<Granularity, number> = {
 export async function getActivityTimeline(params: {
   granularity?: Granularity;
   platform?: Platform;
+  account?: string;
   sinceDays?: number;
 }) {
   const granularity = params.granularity ?? "day";
   const sinceDays = params.sinceDays ?? TIMELINE_DEFAULT_DAYS[granularity];
 
+  const scope = await scopeFor(params);
   const [{ videos, accountSeries }, snapshotSeries] = await Promise.all([
-    readGrowth({ platform: params.platform }),
-    readSnapshotSeries({ platform: params.platform }),
+    readGrowth(scope),
+    readSnapshotSeries(scope),
   ]);
 
   const timeline = buildTimeline(
@@ -225,11 +274,15 @@ export async function getActivityTimeline(params: {
 export async function getHashtagStats(params: {
   hashtag: string;
   platform?: Platform;
+  account?: string;
   publishedWithinDays?: number;
   topN?: number;
 }) {
   const tag = params.hashtag.replace(/^#/, "").trim().toLowerCase();
-  const { videos } = await readGrowth({ platform: params.platform });
+  const [{ videos }, handles] = await Promise.all([
+    readGrowth(await scopeFor(params)),
+    accountHandles(),
+  ]);
   const cutoff = params.publishedWithinDays
     ? Date.now() - params.publishedWithinDays * 86_400_000
     : null;
@@ -254,14 +307,19 @@ export async function getHashtagStats(params: {
     { likes: 0, comments: 0, shares: 0, saved: 0 },
   );
   const byPlatform = new Map<Platform, number>();
+  const byAccount = new Map<string, number>();
   for (const r of tagged) {
     byPlatform.set(r.video.platform, (byPlatform.get(r.video.platform) ?? 0) + 1);
+    const handle = (r.video.accountId && handles.get(r.video.accountId)) || "?";
+    const key = `@${handle} (${r.video.platform})`;
+    byAccount.set(key, (byAccount.get(key) ?? 0) + 1);
   }
 
   return {
     hashtag: tag,
     videoCount: tagged.length,
     byPlatform: Object.fromEntries(byPlatform),
+    byAccount: Object.fromEntries(byAccount),
     totalViews: s.totalViews,
     avgViews: Math.round(s.avgViews),
     weightedEngagement: Number(s.weightedEngagement.toFixed(4)),
@@ -269,11 +327,14 @@ export async function getHashtagStats(params: {
     topVideos: [...tagged]
       .sort((a, b) => b.metrics.views - a.metrics.views)
       .slice(0, params.topN ?? 5)
-      .map(videoSummary),
+      .map((r) => videoSummary(r, handles)),
   };
 }
 
-/** TikTok vs Instagram lado a lado en la misma ventana de tiempo. */
+/**
+ * TikTok vs Instagram lado a lado en la misma ventana de tiempo, cada uno con
+ * TODAS sus cuentas sumadas (y su lista de cuentas).
+ */
 export async function comparePlatforms(params: { sinceDays?: number } = {}) {
   const sinceDays = params.sinceDays ?? 30;
   const cutoff = Date.now() - sinceDays * 86_400_000;
@@ -284,8 +345,8 @@ export async function comparePlatforms(params: { sinceDays?: number } = {}) {
   const results = await Promise.all(
     platforms.map(async (platform) => {
       const [{ videos, accountSeries }, snapshotSeries] = await Promise.all([
-        readGrowth({ platform }),
-        readSnapshotSeries({ platform }),
+        readGrowth({ platform, account: "all" }),
+        readSnapshotSeries({ platform, account: "all" }),
       ]);
 
       const published = videos.filter(
@@ -307,11 +368,18 @@ export async function comparePlatforms(params: { sinceDays?: number } = {}) {
         .reduce((sum, d) => sum + d.delta, 0);
       const s = summarize(published);
 
+      // Seguidores actuales = la última lectura de CADA cuenta, sumadas. Antes
+      // se tomaba `accountSeries[0]`: con varias cuentas, solo una.
+      const lastPerAccount = accountSeries
+        .map((s) => s.points.filter((p) => p.followers !== null).at(-1)?.followers)
+        .filter((f): f is number => f != null);
+
       return {
         platform,
-        followers:
-          accountSeries[0]?.points.filter((p) => p.followers !== null).at(-1)
-            ?.followers ?? null,
+        accounts: accountSeries.map((s) => (s.handle ? `@${s.handle}` : s.accountId)),
+        followers: lastPerAccount.length
+          ? lastPerAccount.reduce((a, b) => a + b, 0)
+          : null,
         followersGained,
         videosPublished: published.length,
         viewsGainedByCatalog: viewsGained,
@@ -332,12 +400,14 @@ export async function comparePlatforms(params: { sinceDays?: number } = {}) {
 }
 
 /** Videos que están despegando AHORA (≥2× la mediana de SU cuenta a su edad). */
-export async function getBreakouts(params: { platform?: Platform } = {}) {
+export async function getBreakouts(
+  params: { platform?: Platform; account?: string } = {},
+) {
   // Cada cuenta contra su propio cohorte: nunca se mezclan cuentas.
-  const accounts = await resolveAccounts({
-    platform: params.platform,
-    account: "primary",
-  });
+  const [accounts, handles] = await Promise.all([
+    scopeFor(params).then(resolveAccounts),
+    accountHandles(),
+  ]);
 
   const results = await Promise.all(
     accounts.map(async ({ accountId }) => {
@@ -351,7 +421,7 @@ export async function getBreakouts(params: { platform?: Platform } = {}) {
         return row
           ? [
               {
-                ...videoSummary(row),
+                ...videoSummary(row, handles),
                 breakout: {
                   multiple: Number(d.result.multiple.toFixed(2)),
                   atAgeDays: d.result.atAgeDays,
@@ -371,7 +441,7 @@ export async function getBreakouts(params: { platform?: Platform } = {}) {
     note:
       breakouts.length === 0
         ? "Sin breakouts ahora: nada supera 2× la mediana a su edad, o el cohorte con historia temprana aún es chico (crece solo con los días)."
-        : "multiple = cuántas veces la mediana de videos recientes de su plataforma lleva el video a su misma edad.",
+        : "multiple = cuántas veces la mediana de videos recientes de SU CUENTA lleva el video a su misma edad.",
     breakouts,
   };
 }
@@ -414,13 +484,18 @@ async function scriptPlatformSection(
  * Bloque YAML listo para pegar en el frontmatter de un guion (Obsidian).
  * Busca el video en AMBAS plataformas por el texto del caption (el "código"
  * del guion) y arma las stats con el corte por edad pedido.
+ *
+ * Solo las cuentas PRINCIPALES, a propósito: el YAML tiene una clave por
+ * plataforma (`tiktok:`, `instagram:`) que ya usan las notas existentes, y el
+ * mismo guion suele estar cross-posteado en una secundaria — mezclarlas haría
+ * que "la coincidencia más reciente" a veces fuera la de otra cuenta.
  */
 export async function getScriptStatsBlock(params: {
   query: string;
   ageDays?: number;
 }): Promise<string> {
   const ageDays = params.ageDays ?? 30;
-  const { videos } = await readGrowth();
+  const { videos } = await readGrowth({ account: "primary" });
   const needle = params.query.toLowerCase().trim();
   const matches = videos.filter((r) =>
     (r.video.caption ?? "").toLowerCase().includes(needle),
@@ -477,10 +552,13 @@ export async function getScriptStatsBlock(params: {
 }
 
 /** Resumen de la cuenta: seguidores, momentum mensual y mejores franjas. */
-export async function getGrowthSummary(params: { platform?: Platform } = {}) {
+export async function getGrowthSummary(
+  params: { platform?: Platform; account?: string } = {},
+) {
+  const scope = await scopeFor(params);
   const [{ videos, accountSeries }, snapshotSeries] = await Promise.all([
-    readGrowth({ platform: params.platform }),
-    readSnapshotSeries({ platform: params.platform }),
+    readGrowth(scope),
+    readSnapshotSeries(scope),
   ]);
 
   const summary = summarize(videos);
@@ -493,6 +571,7 @@ export async function getGrowthSummary(params: { platform?: Platform } = {}) {
       return {
         platform: s.platform,
         handle: s.handle,
+        isPrimary: s.isPrimary,
         followers: points.at(-1)?.followers ?? null,
         firstCapturedAt: points[0]?.capturedAt ?? null,
         lastCapturedAt: points.at(-1)?.capturedAt ?? null,

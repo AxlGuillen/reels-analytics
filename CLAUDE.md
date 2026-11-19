@@ -66,7 +66,14 @@ search_videos, get_video_stats con corte por edad, get_top_videos, get_growth_su
 get_activity_timeline día/semana/mes, get_hashtag_stats, compare_platforms,
 get_breakouts, get_script_stats_block → YAML para el frontmatter de guiones)
 para consumirla desde Claude — p. ej. cruzar los guiones del vault de Obsidian con el
-rendimiento real.
+rendimiento real. **Alcance**: sin `account` las tools leen TODAS las cuentas (como el panel);
+con `account` (@handle, con o sin @) solo esa — `scopeFor` en `tools.ts` falla con la lista de
+cuentas válidas si el handle no existe o es ambiguo (@axelsine13 está en TikTok e Instagram:
+hay que pasar también `platform`), nunca devuelve vacío. Cada video de las respuestas dice su
+`account`; `compare_platforms` suma todas las cuentas de cada plataforma; los benchmarks y
+breakouts son siempre contra el cohorte de SU cuenta. Excepción deliberada:
+`get_script_stats_block` busca solo en las cuentas **principales** (su YAML tiene una clave
+por plataforma y un guion cross-posteado en una secundaria daría coincidencias ajenas).
 
 > Los textos de las tools (nombre/título/descripción) viven en `modules/mcp/catalog.ts`
 > (`MCP_TOOLS` + `TOOL_META`): los consumen el `registerTool` del route handler y la página
@@ -415,6 +422,7 @@ no hay otra elegida (p. ej. `/tiktok` en "Todas"). Reglas:
      y testeado) arma total, reparto por plataforma y desglose (`byAccount`) desde la misma
      lista — la fila de total del desglose cuadra siempre con los KPIs.
   También `postingCadence` y `attributeFollowers` agrupan por cuenta.
+- **MCP**: todas las cuentas por defecto, `account` opcional (ver "Servidor MCP").
 - **Captura por cuenta y aislada** (`ingestion/capture.ts`): `captureTikTok()` recorre
   todas las conexiones en paralelo y la falla de una no frena a las demás; el resultado es
   `AccountCapture[]` y `ingestion/summary.ts` (puro, testeado) lo resume para el cron y las
