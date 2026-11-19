@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { Platform } from "@/core/domain";
 import {
   Card,
   CardContent,
@@ -28,12 +27,13 @@ import {
   MetricToggle,
   type MetricMode,
 } from "@/components/dashboard/metric-toggle";
-import { PlatformFilter } from "@/components/dashboard/platform-filter";
+import { AccountSelector } from "@/components/dashboard/account-selector";
+import { getAccountScope, selectorProps } from "../account-scope";
 import { Suspense } from "react";
 import { PageTour } from "@/components/tour/page-tour";
 import { GrowthBodySkeleton } from "./growth-skeleton";
 import { StatCard } from "@/components/dashboard/stat-card";
-import type { AccountSeries } from "@/modules/analytics/history";
+import type { AccountSeries, ReadGrowthOptions } from "@/modules/analytics/history";
 import {
   readGrowthCached,
   readMonthGainedCached,
@@ -73,10 +73,12 @@ function maxBy<T>(items: T[], sel: (item: T) => number): T | undefined {
   );
 }
 
-const PLATFORM_COLORS: Record<Platform, string> = {
-  tiktok: "var(--color-platform-tiktok)",
-  instagram: "var(--color-platform-instagram)",
-};
+/**
+ * Un color por CUENTA (no por plataforma): con varias cuentas de TikTok,
+ * colorear por plataforma pintaría todas sus curvas igual. Escala de tokens
+ * `--chart-1..5` (tinta → lima → grises), así se adapta a claro/oscuro.
+ */
+const SERIES_COLORS = [1, 2, 3, 4, 5].map((n) => `var(--color-chart-${n})`);
 
 /** Alias local del KPI compartido (mantiene las llamadas existentes cortas). */
 const Kpi = StatCard;
@@ -99,7 +101,7 @@ function signed(value: number | null): string {
   return value >= 0 ? `+${formatCount(value)}` : formatCount(value);
 }
 
-/** Mergea las series por día calendario (una columna por plataforma). */
+/** Mergea las series por día calendario (una columna por CUENTA). */
 function mergeSeries(seriesList: AccountSeries[]): {
   data: GrowthPoint[];
   series: GrowthSeries[];
@@ -109,7 +111,7 @@ function mergeSeries(seriesList: AccountSeries[]): {
     for (const point of s.points) {
       const day = point.capturedAt.slice(0, 10);
       const row = byDay.get(day) ?? {};
-      row[s.platform] = point.followers; // última captura del día gana
+      row[s.accountId] = point.followers; // última captura del día gana
       byDay.set(day, row);
     }
   }
@@ -122,10 +124,10 @@ function mergeSeries(seriesList: AccountSeries[]): {
 
   const series: GrowthSeries[] = seriesList
     .filter((s) => s.points.some((p) => p.followers !== null))
-    .map((s) => ({
-      key: s.platform,
-      label: `@${s.handle ?? s.platform}`,
-      color: PLATFORM_COLORS[s.platform],
+    .map((s, i) => ({
+      key: s.accountId,
+      label: `@${s.handle ?? s.platform}${s.platform === "instagram" ? " (IG)" : ""}`,
+      color: SERIES_COLORS[i % SERIES_COLORS.length],
     }));
 
   return { data, series };
@@ -134,18 +136,11 @@ function mergeSeries(seriesList: AccountSeries[]): {
 export default async function GrowthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ platform?: string; month?: string; metric?: string }>;
+  searchParams: Promise<{ month?: string; metric?: string }>;
 }) {
-  const {
-    platform: platformParam,
-    month: monthParam,
-    metric: metricParam,
-  } = await searchParams;
+  const { month: monthParam, metric: metricParam } = await searchParams;
   const metric: MetricMode = metricParam === "age7" ? "age7" : "total";
-  const platform: Platform | undefined =
-    platformParam === "tiktok" || platformParam === "instagram"
-      ? platformParam
-      : undefined;
+  const accountState = await getAccountScope();
 
   // Header + filtros al instante; el cuerpo (3 lecturas de Supabase) suspende.
   // Los cambios de searchParams no pasan por loading.tsx: esta capa cubre esa
@@ -162,18 +157,14 @@ export default async function GrowthPage({
             Historia acumulada desde los snapshots guardados.
           </p>
         </div>
-        <PlatformFilter
-          active={platform}
-          basePath="/growth"
-          extraQuery={{ month: monthParam, metric: metricParam }}
-        />
+        <AccountSelector {...selectorProps(accountState)} />
       </header>
       <Suspense
-        key={`${platform ?? "all"}:${monthParam ?? ""}:${metric}`}
+        key={`${accountState.value}:${monthParam ?? ""}:${metric}`}
         fallback={<GrowthBodySkeleton />}
       >
         <GrowthBody
-          platform={platform}
+          scope={accountState.scope}
           monthParam={monthParam}
           metric={metric}
         />
@@ -184,15 +175,15 @@ export default async function GrowthPage({
 
 /** Cuerpo con datos (el tour viaja aquí: sus targets se montan en el body). */
 async function GrowthBody({
-  platform,
+  scope,
   monthParam,
   metric,
 }: {
-  platform: Platform | undefined;
+  scope: ReadGrowthOptions;
   monthParam?: string;
   metric: MetricMode;
 }) {
-  const { videos, accountSeries } = await readGrowthCached({ platform });
+  const { videos, accountSeries } = await readGrowthCached(scope);
   const { data: growthData, series: growthSeries } = mergeSeries(accountSeries);
 
   const byType = groupByContentType(videos);
@@ -218,7 +209,7 @@ async function GrowthBody({
     .slice(0, 8);
 
   // Quick wins: momentum del catálogo, duración (solo TikTok) y caption.
-  const momentum = await readMonthGainedCached({ platform });
+  const momentum = await readMonthGainedCached(scope);
   const momentumData: InsightDatum[] = momentum.map((m) => ({
     label: m.label,
     value: m.gained,
@@ -258,7 +249,7 @@ async function GrowthBody({
   // días (comparación justa). Los videos sin historia temprana se excluyen.
   const viewsAt7 =
     metric === "age7"
-      ? await readViewsAtAgeCached({ platform })
+      ? await readViewsAtAgeCached(scope)
       : new Map<string, number>();
   const chartRows =
     metric === "age7"
@@ -307,11 +298,11 @@ async function GrowthBody({
         <>
           {/* Crecimiento de cuenta */}
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {accountSeries.map((s) => (
+            {accountSeries.map((s, i) => (
               <Kpi
-                key={s.platform}
-                tone={s.platform === "tiktok" ? "accent" : "plain"}
-                label={`Seguidores @${s.handle ?? s.platform}`}
+                key={s.accountId}
+                tone={i === 0 ? "accent" : "plain"}
+                label={`Seguidores @${s.handle ?? s.platform}${s.platform === "instagram" ? " (IG)" : ""}`}
                 value={formatCount(
                   s.points.filter((p) => p.followers !== null).at(-1)?.followers ?? null,
                 )}
@@ -408,7 +399,7 @@ async function GrowthBody({
                     <TableRow key={t.label}>
                       <TableCell className="font-medium">
                         <Link
-                          href={contentHref(t.key, platform)}
+                          href={contentHref(t.key)}
                           className="hover:text-primary hover:underline"
                         >
                           {t.label}

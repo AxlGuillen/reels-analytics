@@ -380,16 +380,17 @@ videos más recientes por cuenta de TikTok (y 90 Reels en IG): los viejos dejan 
 snapshots a propósito, porque casi no cambian. Hasta nov 2026 una ventana de 7 días los
 SACABA del catálogo (faltaban 92 videos y 751.700 vistas en @axelsine13, el 13 %); ahora
 cuentan con su última métrica conocida, incluidos los borrados o pasados a privado. La vista muestra
-seguidores en el tiempo (chart de líneas por plataforma), rendimiento por tipo, tabla por mes de
-publicación, espaciado entre publicaciones y hashtags/día/hora. Filtro por plataforma vía
-`?platform=`.
+seguidores en el tiempo (una línea y una tarjeta por CUENTA, colores `--chart-1..5`),
+rendimiento por tipo, tabla por mes de publicación, espaciado entre publicaciones y
+hashtags/día/hora. Se acota con el selector de cuenta (ver "Varias cuentas por plataforma").
 
 **Varias cuentas por plataforma (nov 2026, 2.ª cuenta de TikTok):** `ra_social_accounts`
 lleva `is_primary` (migración `ra_social_accounts_primary_flag`): **exactamente una principal
 por plataforma** (índice único parcial) y la PRIMERA cuenta de una plataforma queda como
 principal sola (trigger `ra_social_accounts_default_primary`, cubre el callback OAuth y el
-upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmarks; las
-**secundarias** se capturan aparte y solo salen en el digest y en Conexiones. Reglas:
+upsert de la ingesta). Todas las cuentas se capturan, se ven en el panel y suman en la vista
+"Todas las cuentas"; la **principal** es la que se usa cuando una vista necesita UNA cuenta y
+no hay otra elegida (p. ej. `/tiktok` en "Todas"). Reglas:
 - **Los tokens se resuelven POR CUENTA, nunca por plataforma** (`listConnectedAccounts`,
   `getValidTikTokAccessToken(accountId)` en `accounts/tokens.ts`). Antes era
   `.eq("platform").limit(1)` sin orden: con dos cuentas devolvía una arbitraria y podía
@@ -424,8 +425,21 @@ upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmar
   `/api/health` la principal conserva los nombres de siempre (`ingestion.tiktok`,
   `tokens.tiktok`) para no romper monitores externos; las secundarias van como
   `ingestion.tiktok:@cuenta`.
-- **`/tiktok` es de la principal** (token de su conexión guardada). Autorizar una
-  secundaria devuelve a Conexiones, donde aparece su fila.
+- **Selector de cuenta global** (`AccountSelector` en el header de Overview, Crecimiento y
+  Contenido): "Todas las cuentas" (**default**) o una sola. Vive en la cookie `ra_scope`
+  (`(dashboard)/account-scope.ts`: `getAccountScope` la lee y valida; una cuenta que ya no
+  existe cae a "todas") y la cambia `setAccountScopeAction` (`app/actions/scope.ts`), que al
+  escribir la cookie hace que Next re-renderice la ruta sola. **No va en la URL a propósito**:
+  los links del rail, `PeriodNav`, `FreshPeriodNotice` y `RangeSelect` reconstruyen la URL y
+  perderían el parámetro al navegar. El alcance entra en la llave de cada `Suspense`.
+  Reemplazó a `PlatformFilter` (eliminado): la cuenta ya implica la plataforma.
+- **Overview**: en "Todas" suma las cuentas, conserva el reparto TikTok/Instagram y agrega la
+  card **"Desglose por cuenta"** (vistas ganadas, seguidores, publicados y engagement del
+  periodo + fila de total; ancla `desglose`) — la tabla del reporte mensual del creador. Con
+  una cuenta elegida, el mismo layout acotado a ella, sin desglose ni "% TT".
+- **`/tiktok` muestra la cuenta de TikTok elegida** (o la principal en "Todas"/Instagram),
+  con su propio token y sus propios breakouts. Autorizar una secundaria devuelve a
+  Conexiones, donde aparece su fila.
 - **El detalle de video usa el token de la cuenta DUEÑA del video**
   (`resolveTikTokAuthForVideo`, por `ra_videos.account_id`): la Display API no deja leer un
   video con el token de otra cuenta. Si el video aún no está capturado, prueba con la
@@ -437,8 +451,6 @@ upsert de la ingesta). La **principal** alimenta el panel, el MCP y los benchmar
 - **Instagram sigue siendo de una cuenta** (token por env var). Una 2.ª de IG exige antes
   el OAuth de Instagram.
 - Paso a paso para agregar cuentas (portal de TikTok + conexión): `docs/agregar-cuenta.md`.
-  Pendiente a propósito: selector de cuenta en el panel, cuando la secundaria tenga semanas
-  de historia que comparar.
 
 **Límite de ids por `.in()` (la causa del bug de nov 2026 — leer antes de escribir una
 consulta nueva):** PostgREST recibe el filtro `in` en la URL y el gateway de Supabase
@@ -493,8 +505,8 @@ Navegar semanas/meses o el filtro de mes de `/growth` solo recorta lo cacheado. 
 (puro, testeado: `resolvePeriod` semana/mes + sub-buckets día/semana + `sumOverPeriod`, sin navegar
 al futuro). KPIs del periodo — **Videos publicados** (conteo) + **Vistas/Likes/Comentarios ganados**
 (deltas vía `buildTimeline`) — combinados y con split TikTok/Instagram, + seguidores ganados. Barras
-de vistas apiladas por plataforma (por día en semana, por semana en mes) y tipos de contenido
-publicados con link a `/content`.
+de vistas apiladas por plataforma (por día en semana, por semana en mes), tipos de contenido
+publicados con link a `/content` y, en "Todas las cuentas", el desglose por cuenta.
 
 **Tipos de contenido (derivados al leer, NO persistidos):** el creador etiqueta cada video con un
 hashtag identificador. Tipos actuales: **`dui`**, **`news`**, **`duiyhal`**, **`audioviral`**,
@@ -514,11 +526,10 @@ del ranking de hashtags temáticos (`topHashtags(rows, n, RESERVED_TAGS)`). `#hu
 
 **Vista Contenido (`/content`, implementada):** catálogo dividido por tipo. Resumen = una card
 por tipo (iterando `groupByContentType`, dinámico — tipos nuevos aparecen solos) y drill-down vía
-`?type=<key|unclassified>` (+ `?platform=`): KPIs del grupo (`summarize`) + listado cross-platform
-con `VideoListTable` (`src/components/dashboard/video-list-table.tsx`, cada fila enlaza a
-`/video/{platform}/{id}`; badge con acento por plataforma). El filtro de plataforma es el
-componente compartido `src/components/dashboard/platform-filter.tsx` (preserva query extra); lo
-usan /growth y /content. La tabla "Rendimiento por tipo" de /growth enlaza al drill-down.
+`?type=<key|unclassified>`: KPIs del grupo (`summarize`) + listado cross-platform con
+`VideoListTable` (`src/components/dashboard/video-list-table.tsx`, cada fila enlaza a
+`/video/{platform}/{id}`; badge con acento por plataforma). Se acota con el selector de cuenta
+global. La tabla "Rendimiento por tipo" de /growth enlaza al drill-down (`contentHref`).
 
 > Límite aceptado (IG y TikTok): el cron refresca hasta 90 Reels (`MAX_REELS` en
 > `modules/instagram/read.ts`, más la rotación) y 400 videos de TikTok por cuenta (20 páginas

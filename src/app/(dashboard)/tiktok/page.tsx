@@ -6,7 +6,7 @@ import { PageTour } from "@/components/tour/page-tour";
 import { TikTokPanel } from "@/components/tiktok-panel";
 import { resolveTikTokAuth } from "@/modules/accounts/tokens";
 import { readBreakoutIds } from "@/modules/analytics/breakouts";
-import { resolveAccounts } from "@/modules/analytics/history";
+import { getAccountScope } from "../account-scope";
 import { readTikTokOverview } from "@/modules/tiktok/read";
 import { resolveRange, sinceForRange } from "@/modules/tiktok/ranges";
 
@@ -17,6 +17,13 @@ export default async function TikTokPage({
 }) {
   const { range: rangeParam, connected, error } = await searchParams;
   const range = resolveRange(rangeParam);
+  // Esta vista es de UNA cuenta de TikTok: la elegida en el selector si es de
+  // TikTok; si no ("todas" o Instagram), la principal.
+  const { selected, accounts } = await getAccountScope();
+  const account =
+    selected?.platform === "tiktok"
+      ? selected
+      : (accounts.find((a) => a.platform === "tiktok" && a.isPrimary) ?? null);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:px-8">
@@ -27,7 +34,8 @@ export default async function TikTokPage({
         <div>
           <h1 className="text-[1.9rem] font-medium tracking-[-0.025em]">TikTok</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Display API (Login Kit) · todos los videos del periodo.
+            {account?.handle ? `@${account.handle} · ` : ""}Display API (Login
+            Kit) · todos los videos del periodo.
           </p>
         </div>
         <div className="flex items-start gap-3">
@@ -49,8 +57,11 @@ export default async function TikTokPage({
 
       {/* El cambio de rango no pasa por loading.tsx: el Suspense (key=range)
           muestra el skeleton mientras la Display API responde. */}
-      <Suspense key={range} fallback={<PlatformPanelSkeleton />}>
-        <TikTokBody range={range} />
+      <Suspense
+        key={`${account?.accountId ?? "none"}:${range}`}
+        fallback={<PlatformPanelSkeleton />}
+      >
+        <TikTokBody range={range} accountId={account?.accountId} />
       </Suspense>
     </div>
   );
@@ -58,17 +69,22 @@ export default async function TikTokPage({
 
 /**
  * Cuerpo con datos (API viva + breakouts); el tour viaja aquí. El token sale de
- * la conexión guardada de la cuenta principal, no de una cookie: la vista
- * funciona en cualquier navegador y con el mismo token que usa el cron.
+ * la conexión guardada de esa cuenta, no de una cookie: la vista funciona en
+ * cualquier navegador y con el mismo token que usa el cron.
  */
-async function TikTokBody({ range }: { range: ReturnType<typeof resolveRange> }) {
-  const auth = await resolveTikTokAuth();
+async function TikTokBody({
+  range,
+  accountId,
+}: {
+  range: ReturnType<typeof resolveRange>;
+  accountId?: string;
+}) {
+  const auth = await resolveTikTokAuth(accountId);
   const [result, breakouts] = await Promise.all([
     readTikTokOverview(auth, { since: sinceForRange(range) }),
     // Azúcar: si la DB falla o el cohorte es chico, la página sigue sin badges.
-    resolveAccounts({ platform: "tiktok", account: "primary" })
-      .then((accounts) => readBreakoutIds(accounts.map((a) => a.accountId)))
-      .catch(() => new Set<string>()),
+    // El cohorte es el de esta misma cuenta (ver breakouts.ts).
+    readBreakoutIds(accountId ? [accountId] : []).catch(() => new Set<string>()),
   ]);
 
   return (

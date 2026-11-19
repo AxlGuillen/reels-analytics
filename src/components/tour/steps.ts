@@ -26,13 +26,13 @@ export interface Tour {
 
 export const TOURS: Record<string, Tour> = {
   "/": {
-    version: 1,
+    version: 2,
     steps: [
       {
         target: '[data-tour="periodo"]',
-        title: "Tu resumen por periodo",
+        title: "Tu resumen por cuenta y periodo",
         description:
-          "Cambia entre semana y mes, y navega periodos anteriores con las flechas. Todo lo que ves abajo se recalcula para el periodo elegido.",
+          "Elige todas tus cuentas o una sola, y cambia entre semana y mes con las flechas. Todo lo de abajo se recalcula para esa elección y se mantiene al cambiar de pantalla.",
       },
       {
         target: '[data-tour="kpis"]',
@@ -45,6 +45,12 @@ export const TOURS: Record<string, Tour> = {
         title: "Vistas día a día",
         description:
           "Cada cápsula apila TikTok (tinta) e Instagram (lima). El día punteado es el líder del periodo — útil para ver qué día despegó.",
+      },
+      {
+        target: '[data-tour="desglose"]',
+        title: "Cada cuenta, lado a lado",
+        description:
+          "Con todas las cuentas elegidas, la tabla reparte el total entre ellas: vistas, seguidores, publicados y engagement del periodo. La fila de total cuadra con las cards de arriba.",
       },
       {
         target: '[data-tour="tipos"]',
@@ -62,13 +68,13 @@ export const TOURS: Record<string, Tour> = {
   },
 
   "/growth": {
-    version: 1,
+    version: 2,
     steps: [
       {
         target: '[data-tour="growth-filtros"]',
-        title: "Filtra y normaliza",
+        title: "Elige cuenta y normaliza",
         description:
-          "Filtra por plataforma y cambia entre vistas totales o a 7 días — la comparación justa que no favorece a los videos viejos.",
+          "Mira todas tus cuentas o una sola, y cambia entre vistas totales o a 7 días — la comparación justa que no favorece a los videos viejos.",
       },
       {
         target: '[data-tour="growth-seguidores"]',
@@ -97,13 +103,13 @@ export const TOURS: Record<string, Tour> = {
     ],
   },
   "/content": {
-    version: 1,
+    version: 2,
     steps: [
       {
         target: '[data-tour="content-header"]',
         title: "Catálogo por tipo",
         description:
-          "Tu contenido agrupado por el hashtag identificador de cada formato, con filtro por plataforma en la esquina.",
+          "Tu contenido agrupado por el hashtag identificador de cada formato, de todas tus cuentas o de la que elijas en la esquina.",
       },
       {
         target: '[data-tour="content-catalogo"]',
