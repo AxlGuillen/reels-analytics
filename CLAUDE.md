@@ -454,11 +454,17 @@ no hay otra elegida (p. ej. `/tiktok` en "Todas"). Reglas:
   principal.
 - **Digest**: los totales son de TODAS las cuentas (como la vista por defecto del panel) y
   el mejor video dice de qué cuenta es; luego **una línea por cuenta contra SU propia
-  semana anterior** (`summarizeAccountWeek` + `weekOverWeek` en `analytics/account-week.ts`,
-  puros y testeados). No se comparan cuentas entre sí: con nichos distintos (LoL, edits,
-  Valorant) y audiencias de tamaños dispares no significa nada. `weekOverWeek` es null si
-  la semana anterior fue 0 (sin base, nada de "+∞ %"). Duración y mejor día salen de las
-  cuentas principales: son señales de la estrategia de formato del canal principal.
+  semana anterior** (el `byAccount` de dos `summarizeOverview` + `weekOverWeek` en
+  `analytics/account-week.ts`, puro y testeado). No se comparan cuentas entre sí: con nichos
+  distintos (LoL, edits, Valorant) y audiencias de tamaños dispares no significa nada.
+  `weekOverWeek` es null si la semana anterior fue 0 (sin base, nada de "+∞ %"). Duración y
+  mejor día salen de las cuentas principales: son señales de la estrategia de formato del
+  canal principal. **Presupuesto de 60 s en frío** (corre después de que la ingesta expiró el
+  caché): la historia de cada cuenta se lee UNA vez con `loadOverviewData` (cuentas en
+  paralelo) y ambas semanas se miden en memoria con `summarizeOverview`. El 23 nov 2026 el
+  digest murió por timeout porque, tras el Overview, volvía a leer cada cuenta EN SERIE
+  (~37 s local, >60 s en Vercel con 5 cuentas); así quedó en ~14 s. No agregar lecturas por
+  cuenta dentro de un bucle.
 - **Instagram sigue siendo de una cuenta** (token por env var). Una 2.ª de IG exige antes
   el OAuth de Instagram.
 - Paso a paso para agregar cuentas (portal de TikTok + conexión): `docs/agregar-cuenta.md`.
