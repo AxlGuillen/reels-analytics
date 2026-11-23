@@ -3,29 +3,30 @@ import { PLATFORMS, type Platform } from "@/core/domain";
 import { formatCount } from "@/core/lib/format";
 import { dayKey, weekday } from "@/core/lib/datetime";
 import { escapeHtml } from "@/core/lib/telegram";
-import {
-  summarizeAccountWeek,
-  weekOverWeek,
-} from "@/modules/analytics/account-week";
-import { readGrowthCached } from "@/modules/analytics/cached";
-import { readSnapshotSeries, resolveAccounts } from "@/modules/analytics/history";
+import { weekOverWeek } from "@/modules/analytics/account-week";
 import {
   bestBucket,
   CREATOR_TIMEZONE,
   engagementRate,
   viewsByWeekday,
 } from "@/modules/analytics/insights";
-import { readOverviewSummary } from "@/modules/analytics/overview";
+import { loadOverviewData, summarizeOverview } from "@/modules/analytics/overview";
 import { resolvePeriod } from "@/modules/analytics/period";
 import { getAccountCaptureStatuses } from "@/modules/ingestion/status";
 
 /**
  * Arma el digest semanal en HTML de Telegram. Los totales son de TODAS las
- * cuentas (`readOverviewSummary` con alcance "all", semana calendario recién
- * terminada), igual que la vista por defecto del panel. Después, una línea por
- * cuenta contra SU propia semana anterior. Duración y mejor día salen de las
- * cuentas principales (son señales de la estrategia de formato del canal
- * principal). El watchdog de ingesta va al final. Solo lee y formatea.
+ * cuentas (semana calendario recién terminada), igual que la vista por defecto
+ * del panel. Después, una línea por cuenta contra SU propia semana anterior.
+ * Duración y mejor día salen de las cuentas principales (son señales de la
+ * estrategia de formato del canal principal). El watchdog de ingesta va al
+ * final. Solo lee y formatea.
+ *
+ * Presupuesto: el cron tiene 60 s y corre justo después de que la ingesta
+ * expiró el caché, así que todo se lee en frío. Por eso la historia de cada
+ * cuenta se lee UNA vez (`loadOverviewData`, cuentas en paralelo) y las dos
+ * semanas se miden sobre esos datos en memoria. Volver a leer por cuenta, en
+ * serie, es lo que tumbó el digest del 23 nov 2026 con cinco cuentas.
  */
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -84,14 +85,14 @@ function splitSection(
 export async function buildWeeklyDigest(): Promise<string> {
   const now = Date.now();
   // Ancla en "ayer": corriendo el lunes, cae en domingo → semana Lun–Dom recién
-  // cerrada. La lectura pesada (ambas plataformas) vive en readOverviewSummary.
+  // cerrada.
   const anchor = dayKey(new Date(now - 86_400_000), CREATOR_TIMEZONE);
-  const [summary, { videos }, accounts] = await Promise.all([
-    readOverviewSummary({ granularity: "week", anchor, scope: { account: "all" } }),
-    readGrowthCached({ account: "primary" }),
-    resolveAccounts({ account: "all" }),
-  ]);
-  const multiAccount = accounts.length > 1;
+  const data = await loadOverviewData({ account: "all" });
+  const summary = summarizeOverview(data, "week", anchor);
+  const previous = summarizeOverview(data, "week", summary.period.prevAnchor);
+  // Catálogo de las cuentas principales (duración y mejor día histórico).
+  const videos = data.filter((d) => d.account.isPrimary).flatMap((d) => d.videos);
+  const multiAccount = data.length > 1;
 
   const {
     combined,
@@ -240,33 +241,30 @@ export async function buildWeeklyDigest(): Promise<string> {
   // audiencias de tamaños tan dispares; contra su propia historia, sí. Una
   // línea por cuenta: con cinco cuentas, más sería ruido en el teléfono.
   if (multiAccount) {
-    const prevWeekDays = new Set(
-      resolvePeriod("week", period.prevAnchor, today).dayKeys,
+    const prevById = new Map(previous.byAccount.map((a) => [a.accountId, a]));
+    // Una cuenta sin videos ni buckets nunca se capturó (recién conectada).
+    const captured = new Set(
+      data
+        .filter((d) => d.videos.length > 0 || d.daily.length > 0)
+        .map((d) => d.account.accountId),
     );
     lines.push("", "👤 <b>Por cuenta</b> (vs su semana anterior)");
-    for (const account of accounts) {
-      const scope = { account: { accountId: account.accountId } } as const;
-      const [growth, snapshotSeries] = await Promise.all([
-        readGrowthCached(scope),
-        readSnapshotSeries(scope),
-      ]);
-      const input = { ...growth, snapshotSeries };
-      const week = summarizeAccountWeek(input, weekDays);
-      const name = `<b>${escapeHtml(account.handle ? `@${account.handle}` : "cuenta nueva")}</b> · ${PLATFORM_LABEL[account.platform]}`;
-      if (week.followers === null) {
+    for (const row of summary.byAccount) {
+      const name = `<b>${escapeHtml(row.handle ? `@${row.handle}` : "cuenta nueva")}</b> · ${PLATFORM_LABEL[row.platform]}`;
+      if (!captured.has(row.accountId)) {
         lines.push(`${name} — aún sin capturas`);
         continue;
       }
       const change = weekOverWeek(
-        week.viewsGained,
-        summarizeAccountWeek(input, prevWeekDays).viewsGained,
+        row.metrics.views,
+        prevById.get(row.accountId)?.metrics.views ?? 0,
       );
       const pct =
         change === null ? "" : ` (${change >= 0 ? "+" : ""}${Math.round(change * 100)}%)`;
       const followers =
-        week.followersGained === null ? "—" : signed(week.followersGained);
+        row.followersGained === null ? "—" : signed(row.followersGained);
       lines.push(
-        `${name} — ${formatCount(week.viewsGained)} vistas${pct} · ${followers} seg. · ${week.published} publ.`,
+        `${name} — ${formatCount(row.metrics.views)} vistas${pct} · ${followers} seg. · ${row.metrics.videosPublished} publ.`,
       );
     }
   }

@@ -123,7 +123,8 @@ const dailyFor = analyticsCache("daily", async (accountId: string) => {
   );
 });
 
-interface AccountData {
+/** Lo que se lee de una cuenta para medir cualquier periodo. */
+export interface AccountData {
   account: ScopedAccount;
   videos: VideoWithMetrics[];
   daily: TimelineBucket[];
@@ -171,11 +172,30 @@ export async function readOverviewSummary(opts: {
   /** cuentas a incluir; por defecto, las principales (ver `AccountScope`). */
   scope?: ScopeOptions;
 }): Promise<OverviewSummary> {
-  const today = dayKey(new Date(), CREATOR_TIMEZONE);
-  const period = resolvePeriod(opts.granularity, opts.anchor, today);
+  const data = await loadOverviewData(opts.scope ?? {});
+  return summarizeOverview(data, opts.granularity, opts.anchor);
+}
 
-  const accounts = await resolveAccounts(opts.scope ?? {});
-  const data = await Promise.all(accounts.map(readAccount));
+/**
+ * La parte cara del Overview: catálogo + buckets diarios de cada cuenta del
+ * alcance, en paralelo. No depende del periodo, así que quien necesita medir
+ * VARIOS periodos (el digest: esta semana y la anterior) lee una sola vez y
+ * llama a `summarizeOverview` por cada uno.
+ */
+export async function loadOverviewData(scope: ScopeOptions): Promise<AccountData[]> {
+  const accounts = await resolveAccounts(scope);
+  return Promise.all(accounts.map(readAccount));
+}
+
+/** Mide un periodo sobre datos ya leídos (sin I/O). */
+export function summarizeOverview(
+  data: AccountData[],
+  granularity: PeriodGranularity,
+  anchor?: string,
+): OverviewSummary {
+  const today = dayKey(new Date(), CREATOR_TIMEZONE);
+  const period = resolvePeriod(granularity, anchor, today);
+  const accounts = data.map((d) => d.account);
 
   const measured: AccountPeriod[] = data.map(({ account, daily }) => ({
     ...account,
